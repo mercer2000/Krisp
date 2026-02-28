@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "Review and modify the Crisp webhook endpoint such that it will support multi-tenant. I believe right now it is just set up as a single tenant. Maybe we pass in the user ID.",
+  "title": "Update Crisp webhook endpoint for multi-tenant support",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-02-28T21:30:14.655Z",
+  "id": "feature-1772314214656-hj063p7gxns",
+  "descriptionHistory": [
+    {
+      "description": "Review and modify the Crisp webhook endpoint such that it will support multi-tenant. I believe right now it is just set up as a single tenant. Maybe we pass in the user ID.",
+      "timestamp": "2026-02-28T21:30:14.914Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-02-28T21:37:29.410Z",
+  "justFinishedAt": "2026-02-28T21:37:29.410Z"
+}

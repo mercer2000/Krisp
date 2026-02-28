@@ -1,0 +1,26 @@
+{
+  "category": "Uncategorized",
+  "description": "Add Password Reset Flow with Resend Email Delivery\n\nImplement a complete password reset flow that allows users to securely recover access to their accounts, using Resend as the transactional email provider.\n\nRequirements:\n\nAuthentication Flow:\n- Add a \"Forgot Password\" link on the login page\n- Create a password reset request form that accepts the user's email address\n- Generate a secure, time-limited reset token (e.g., expires in 1 hour) and store it\n- Send a password reset email via Resend containing a unique reset link\n- Create a reset password form accessible via the token link that accepts and confirms a new password\n- Invalidate the token after successful use or expiry\n- Redirect user to login with a success confirmation after password is updated\n\nEmail Integration:\n- Integrate the Resend SDK for transactional email delivery\n- Read the sender address from the new RESEND_EMAIL environment variable\n- Design a clear, branded password reset email template with the reset link and expiry notice\n- Handle Resend API errors gracefully and surface actionable feedback if delivery fails\n\nSecurity Considerations:\n- Ensure reset tokens are cryptographically random and single-use\n- Do not reveal whether an email address exists in the system (return a generic confirmation message regardless)\n- Enforce minimum password strength requirements on the new password\n- Rate-limit reset requests per email address to prevent abuse\n\nEnvironment & Configuration:\n- Add RESEND_EMAIL to environment variable documentation and any .env.example files\n- Validate that RESEND_EMAIL is present at startup and fail with a descriptive error if missing",
+  "title": "Implement password reset flow with Resend email delivery",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "backlog",
+  "id": "feature-1772315391401-82tu0yelank",
+  "descriptionHistory": [
+    {
+      "description": "Add Password Reset Flow with Resend Email Delivery\n\nImplement a complete password reset flow that allows users to securely recover access to their accounts, using Resend as the transactional email provider.\n\nRequirements:\n\nAuthentication Flow:\n- Add a \"Forgot Password\" link on the login page\n- Create a password reset request form that accepts the user's email address\n- Generate a secure, time-limited reset token (e.g., expires in 1 hour) and store it\n- Send a password reset email via Resend containing a unique reset link\n- Create a reset password form accessible via the token link that accepts and confirms a new password\n- Invalidate the token after successful use or expiry\n- Redirect user to login with a success confirmation after password is updated\n\nEmail Integration:\n- Integrate the Resend SDK for transactional email delivery\n- Read the sender address from the new RESEND_EMAIL environment variable\n- Design a clear, branded password reset email template with the reset link and expiry notice\n- Handle Resend API errors gracefully and surface actionable feedback if delivery fails\n\nSecurity Considerations:\n- Ensure reset tokens are cryptographically random and single-use\n- Do not reveal whether an email address exists in the system (return a generic confirmation message regardless)\n- Enforce minimum password strength requirements on the new password\n- Rate-limit reset requests per email address to prevent abuse\n\nEnvironment & Configuration:\n- Add RESEND_EMAIL to environment variable documentation and any .env.example files\n- Validate that RESEND_EMAIL is present at startup and fail with a descriptive error if missing",
+      "timestamp": "2026-02-28T21:49:51.724Z",
+      "source": "initial"
+    }
+  ]
+}

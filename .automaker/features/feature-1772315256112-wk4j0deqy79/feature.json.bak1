@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "Add Admin Integrations Setup Page\n\nImplement a new admin-only integrations page that provides clear, step-by-step instructions for configuring the Crisp webhook integration for each tenant's workspace.\n\nRequirements:\n\n- Create a new route and page accessible only to users with admin role (e.g., /admin/integrations or /settings/integrations)\n- Gate access with existing auth/role middleware to prevent non-admin access\n- Display a dedicated Crisp integration section with the following:\n  - A brief description of what the Crisp webhook integration does and why it is needed\n  - Step-by-step setup instructions guiding the admin through the Crisp dashboard configuration\n  - The tenant-specific webhook URL they must register in Crisp, dynamically generated and displayed for easy copying\n  - Any required headers, secrets, or authentication tokens the admin must configure on the Crisp side\n  - Expected events or triggers the webhook should be subscribed to (e.g., conversation opened, message received)\n- Include a copy-to-clipboard button for the webhook URL and any other values the admin must paste into Crisp\n- Display current integration status (e.g., not configured, active, last webhook received) if status data is available\n- Ensure the page is styled consistently with the existing admin UI\n\nEdge Cases to Consider:\n- Tenant has not yet been assigned a unique webhook URL or identifier\n- Admin copies an incorrect or expired token and needs to regenerate it\n- Page should degrade gracefully if integration status cannot be fetched\n\nDependencies:\n- Multi-tenant Crisp webhook endpoint must be in place (already implemented)\n- Admin role and authentication middleware must be functional\n- Tenant identification must be resolvable at the time the page is rendered",
+  "title": "Create admin integrations setup page",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "id": "feature-1772315256112-wk4j0deqy79",
+  "descriptionHistory": [
+    {
+      "description": "Add Admin Integrations Setup Page\n\nImplement a new admin-only integrations page that provides clear, step-by-step instructions for configuring the Crisp webhook integration for each tenant's workspace.\n\nRequirements:\n\n- Create a new route and page accessible only to users with admin role (e.g., /admin/integrations or /settings/integrations)\n- Gate access with existing auth/role middleware to prevent non-admin access\n- Display a dedicated Crisp integration section with the following:\n  - A brief description of what the Crisp webhook integration does and why it is needed\n  - Step-by-step setup instructions guiding the admin through the Crisp dashboard configuration\n  - The tenant-specific webhook URL they must register in Crisp, dynamically generated and displayed for easy copying\n  - Any required headers, secrets, or authentication tokens the admin must configure on the Crisp side\n  - Expected events or triggers the webhook should be subscribed to (e.g., conversation opened, message received)\n- Include a copy-to-clipboard button for the webhook URL and any other values the admin must paste into Crisp\n- Display current integration status (e.g., not configured, active, last webhook received) if status data is available\n- Ensure the page is styled consistently with the existing admin UI\n\nEdge Cases to Consider:\n- Tenant has not yet been assigned a unique webhook URL or identifier\n- Admin copies an incorrect or expired token and needs to regenerate it\n- Page should degrade gracefully if integration status cannot be fetched\n\nDependencies:\n- Multi-tenant Crisp webhook endpoint must be in place (already implemented)\n- Admin role and authentication middleware must be functional\n- Tenant identification must be resolvable at the time the page is rendered",
+      "timestamp": "2026-02-28T21:47:36.387Z",
+      "source": "initial"
+    }
+  ],
+  "startedAt": "2026-02-28T21:54:40.433Z",
+  "updatedAt": "2026-02-28T22:02:43.492Z",
+  "justFinishedAt": "2026-02-28T22:02:43.492Z"
+}

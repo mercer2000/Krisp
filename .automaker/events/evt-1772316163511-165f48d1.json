@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772316163511-165f48d1",
+  "trigger": "feature_success",
+  "timestamp": "2026-02-28T22:02:43.511Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772315256112-wk4j0deqy79",
+  "featureName": "Create admin integrations setup page",
+  "passes": true
+}

@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "psql 'postgresql://neondb_owner:npg_HUFP6D5rCtcl@ep-summer-dew-ailioqae-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'\n\nUpdate the project to use Neon Postgres. You will need to assist in creating the schema. \n",
+  "title": "Update project database to Neon Postgres with schema",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "skip",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-02-28T20:50:49.333Z",
+  "id": "feature-1772311849333-xdqh7blmszq",
+  "descriptionHistory": [
+    {
+      "description": "psql 'postgresql://neondb_owner:npg_HUFP6D5rCtcl@ep-summer-dew-ailioqae-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'\n\nUpdate the project to use Neon Postgres. You will need to assist in creating the schema. \n",
+      "timestamp": "2026-02-28T20:50:49.593Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-02-28T21:04:30.496Z",
+  "justFinishedAt": "2026-02-28T21:04:30.496Z"
+}

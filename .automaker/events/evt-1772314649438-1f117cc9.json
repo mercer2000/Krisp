@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772314649438-1f117cc9",
+  "trigger": "feature_success",
+  "timestamp": "2026-02-28T21:37:29.438Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772314214656-hj063p7gxns",
+  "featureName": "Update Crisp webhook endpoint for multi-tenant support",
+  "passes": true
+}

@@ -1,0 +1,26 @@
+{
+  "category": "Uncategorized",
+  "description": "http://localhost:3000/krisp\n\nOn this page, add a card view that shows a 3 column grid of recorded meetings. The card should show the meeting title, and action items from the meeting. ",
+  "title": "",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "backlog",
+  "id": "feature-1772322791949-la0b2p1sgoo",
+  "descriptionHistory": [
+    {
+      "description": "http://localhost:3000/krisp\n\nOn this page, add a card view that shows a 3 column grid of recorded meetings. The card should show the meeting title, and action items from the meeting. ",
+      "timestamp": "2026-02-28T23:53:12.362Z",
+      "source": "initial"
+    }
+  ]
+}

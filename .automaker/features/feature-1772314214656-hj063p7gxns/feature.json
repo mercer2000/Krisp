@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "Review and modify the Crisp webhook endpoint such that it will support multi-tenant. I believe right now it is just set up as a single tenant. Maybe we pass in the user ID.",
+  "title": "Update Crisp webhook endpoint for multi-tenant support",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-02-28T21:30:14.655Z",
+  "id": "feature-1772314214656-hj063p7gxns",
+  "descriptionHistory": [
+    {
+      "description": "Review and modify the Crisp webhook endpoint such that it will support multi-tenant. I believe right now it is just set up as a single tenant. Maybe we pass in the user ID.",
+      "timestamp": "2026-02-28T21:30:14.914Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-02-28T21:37:29.441Z",
+  "justFinishedAt": "2026-02-28T21:37:29.410Z",
+  "summary": "## Summary: Multi-tenant support for Krisp webhook endpoint\n\n### Changes Implemented\n- Added `user_id` (UUID, FK to `users.id`) column to `webhook_key_points` table in Drizzle schema\n- Added `user_id` field to `WebhookKeyPointsRow` and `WebhookKeyPointsInsert` TypeScript interfaces\n- Updated `insertWebhookKeyPoints()` to accept and store `userId` parameter\n- Updated all query functions (`getRecentWebhookKeyPoints`, `getWebhookKeyPointsByMeetingId`, `searchMeetings`, `searchMeetingsSimple`, `getAllMeetingsSummary`, `getMeetingById`) to require `userId` and filter results with `WHERE user_id = $userId`\n- Updated webhook POST endpoint to require `user_id` query parameter and validate user exists before inserting\n- Updated webhook GET endpoint to require `user_id` query parameter for scoped retrieval\n- Updated search endpoint (both POST and GET) to authenticate via NextAuth `auth()` session and scope all queries to the logged-in user's data\n- Created SQL migration `002_add_user_id_to_webhook_key_points.sql` with indexes for efficient per-user queries\n\n### Files Modified\n- `lib/db/schema.ts` — Added `userId` column to `webhookKeyPoints` table\n- `types/webhook.ts` — Added `user_id` to `WebhookKeyPointsRow` and `WebhookKeyPointsInsert`\n- `lib/krisp/webhookKeyPoints.ts` — All query functions now accept and filter by `userId`\n- `app/api/webhooks/key-points/route.ts` — Requires `user_id` query param, validates user, passes to insert\n- `app/api/search/route.ts` — Uses `auth()` session for user ID, passes to all query functions\n\n### Files Created\n- `db/migrations/002_add_user_id_to_webhook_key_points.sql` — Migration to add `user_id` column and indexes\n\n### Notes for Developer\n- The migration adds `user_id` as nullable to preserve existing data. After backfilling existing rows with a valid user ID, uncomment the `ALTER COLUMN user_id SET NOT NULL` line.\n- Webhook URL format is now: `POST /api/webhooks/key-points?user_id=<uuid>` — each user's Krisp integration should be configured with their specific user ID in the webhook URL.\n- The search endpoint (`/api/search`) now requires authentication — unauthenticated requests return 401. The middleware matcher already excludes `/api/` routes, so auth is handled in the route handler itself via `auth()`."
+}
