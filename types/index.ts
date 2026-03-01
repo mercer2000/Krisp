@@ -50,6 +50,25 @@ export interface CardTag {
   color: string;
 }
 
+export type ActionItemStatus = "open" | "in_progress" | "completed" | "cancelled";
+
+export interface ActionItem {
+  id: string;
+  userId: string;
+  meetingId: number | null;
+  title: string;
+  description: string | null;
+  assignee: string | null;
+  status: ActionItemStatus;
+  priority: Priority;
+  dueDate: string | null;
+  completedAt: string | null;
+  reminderSentAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  meetingTitle?: string | null;
+}
+
 export interface ColumnWithCards extends Column {
   cards: Card[];
 }

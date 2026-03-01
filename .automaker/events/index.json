@@ -2,6 +2,27 @@
   "version": 1,
   "events": [
     {
+      "id": "evt-1772402384999-7835c1dd",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-01T21:59:44.999Z",
+      "featureName": "Action Item Assignment & Tracking",
+      "featureId": "feature-1772326534400-ishpeuzrf"
+    },
+    {
+      "id": "evt-1772400630371-d70a4e69",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-01T21:30:30.371Z",
+      "featureName": "I'll fetch the content from that URL to better understand the feature context.",
+      "featureId": "feature-1772400209730-621euwk6yjy"
+    },
+    {
+      "id": "evt-1772400210080-1b3edc76",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-01T21:23:30.080Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772400209730-621euwk6yjy"
+    },
+    {
       "id": "evt-1772327559869-631d0a0e",
       "trigger": "feature_success",
       "timestamp": "2026-03-01T01:12:39.869Z",

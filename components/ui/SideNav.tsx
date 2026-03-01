@@ -18,6 +18,12 @@ const NAV_ITEMS = [
     icon: KrispIcon,
   },
   {
+    key: "action-items",
+    label: "Action Items",
+    href: "/action-items",
+    icon: ActionItemsIcon,
+  },
+  {
     key: "boards",
     label: "Kanban",
     href: "/boards",
@@ -70,6 +76,26 @@ function KanbanIcon({ size = 20 }: { size?: number }) {
       <rect x="3" y="3" width="18" height="18" rx="2" />
       <path d="M9 3v18" />
       <path d="M15 3v18" />
+    </svg>
+  );
+}
+
+function ActionItemsIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+      <rect x="9" y="3" width="6" height="4" rx="1" />
+      <path d="m9 14 2 2 4-4" />
     </svg>
   );
 }
@@ -180,6 +206,7 @@ export function SideNav() {
 
   const isActive = (href: string) => {
     if (href === "/krisp") return pathname === "/krisp";
+    if (href === "/action-items") return pathname.startsWith("/action-items");
     if (href === "/boards") return pathname.startsWith("/boards");
     if (href === "/admin/integrations") return pathname.startsWith("/admin/integrations");
     return pathname === href;

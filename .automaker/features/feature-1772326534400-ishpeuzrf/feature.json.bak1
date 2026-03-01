@@ -1,0 +1,16 @@
+{
+  "category": "ui",
+  "description": "Automatically extract action items from meeting transcripts and assign them to participants. Track completion status with due dates and send reminders via email.\n\n**Rationale:** Action items die in meeting notes. Surfacing them as trackable tasks with ownership closes the loop between discussion and execution.",
+  "title": "Action Item Assignment & Tracking",
+  "status": "verified",
+  "id": "feature-1772326534400-ishpeuzrf",
+  "descriptionHistory": [
+    {
+      "description": "Automatically extract action items from meeting transcripts and assign them to participants. Track completion status with due dates and send reminders via email.\n\n**Rationale:** Action items die in meeting notes. Surfacing them as trackable tasks with ownership closes the loop between discussion and execution.",
+      "timestamp": "2026-03-01T00:55:34.401Z",
+      "source": "initial"
+    }
+  ],
+  "startedAt": "2026-03-01T21:38:47.346Z",
+  "updatedAt": "2026-03-01T21:59:44.980Z"
+}

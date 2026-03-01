@@ -125,6 +125,38 @@ export const cardTagsRelations = relations(cardTags, ({ one }) => ({
   card: one(cards, { fields: [cardTags.cardId], references: [cards.id] }),
 }));
 
+// ── Action Items ──────────────────────────────────────
+export const actionItemStatusEnum = pgEnum("action_item_status", [
+  "open",
+  "in_progress",
+  "completed",
+  "cancelled",
+]);
+
+export const actionItems = pgTable("action_items", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  meetingId: integer("meeting_id").references(() => webhookKeyPoints.id, {
+    onDelete: "set null",
+  }),
+  title: varchar("title", { length: 500 }).notNull(),
+  description: text("description"),
+  assignee: varchar("assignee", { length: 255 }),
+  status: actionItemStatusEnum("status").default("open").notNull(),
+  priority: priorityEnum("priority").default("medium").notNull(),
+  dueDate: date("due_date"),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
 // ── Webhook Key Points (Krisp Meetings) ───────────────
 export const webhookKeyPoints = pgTable("webhook_key_points", {
   id: serial("id").primaryKey(),

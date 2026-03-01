@@ -99,6 +99,28 @@
       "dismissed": false,
       "featureId": "feature-1772325790634-c8jss2ji2vg",
       "projectPath": "C:\\Code\\Krisp"
+    },
+    {
+      "id": "9a3400fa-aec1-4bf9-8cd1-24ed3f5e6017",
+      "type": "feature_waiting_approval",
+      "title": "Feature Ready for Review",
+      "message": "\"feature-1772400209730-621euwk6yjy\" is ready for your review and approval.",
+      "createdAt": "2026-03-01T21:30:30.356Z",
+      "read": false,
+      "dismissed": false,
+      "featureId": "feature-1772400209730-621euwk6yjy",
+      "projectPath": "C:\\Code\\Krisp"
+    },
+    {
+      "id": "d99f6799-a0d7-4234-aa1f-dc0862e81317",
+      "type": "feature_verified",
+      "title": "Feature Verified",
+      "message": "\"feature-1772326534400-ishpeuzrf\" has been verified and is complete.",
+      "createdAt": "2026-03-01T21:59:44.988Z",
+      "read": false,
+      "dismissed": false,
+      "featureId": "feature-1772326534400-ishpeuzrf",
+      "projectPath": "C:\\Code\\Krisp"
     }
   ]
 }

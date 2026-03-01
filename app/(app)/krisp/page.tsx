@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { MeetingDetailDrawer } from "@/components/meeting/MeetingDetailDrawer";
 
 interface KeyPointContent {
   id: string;
@@ -33,6 +34,9 @@ export default function KrispPage() {
   const [result, setResult] = useState<SearchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+
+  // Meeting detail drawer
+  const [openMeetingId, setOpenMeetingId] = useState<number | null>(null);
 
   // All meetings loaded on page load
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -289,18 +293,20 @@ export default function KrispPage() {
                               </div>
                             )}
 
-                            {/* Transcript Preview */}
-                            {meeting.raw_content && (
-                              <div>
-                                <h4 className="text-sm font-medium text-[var(--foreground)] mb-2">
-                                  Transcript Preview
-                                </h4>
-                                <p className="text-sm text-[var(--muted-foreground)] whitespace-pre-wrap max-h-48 overflow-y-auto bg-[var(--secondary)] p-3 rounded">
-                                  {meeting.raw_content.slice(0, 1500)}
-                                  {meeting.raw_content.length > 1500 && "..."}
-                                </p>
-                              </div>
-                            )}
+                            {/* View Full Transcript button */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMeetingId(meeting.id);
+                              }}
+                              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              View Transcript
+                            </button>
                           </div>
                         )}
                       </div>
@@ -363,7 +369,8 @@ export default function KrispPage() {
                   return (
                     <div
                       key={meeting.id}
-                      className="p-5 bg-[var(--card)] border border-[var(--border)] rounded-lg hover:border-[var(--muted-foreground)] transition-colors flex flex-col"
+                      onClick={() => setOpenMeetingId(meeting.id)}
+                      className="p-5 bg-[var(--card)] border border-[var(--border)] rounded-lg hover:border-[var(--muted-foreground)] transition-colors flex flex-col cursor-pointer"
                     >
                       {/* Title */}
                       <h3 className="font-medium text-[var(--foreground)] leading-snug line-clamp-2">
@@ -448,6 +455,11 @@ export default function KrispPage() {
           </div>
         </div>
       </main>
+
+      <MeetingDetailDrawer
+        meetingId={openMeetingId}
+        onClose={() => setOpenMeetingId(null)}
+      />
     </div>
   );
 }

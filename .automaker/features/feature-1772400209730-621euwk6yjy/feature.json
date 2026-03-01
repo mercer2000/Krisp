@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "https://krisp-khaki.vercel.app/krisp  \n\n\nAdd the ability to select a meeting card and video the transcription. If possible, when viewing the transcript breakout the transcript by speaker using color coding. ",
+  "title": "I'll fetch the content from that URL to better understand the feature context.",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "skip",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-01T21:23:29.730Z",
+  "id": "feature-1772400209730-621euwk6yjy",
+  "descriptionHistory": [
+    {
+      "description": "https://krisp-khaki.vercel.app/krisp  \n\n\nAdd the ability to select a meeting card and video the transcription. If possible, when viewing the transcript breakout the transcript by speaker using color coding. ",
+      "timestamp": "2026-03-01T21:23:30.075Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-01T21:30:30.372Z",
+  "justFinishedAt": "2026-03-01T21:30:30.346Z",
+  "summary": "## Summary: Meeting Card Selection & Transcript Viewer with Speaker Color-Coding\n\n### Changes Implemented\n- Added ability to click meeting cards to open a detail drawer with full transcript\n- Created transcript parser that splits raw content into speaker-attributed segments\n- Added speaker color-coding with 8 distinct colors (blue, emerald, amber, purple, red, pink, cyan, lime)\n- Each speaker segment has colored left border and speaker label\n- Added tabbed interface (Transcript / Key Points) in the detail drawer\n- Search result expanded cards now show a \"View Transcript\" button to open the drawer\n- Created API endpoint to fetch individual meeting details by ID\n\n### Files Modified\n- `app/(app)/krisp/page.tsx` - Added import, openMeetingId state, cursor-pointer on cards, onClick handlers, MeetingDetailDrawer integration, replaced inline transcript preview in search results with \"View Transcript\" button\n- `components/meeting/MeetingDetailDrawer.tsx` - New component with transcript parser, speaker color-coding, tabbed UI (Transcript/Key Points), loading/error states\n- `app/api/meetings/[id]/route.ts` - New API route for fetching a single meeting by ID (authenticated, user-scoped)\n\n### Notes for Developer\n- The transcript parser uses regex to detect `SpeakerName: text` patterns from the speaker names in the webhook data\n- Falls back to `Speaker N:` pattern matching if exact names aren't found\n- If the raw transcript has no speaker attribution markers, it renders as a single unstructured block\n- Speaker colors are assigned based on the speaker's index in the meeting's speakers array\n- The drawer uses the existing `Drawer` component from `components/ui/Drawer.tsx`"
+}

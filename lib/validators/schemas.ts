@@ -173,6 +173,28 @@ export const gmailAppsScriptPayloadSchema = z.object({
 
 export type GmailAppsScriptPayloadInput = z.infer<typeof gmailAppsScriptPayloadSchema>;
 
+// ── Action Items ─────────────────────────────────────
+export const createActionItemSchema = z.object({
+  title: z.string().min(1, "Title is required").max(500),
+  description: z.string().optional(),
+  assignee: z.string().max(255).optional(),
+  priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
+  dueDate: z.string().optional(),
+  meetingId: z.number().int().optional(),
+});
+
+export const updateActionItemSchema = z.object({
+  title: z.string().min(1).max(500).optional(),
+  description: z.string().nullable().optional(),
+  assignee: z.string().max(255).nullable().optional(),
+  status: z.enum(["open", "in_progress", "completed", "cancelled"]).optional(),
+  priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
+  dueDate: z.string().nullable().optional(),
+});
+
+export type CreateActionItemInput = z.infer<typeof createActionItemSchema>;
+export type UpdateActionItemInput = z.infer<typeof updateActionItemSchema>;
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;

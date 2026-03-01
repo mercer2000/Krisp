@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772400630371-d70a4e69",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-01T21:30:30.371Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772400209730-621euwk6yjy",
+  "featureName": "I'll fetch the content from that URL to better understand the feature context.",
+  "passes": true
+}
