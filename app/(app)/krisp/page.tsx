@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface KeyPointContent {
   id: string;
@@ -18,6 +18,7 @@ interface Meeting {
   participants: string[];
   content: KeyPointContent[];
   raw_content: string | null;
+  event_type: string | null;
 }
 
 interface SearchResponse {
@@ -32,6 +33,26 @@ export default function KrispPage() {
   const [result, setResult] = useState<SearchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+
+  // All meetings loaded on page load
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [meetingsLoading, setMeetingsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchMeetings() {
+      try {
+        const res = await fetch("/api/meetings");
+        if (!res.ok) throw new Error("Failed to fetch");
+        const data = await res.json();
+        setMeetings(data.meetings ?? []);
+      } catch {
+        console.error("Failed to load meetings");
+      } finally {
+        setMeetingsLoading(false);
+      }
+    }
+    fetchMeetings();
+  }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +96,15 @@ export default function KrispPage() {
     });
   };
 
+  const formatDateShort = (dateStr: string | null) => {
+    if (!dateStr) return "Unknown date";
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   const formatDuration = (seconds: number | null) => {
     if (!seconds) return "";
     const mins = Math.floor(seconds / 60);
@@ -84,6 +114,13 @@ export default function KrispPage() {
     return `${hours}h ${remainingMins}m`;
   };
 
+  const getActionItems = (meeting: Meeting): string[] => {
+    if (!Array.isArray(meeting.content)) return [];
+    return meeting.content
+      .filter((item): item is KeyPointContent => "description" in item)
+      .map((item) => item.description);
+  };
+
   return (
     <div className="flex h-full flex-col bg-[var(--background)]">
       {/* Header */}
@@ -91,17 +128,17 @@ export default function KrispPage() {
         <div className="flex items-center px-6 py-4">
           <div>
             <h1 className="text-2xl font-bold text-[var(--foreground)]">
-              Meeting Search
+              Meetings
             </h1>
             <p className="text-sm text-[var(--muted-foreground)] mt-1">
-              Search across all your meeting transcripts using natural language
+              Recorded meetings with key points and action items
             </p>
           </div>
         </div>
       </header>
 
       <main className="flex-1 overflow-auto px-6 py-8">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           {/* Search Form */}
           <form onSubmit={handleSearch} className="mb-8">
             <div className="flex gap-3">
@@ -151,9 +188,9 @@ export default function KrispPage() {
             </div>
           )}
 
-          {/* Results */}
+          {/* Search Results */}
           {result && (
-            <div className="space-y-6">
+            <div className="space-y-6 mb-10">
               {/* AI Answer */}
               <div className="p-6 bg-[var(--primary)]/5 border border-[var(--primary)]/20 rounded-lg">
                 <div className="flex items-start gap-3">
@@ -169,7 +206,7 @@ export default function KrispPage() {
                 </div>
               </div>
 
-              {/* Meeting Cards */}
+              {/* Search Result Meeting Cards */}
               {result.meetings.length > 0 && (
                 <div>
                   <h2 className="text-lg font-medium text-[var(--foreground)] mb-4">
@@ -274,48 +311,141 @@ export default function KrispPage() {
             </div>
           )}
 
-          {/* Empty State */}
-          {!result && !isLoading && (
-            <div className="text-center py-16">
-              <svg
-                className="w-16 h-16 mx-auto text-[var(--muted-foreground)]/30 mb-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-              <h2 className="text-xl font-medium text-[var(--foreground)] mb-2">
-                Search Your Meetings
-              </h2>
-              <p className="text-[var(--muted-foreground)] max-w-md mx-auto">
-                Ask questions in natural language to find relevant meetings and get answers based on your transcripts.
-              </p>
-              <div className="mt-6 space-y-2">
-                <p className="text-sm text-[var(--muted-foreground)]">Try asking:</p>
-                <div className="flex flex-wrap justify-center gap-2">
-                  {[
-                    "What was discussed in last week's standup?",
-                    "Who mentioned the Q4 budget?",
-                    "What are the action items from Monday?",
-                  ].map((example, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setQuery(example)}
-                      className="text-sm px-3 py-1.5 bg-[var(--secondary)] text-[var(--secondary-foreground)] rounded-full hover:opacity-80 transition-opacity"
-                    >
-                      {example}
-                    </button>
-                  ))}
-                </div>
+          {/* Recorded Meetings Card Grid */}
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">
+              Recorded Meetings
+            </h2>
+
+            {meetingsLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="p-5 bg-[var(--card)] border border-[var(--border)] rounded-lg animate-pulse"
+                  >
+                    <div className="h-5 bg-[var(--secondary)] rounded w-3/4 mb-3" />
+                    <div className="h-3 bg-[var(--secondary)] rounded w-1/2 mb-4" />
+                    <div className="space-y-2">
+                      <div className="h-3 bg-[var(--secondary)] rounded w-full" />
+                      <div className="h-3 bg-[var(--secondary)] rounded w-5/6" />
+                      <div className="h-3 bg-[var(--secondary)] rounded w-4/6" />
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          )}
+            ) : meetings.length === 0 ? (
+              <div className="text-center py-16">
+                <svg
+                  className="w-16 h-16 mx-auto text-[var(--muted-foreground)]/30 mb-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
+                </svg>
+                <h3 className="text-xl font-medium text-[var(--foreground)] mb-2">
+                  No Meetings Yet
+                </h3>
+                <p className="text-[var(--muted-foreground)] max-w-md mx-auto">
+                  Meetings will appear here once Krisp sends webhook data. Use the search bar above to query your meeting transcripts.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {meetings.map((meeting) => {
+                  const actionItems = getActionItems(meeting);
+                  return (
+                    <div
+                      key={meeting.id}
+                      className="p-5 bg-[var(--card)] border border-[var(--border)] rounded-lg hover:border-[var(--muted-foreground)] transition-colors flex flex-col"
+                    >
+                      {/* Title */}
+                      <h3 className="font-medium text-[var(--foreground)] leading-snug line-clamp-2">
+                        {meeting.meeting_title || "Untitled Meeting"}
+                      </h3>
+
+                      {/* Date & Duration */}
+                      <div className="flex items-center gap-2 mt-2 text-xs text-[var(--muted-foreground)]">
+                        <span>{formatDateShort(meeting.meeting_start_date)}</span>
+                        {meeting.meeting_duration && (
+                          <>
+                            <span className="text-[var(--border)]">|</span>
+                            <span>{formatDuration(meeting.meeting_duration)}</span>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Action Items / Key Points */}
+                      {actionItems.length > 0 ? (
+                        <ul className="mt-3 space-y-1.5 flex-1">
+                          {actionItems.slice(0, 4).map((item, i) => (
+                            <li
+                              key={i}
+                              className="text-sm text-[var(--muted-foreground)] flex gap-2 leading-snug"
+                            >
+                              <svg
+                                className="w-4 h-4 text-[var(--primary)] flex-shrink-0 mt-0.5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 5l7 7-7 7"
+                                />
+                              </svg>
+                              <span className="line-clamp-2">{item}</span>
+                            </li>
+                          ))}
+                          {actionItems.length > 4 && (
+                            <li className="text-xs text-[var(--muted-foreground)] pl-6">
+                              +{actionItems.length - 4} more
+                            </li>
+                          )}
+                        </ul>
+                      ) : (
+                        <p className="mt-3 text-sm text-[var(--muted-foreground)]/60 italic flex-1">
+                          No action items recorded
+                        </p>
+                      )}
+
+                      {/* Speakers */}
+                      {Array.isArray(meeting.speakers) && meeting.speakers.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-[var(--border)] flex flex-wrap gap-1.5">
+                          {meeting.speakers.slice(0, 3).map((speaker, i) => {
+                            const name = typeof speaker === "string"
+                              ? speaker
+                              : [speaker.first_name, speaker.last_name].filter(Boolean).join(" ") || `Speaker ${speaker.index}`;
+                            return (
+                              <span
+                                key={i}
+                                className="text-xs px-2 py-0.5 bg-[var(--secondary)] text-[var(--secondary-foreground)] rounded"
+                              >
+                                {name}
+                              </span>
+                            );
+                          })}
+                          {meeting.speakers.length > 3 && (
+                            <span className="text-xs px-2 py-0.5 text-[var(--muted-foreground)]">
+                              +{meeting.speakers.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </main>
     </div>

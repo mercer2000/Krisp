@@ -146,6 +146,33 @@ export const emailWebhookPayloadSchema = z.object({
 
 export type EmailWebhookPayloadInput = z.infer<typeof emailWebhookPayloadSchema>;
 
+// ── Gmail Webhook (Pub/Sub Push) ─────────────────────
+export const pubSubPushMessageSchema = z.object({
+  message: z.object({
+    data: z.string().min(1, "data is required"),
+    messageId: z.string().min(1, "messageId is required"),
+    publishTime: z.string().min(1, "publishTime is required"),
+  }),
+  subscription: z.string().min(1, "subscription is required"),
+});
+
+export type PubSubPushMessageInput = z.infer<typeof pubSubPushMessageSchema>;
+
+// ── Gmail Webhook (Apps Script) ──────────────────────
+const MAX_BODY_SIZE = 5 * 1024 * 1024; // 5MB
+
+export const gmailAppsScriptPayloadSchema = z.object({
+  messageId: z.string().min(1, "messageId is required"),
+  sender: z.string().min(1, "sender is required"),
+  recipients: z.string().min(1, "recipients is required"),
+  subject: z.string().optional(),
+  bodyPlain: z.string().max(MAX_BODY_SIZE, "body exceeds 5MB limit").optional(),
+  bodyHtml: z.string().max(MAX_BODY_SIZE, "body exceeds 5MB limit").optional(),
+  receivedAt: z.string().min(1, "receivedAt is required"),
+});
+
+export type GmailAppsScriptPayloadInput = z.infer<typeof gmailAppsScriptPayloadSchema>;
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;

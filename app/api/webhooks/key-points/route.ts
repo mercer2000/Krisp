@@ -5,8 +5,9 @@ import {
 } from "@/lib/krisp/webhookKeyPoints";
 import type { KrispWebhook, WebhookEventType } from "@/types/webhook";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { users, webhookSecrets } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
+import { timingSafeEqual } from "crypto";
 
 const SUPPORTED_EVENTS: WebhookEventType[] = [
   "key_points_generated",
@@ -16,47 +17,59 @@ const SUPPORTED_EVENTS: WebhookEventType[] = [
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 
 /**
- * Validates the authorization header against the configured webhook secret.
+ * Extracts the token from the Authorization header.
  * Supports both "Bearer <token>" and raw token formats.
  */
-function validateAuthorization(request: NextRequest): boolean {
+function extractToken(request: NextRequest): string | null {
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader) return null;
+  return authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
+}
+
+/**
+ * Timing-safe string comparison using Node.js crypto.
+ */
+function safeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
+
+/**
+ * Validates the authorization token against the user's stored secret,
+ * falling back to the global WEBHOOK_SECRET env var.
+ */
+async function validateAuthorization(
+  request: NextRequest,
+  userId: string
+): Promise<boolean> {
+  const token = extractToken(request);
+
+  // Check per-user secret from database
+  const [row] = await db
+    .select({ secret: webhookSecrets.secret })
+    .from(webhookSecrets)
+    .where(
+      and(eq(webhookSecrets.userId, userId), eq(webhookSecrets.name, "Krisp"))
+    );
+
+  if (row) {
+    // User has a configured secret — token is required
+    if (!token) return false;
+    return safeCompare(token, row.secret);
+  }
+
+  // Fall back to global WEBHOOK_SECRET env var
   if (!WEBHOOK_SECRET) {
-    console.warn("WEBHOOK_SECRET not configured - authorization disabled");
+    console.warn("No per-user or global WEBHOOK_SECRET configured - authorization disabled");
     return true;
   }
 
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) {
-    return false;
-  }
-
-  // Support both "Bearer <token>" and raw token formats
-  const token = authHeader.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : authHeader;
-
-  // Use timing-safe comparison to prevent timing attacks
-  if (token.length !== WEBHOOK_SECRET.length) {
-    return false;
-  }
-
-  let result = 0;
-  for (let i = 0; i < token.length; i++) {
-    result |= token.charCodeAt(i) ^ WEBHOOK_SECRET.charCodeAt(i);
-  }
-  return result === 0;
+  if (!token) return false;
+  return safeCompare(token, WEBHOOK_SECRET);
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // Validate authorization header
-    if (!validateAuthorization(request)) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
     // Extract user_id from query parameter
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("user_id");
@@ -78,6 +91,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Invalid user_id: user not found" },
         { status: 404 }
+      );
+    }
+
+    // Validate authorization against user's secret (or global fallback)
+    if (!(await validateAuthorization(request, userId))) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
       );
     }
 
@@ -151,14 +172,6 @@ export async function POST(request: NextRequest) {
 // Optional: GET endpoint to retrieve stored webhooks
 export async function GET(request: NextRequest) {
   try {
-    // Validate authorization header
-    if (!validateAuthorization(request)) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("user_id");
     const meetingId = searchParams.get("meeting_id");
@@ -168,6 +181,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: "Missing required query parameter: user_id" },
         { status: 400 }
+      );
+    }
+
+    // Validate authorization against user's secret (or global fallback)
+    if (!(await validateAuthorization(request, userId))) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
       );
     }
 

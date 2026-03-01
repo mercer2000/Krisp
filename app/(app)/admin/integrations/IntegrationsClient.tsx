@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -51,6 +51,16 @@ const CRISP_EVENTS = [
   { event: "transcript_created", description: "Fired when a full meeting transcript becomes available" },
 ];
 
+const GMAIL_FIELD_MAPPING = [
+  { appsScript: "msg.getId()", payload: "messageId", description: "Unique Gmail message identifier (required for dedup)" },
+  { appsScript: "msg.getFrom()", payload: "sender", description: "Sender email address" },
+  { appsScript: "msg.getTo()", payload: "recipients", description: "Comma-separated recipient addresses" },
+  { appsScript: "msg.getSubject()", payload: "subject", description: "Email subject line" },
+  { appsScript: "msg.getPlainBody()", payload: "bodyPlain", description: "Plain text body" },
+  { appsScript: "msg.getBody()", payload: "bodyHtml", description: "HTML body content" },
+  { appsScript: "msg.getDate().toISOString()", payload: "receivedAt", description: "ISO 8601 timestamp" },
+];
+
 const TABS = [
   {
     id: "microsoft365" as const,
@@ -61,6 +71,16 @@ const TABS = [
       </svg>
     ),
     color: "#0078D4",
+  },
+  {
+    id: "gmail" as const,
+    label: "Gmail",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M20 18h-2V9.25L12 13 6 9.25V18H4V6h1.2l6.8 4.25L18.8 6H20m0-2H4c-1.11 0-2 .89-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2z" />
+      </svg>
+    ),
+    color: "#EA4335",
   },
   {
     id: "crisp" as const,
@@ -84,10 +104,185 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
+function WebhookSecretManager() {
+  const [secret, setSecret] = useState<string | null>(null);
+  const [maskedSecret, setMaskedSecret] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [showFull, setShowFull] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchSecret = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch("/api/webhook-secret");
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      setMaskedSecret(data.secret);
+      setSecret(null);
+      setShowFull(false);
+    } catch {
+      setError("Failed to load webhook secret");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSecret();
+  }, [fetchSecret]);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/webhook-secret", { method: "POST" });
+      if (!res.ok) throw new Error("Failed to generate");
+      const data = await res.json();
+      setSecret(data.secret);
+      setMaskedSecret(null);
+      setShowFull(true);
+    } catch {
+      setError("Failed to generate webhook secret");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleRevoke = async () => {
+    setError(null);
+    try {
+      const res = await fetch("/api/webhook-secret", { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to revoke");
+      setSecret(null);
+      setMaskedSecret(null);
+      setShowFull(false);
+    } catch {
+      setError("Failed to revoke webhook secret");
+    }
+  };
+
+  const handleCopy = async () => {
+    if (!secret) return;
+    await navigator.clipboard.writeText(secret);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const displayValue = showFull && secret ? secret : maskedSecret;
+  const hasSecret = !!(secret || maskedSecret);
+
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
+        Authentication
+      </h3>
+      <p className="text-sm text-[var(--muted-foreground)] mb-3">
+        Generate a webhook secret below, then paste it into the Krisp webhook
+        configuration as an{" "}
+        <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">
+          Authorization
+        </code>{" "}
+        request header. Krisp will send this value with every webhook request
+        so the server can authenticate it.
+      </p>
+
+      {error && (
+        <div className="mb-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-600">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="p-4 rounded-lg bg-[var(--secondary)] border border-[var(--border)] text-sm text-[var(--muted-foreground)]">
+          Loading...
+        </div>
+      ) : hasSecret ? (
+        <div className="space-y-3">
+          {/* Secret display */}
+          <div>
+            <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+              Request Header
+            </label>
+            <div className="mt-1 flex items-center gap-2 p-3 rounded-lg bg-[var(--secondary)] border border-[var(--border)]">
+              <span className="text-sm font-medium text-[var(--muted-foreground)] shrink-0">
+                Authorization
+              </span>
+              <code className="flex-1 text-sm text-[var(--foreground)] font-mono break-all">
+                {displayValue}
+              </code>
+              {secret && showFull && (
+                <button
+                  onClick={handleCopy}
+                  className="shrink-0 p-1.5 rounded-md border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
+                  title="Copy to clipboard"
+                >
+                  {copied ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleGenerate}
+              disabled={generating}
+              className="px-3 py-1.5 text-xs font-medium rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {generating ? "Regenerating..." : "Regenerate Secret"}
+            </button>
+            <button
+              onClick={handleRevoke}
+              className="px-3 py-1.5 text-xs font-medium rounded-md border border-red-500/30 text-red-600 hover:bg-red-500/10 transition-colors"
+            >
+              Revoke
+            </button>
+          </div>
+
+          {secret && showFull && (
+            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-[var(--foreground)]">
+              Copy this secret now. It will be masked after you leave this page.
+              Paste it into the Krisp webhook&apos;s Request Headers as the{" "}
+              <code className="font-mono">Authorization</code> value.
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="p-4 rounded-lg bg-[var(--secondary)] border border-[var(--border)] text-sm text-[var(--muted-foreground)]">
+            No webhook secret configured. Generate one to enable authenticated
+            webhook delivery from Krisp.
+          </div>
+          <button
+            onClick={handleGenerate}
+            disabled={generating}
+            className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity disabled:opacity-50"
+          >
+            {generating ? "Generating..." : "Generate Webhook Secret"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function IntegrationsClient({ tenantId }: { tenantId: string }) {
   const [activeTab, setActiveTab] = useState<TabId>("microsoft365");
   const origin = typeof window !== "undefined" ? window.location.origin : "https://your-domain.com";
   const webhookUrl = `${origin}/api/webhooks/email/microsoft365/${tenantId}`;
+  const gmailWebhookUrl = `${origin}/api/webhooks/email/gmail/${tenantId}`;
   const crispWebhookUrl = `${origin}/api/webhooks/key-points?user_id=${tenantId}`;
 
   return (
@@ -439,6 +634,424 @@ export function IntegrationsClient({ tenantId }: { tenantId: string }) {
             </div>
           </section>}
 
+          {/* Gmail Section */}
+          {activeTab === "gmail" && <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+            <div className="px-6 py-5 border-b border-[var(--border)]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#EA4335] flex items-center justify-center">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                    <path d="M20 18h-2V9.25L12 13 6 9.25V18H4V6h1.2l6.8 4.25L18.8 6H20m0-2H4c-1.11 0-2 .89-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                    Gmail / Google Workspace Email
+                  </h2>
+                  <p className="text-sm text-[var(--muted-foreground)]">
+                    Ingest emails via Google Pub/Sub or Apps Script
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-8">
+              {/* Webhook URL */}
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
+                  Your Webhook URL
+                </h3>
+                <p className="text-sm text-[var(--muted-foreground)] mb-3">
+                  This is your tenant-specific endpoint. Use it as the Pub/Sub push
+                  subscription URL or the Apps Script POST target.
+                </p>
+                <div className="flex items-center p-3 rounded-lg bg-[var(--secondary)] border border-[var(--border)]">
+                  <code className="flex-1 text-sm text-[var(--foreground)] break-all">
+                    {gmailWebhookUrl}
+                  </code>
+                  <CopyButton text={gmailWebhookUrl} />
+                </div>
+              </div>
+
+              {/* Authentication */}
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
+                  Authentication
+                </h3>
+                <p className="text-sm text-[var(--muted-foreground)] mb-3">
+                  Requests are authenticated via a <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">?token=</code> query
+                  parameter, <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">X-API-Key</code> header,
+                  or <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">Authorization: Bearer</code> header
+                  matching the <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">GMAIL_WEBHOOK_SECRET</code> environment
+                  variable.
+                </p>
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-[var(--foreground)]">
+                  Contact your server administrator for the secret value. It is
+                  defined as the <code className="font-mono">GMAIL_WEBHOOK_SECRET</code> environment
+                  variable.
+                </div>
+              </div>
+
+              {/* Setup Option A */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-500/10 text-green-600 border border-green-500/20">
+                    Recommended
+                  </span>
+                  <h3 className="text-sm font-semibold text-[var(--foreground)]">
+                    Setup Option A &mdash; Full Integration (Pub/Sub)
+                  </h3>
+                </div>
+
+                <ol className="space-y-6">
+                  <li className="flex gap-4">
+                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
+                      1
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-medium text-[var(--foreground)]">
+                        Enable the Gmail API
+                      </p>
+                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
+                        Go to{" "}
+                        <span className="font-medium text-[var(--foreground)]">Google Cloud Console</span>{" "}
+                        &rarr; <span className="font-medium text-[var(--foreground)]">APIs &amp; Services</span>{" "}
+                        &rarr; <span className="font-medium text-[var(--foreground)]">Enable APIs</span>{" "}
+                        &rarr; search for &quot;Gmail API&quot; and enable it.
+                      </p>
+                    </div>
+                  </li>
+
+                  <li className="flex gap-4">
+                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
+                      2
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-medium text-[var(--foreground)]">
+                        Create a Pub/Sub Topic
+                      </p>
+                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
+                        In the same Google Cloud project, create a Pub/Sub topic named{" "}
+                        <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">gmail-inbound</code>.
+                      </p>
+                    </div>
+                  </li>
+
+                  <li className="flex gap-4">
+                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
+                      3
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-medium text-[var(--foreground)]">
+                        Create a Push Subscription
+                      </p>
+                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
+                        Create a push subscription on the topic pointing to your webhook URL
+                        with the token appended:
+                      </p>
+                      <div className="flex items-center mt-3 p-2 rounded bg-[var(--secondary)] border border-[var(--border)]">
+                        <code className="text-sm text-[var(--foreground)] break-all">
+                          {gmailWebhookUrl}?token=YOUR_SECRET
+                        </code>
+                      </div>
+                    </div>
+                  </li>
+
+                  <li className="flex gap-4">
+                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
+                      4
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-medium text-[var(--foreground)]">
+                        Grant Publish Rights
+                      </p>
+                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
+                        Grant the <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">Pub/Sub Publisher</code> role
+                        to <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">gmail-api-push@system.gserviceaccount.com</code> on
+                        your Pub/Sub topic.
+                      </p>
+                    </div>
+                  </li>
+
+                  <li className="flex gap-4">
+                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
+                      5
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-medium text-[var(--foreground)]">
+                        Set Up Gmail Watch
+                      </p>
+                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
+                        After completing OAuth authorization, call the Gmail Watch API to start
+                        monitoring the inbox:
+                      </p>
+                      <div className="mt-3">
+                        <CodeBlock>{`POST https://gmail.googleapis.com/gmail/v1/users/me/watch
+{
+  "topicName": "projects/YOUR_PROJECT/topics/gmail-inbound",
+  "labelIds": ["INBOX"],
+  "labelFilterBehavior": "INCLUDE"
+}`}</CodeBlock>
+                      </div>
+                      <p className="text-sm text-[var(--muted-foreground)] mt-3">
+                        Watch subscriptions expire after 7 days. Set up a daily job to renew
+                        watches expiring within 24 hours.
+                      </p>
+                    </div>
+                  </li>
+
+                  <li className="flex gap-4">
+                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
+                      6
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-medium text-[var(--foreground)]">
+                        Test the Integration
+                      </p>
+                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
+                        Send a test email to the monitored Gmail account. The Pub/Sub notification
+                        should arrive at your webhook endpoint within seconds. Check server logs
+                        for confirmation.
+                      </p>
+                    </div>
+                  </li>
+                </ol>
+              </div>
+
+              {/* Setup Option B */}
+              <div className="border-t border-[var(--border)] pt-8">
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-4">
+                  Setup Option B &mdash; Apps Script (Simpler)
+                </h3>
+                <p className="text-sm text-[var(--muted-foreground)] mb-4">
+                  For a simpler setup that doesn&apos;t require Pub/Sub or OAuth on your backend,
+                  deploy this Google Apps Script template. It polls Gmail and POSTs directly to
+                  your webhook with a delay of up to 1 minute.
+                </p>
+
+                <ol className="space-y-6">
+                  <li className="flex gap-4">
+                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
+                      1
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-medium text-[var(--foreground)]">
+                        Create an Apps Script Project
+                      </p>
+                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
+                        Open{" "}
+                        <span className="font-medium text-[var(--foreground)]">script.google.com</span>{" "}
+                        while signed into the Gmail account you want to monitor. Create a new project.
+                      </p>
+                    </div>
+                  </li>
+
+                  <li className="flex gap-4">
+                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
+                      2
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-medium text-[var(--foreground)]">
+                        Paste the Script Template
+                      </p>
+                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
+                        Replace the default code with the following, using your webhook URL and
+                        API key:
+                      </p>
+                      <div className="mt-3">
+                        <CodeBlock>{`function checkNewEmails() {
+  var webhookUrl = "${gmailWebhookUrl}";
+  var apiKey = "YOUR_GMAIL_WEBHOOK_SECRET";
+  var lastRun = PropertiesService.getScriptProperties()
+                  .getProperty("lastRun") || "2000/01/01";
+
+  var threads = GmailApp.search("after:" + lastRun + " in:inbox");
+
+  for (var i = 0; i < threads.length; i++) {
+    var messages = threads[i].getMessages();
+    for (var j = 0; j < messages.length; j++) {
+      var msg = messages[j];
+      var payload = {
+        messageId: msg.getId(),
+        sender: msg.getFrom(),
+        recipients: msg.getTo(),
+        subject: msg.getSubject(),
+        bodyPlain: msg.getPlainBody(),
+        bodyHtml: msg.getBody(),
+        receivedAt: msg.getDate().toISOString()
+      };
+
+      UrlFetchApp.fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": apiKey
+        },
+        payload: JSON.stringify(payload),
+        muteHttpExceptions: true
+      });
+    }
+  }
+
+  PropertiesService.getScriptProperties()
+    .setProperty("lastRun",
+      new Date().toLocaleDateString("en-US"));
+}`}</CodeBlock>
+                      </div>
+                    </div>
+                  </li>
+
+                  <li className="flex gap-4">
+                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
+                      3
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-medium text-[var(--foreground)]">
+                        Run Once Manually
+                      </p>
+                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
+                        Click <span className="font-medium text-[var(--foreground)]">Run</span> to
+                        execute the function once and grant the required Gmail permissions.
+                      </p>
+                    </div>
+                  </li>
+
+                  <li className="flex gap-4">
+                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
+                      4
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-medium text-[var(--foreground)]">
+                        Set Up a Time Trigger
+                      </p>
+                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
+                        Go to <span className="font-medium text-[var(--foreground)]">Triggers</span>{" "}
+                        &rarr; <span className="font-medium text-[var(--foreground)]">Add Trigger</span>{" "}
+                        &rarr; set <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">checkNewEmails</code> to
+                        run every 1 minute.
+                      </p>
+                    </div>
+                  </li>
+                </ol>
+              </div>
+
+              {/* Field Mapping Reference */}
+              <div className="border-t border-[var(--border)] pt-8">
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">
+                  Field Mapping Reference (Apps Script)
+                </h3>
+                <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-[var(--secondary)]">
+                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
+                          Apps Script / Gmail Value
+                        </th>
+                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
+                          Webhook Payload Key
+                        </th>
+                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
+                          Description
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {GMAIL_FIELD_MAPPING.map((field) => (
+                        <tr key={field.payload}>
+                          <td className="px-4 py-3">
+                            <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">
+                              {field.appsScript}
+                            </code>
+                          </td>
+                          <td className="px-4 py-3">
+                            <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">
+                              {field.payload}
+                            </code>
+                          </td>
+                          <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                            {field.description}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Response Codes */}
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">
+                  Response Codes
+                </h3>
+                <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-[var(--secondary)]">
+                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
+                          Code
+                        </th>
+                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
+                          Meaning
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-green-500/10 text-green-600 text-xs font-semibold">
+                            200
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Success or duplicate &mdash; Pub/Sub will not retry on 200
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-green-500/10 text-green-600 text-xs font-semibold">
+                            201
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Email received and stored successfully (Apps Script path)
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 text-xs font-semibold">
+                            400
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Payload malformed or tenant resolution failed
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-600 text-xs font-semibold">
+                            401
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Auth token invalid
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-600 text-xs font-semibold">
+                            500
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Internal error &mdash; Pub/Sub will retry with exponential backoff
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>}
+
           {/* Crisp Meeting Webhook Section */}
           {activeTab === "crisp" && <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
             <div className="px-6 py-5 border-b border-[var(--border)]">
@@ -495,26 +1108,8 @@ export function IntegrationsClient({ tenantId }: { tenantId: string }) {
                 </div>
               </div>
 
-              {/* Authentication */}
-              <div>
-                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
-                  Authentication
-                </h3>
-                <p className="text-sm text-[var(--muted-foreground)] mb-3">
-                  All requests must include an{" "}
-                  <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">Authorization</code>{" "}
-                  header with a Bearer token matching the{" "}
-                  <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">WEBHOOK_SECRET</code>{" "}
-                  environment variable configured on the server.
-                </p>
-                <CodeBlock>{`Authorization: Bearer <your-webhook-secret>`}</CodeBlock>
-                <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-[var(--foreground)]">
-                  Contact your server administrator for the Bearer token value. It is
-                  defined as the <code className="font-mono">WEBHOOK_SECRET</code> environment
-                  variable. If the secret is not configured, authorization is bypassed (not
-                  recommended for production).
-                </div>
-              </div>
+              {/* Authentication - Webhook Secret Manager */}
+              <WebhookSecretManager />
 
               {/* Subscribed Events */}
               <div>
@@ -608,11 +1203,10 @@ export function IntegrationsClient({ tenantId }: { tenantId: string }) {
                         Configure Authentication Headers
                       </p>
                       <p className="text-sm text-[var(--muted-foreground)] mt-1">
-                        In the webhook&apos;s HTTP headers section, add the following headers:
+                        In the webhook&apos;s Request Headers section, add an{" "}
+                        <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">Authorization</code>{" "}
+                        header with the secret generated in the Authentication section above.
                       </p>
-                      <div className="mt-3">
-                        <CodeBlock>{`Content-Type: application/json\nAuthorization: Bearer <your-webhook-secret>`}</CodeBlock>
-                      </div>
                     </div>
                   </li>
 

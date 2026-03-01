@@ -165,6 +165,61 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
     .notNull(),
 });
 
+// ── Gmail Emails ─────────────────────────────────────
+export const gmailEmails = pgTable(
+  "gmail_emails",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    gmailMessageId: text("gmail_message_id").notNull(),
+    threadId: text("thread_id"),
+    sender: text("sender").notNull(),
+    recipients: jsonb("recipients").notNull().default([]),
+    subject: text("subject"),
+    bodyPlain: text("body_plain"),
+    bodyHtml: text("body_html"),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
+    attachments: jsonb("attachments").notNull().default([]),
+    labels: jsonb("labels").notNull().default([]),
+    rawPayload: jsonb("raw_payload"),
+    ingestedAt: timestamp("ingested_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_tenant_gmail_message").on(
+      table.tenantId,
+      table.gmailMessageId
+    ),
+    index("idx_gmail_emails_tenant_id").on(table.tenantId),
+    index("idx_gmail_emails_received_at").on(table.tenantId, table.receivedAt),
+    index("idx_gmail_emails_sender").on(table.tenantId, table.sender),
+  ]
+);
+
+// ── Webhook Secrets ──────────────────────────────────
+export const webhookSecrets = pgTable("webhook_secrets", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 100 }).notNull().default("Krisp"),
+  secret: varchar("secret", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}, (table) => [
+  uniqueIndex("uq_webhook_secrets_user_name").on(table.userId, table.name),
+]);
+
 // ── Emails (Microsoft 365 Exchange) ──────────────────
 export const emails = pgTable(
   "emails",
