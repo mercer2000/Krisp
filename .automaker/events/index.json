@@ -2,6 +2,13 @@
   "version": 1,
   "events": [
     {
+      "id": "evt-1772323300742-bdea9f70",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-01T00:01:40.742Z",
+      "featureName": "Implement password reset flow with Resend email delivery",
+      "featureId": "feature-1772315391401-82tu0yelank"
+    },
+    {
       "id": "evt-1772322792368-d07ecd06",
       "trigger": "feature_created",
       "timestamp": "2026-02-28T23:53:12.368Z",

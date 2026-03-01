@@ -44,6 +44,17 @@
       "dismissed": false,
       "featureId": "feature-1772315256112-wk4j0deqy79",
       "projectPath": "C:\\Code\\Krisp"
+    },
+    {
+      "id": "207f1448-4886-4bf5-8471-18988439a043",
+      "type": "feature_waiting_approval",
+      "title": "Feature Ready for Review",
+      "message": "\"feature-1772315391401-82tu0yelank\" is ready for your review and approval.",
+      "createdAt": "2026-03-01T00:01:40.728Z",
+      "read": false,
+      "dismissed": false,
+      "featureId": "feature-1772315391401-82tu0yelank",
+      "projectPath": "C:\\Code\\Krisp"
     }
   ]
 }

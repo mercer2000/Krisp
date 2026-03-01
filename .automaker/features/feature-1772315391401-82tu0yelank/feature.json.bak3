@@ -14,7 +14,7 @@
   "planningMode": "spec",
   "requirePlanApproval": false,
   "dependencies": [],
-  "status": "waiting_approval",
+  "status": "backlog",
   "id": "feature-1772315391401-82tu0yelank",
   "descriptionHistory": [
     {
@@ -22,8 +22,5 @@
       "timestamp": "2026-02-28T21:49:51.724Z",
       "source": "initial"
     }
-  ],
-  "startedAt": "2026-02-28T23:45:04.536Z",
-  "updatedAt": "2026-03-01T00:01:40.717Z",
-  "justFinishedAt": "2026-03-01T00:01:40.717Z"
+  ]
 }
