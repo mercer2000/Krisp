@@ -1,0 +1,43 @@
+{
+  "category": "Uncategorized",
+  "description": "https://krisp-khaki.vercel.app/admin/integrations  \n\nAdd a settings page so that the webhook can authenticate using the webhook secret. I believe we need to provide an admin page to allow the user to kind of figure this. \n\nIn Krisp.ai, their integration page shows the Request Header authorization secret. ",
+  "title": "Implement webhook authentication settings page",
+  "images": [],
+  "imagePaths": [
+    {
+      "id": "img-1772325878427-0f3eaq5ou",
+      "path": "C:\\Code\\Krisp\\.automaker\\features\\feature-1772325790634-c8jss2ji2vg\\images\\pasted-image-2026-03-01T00-44-38-389Z-1772325878424.png",
+      "filename": "pasted-image-2026-03-01T00-44-38-389Z.png",
+      "mimeType": "image/png"
+    }
+  ],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-01T00:45:08.082Z",
+  "id": "feature-1772325790634-c8jss2ji2vg",
+  "descriptionHistory": [
+    {
+      "description": "https://krisp-khaki.vercel.app/admin/integrations  \n\nAdd a settings page so that the webhook can authenticate using the webhook secret. I believe we need to provide an admin page to allow the user to kind of figure this. \n",
+      "timestamp": "2026-03-01T00:43:10.930Z",
+      "source": "initial"
+    },
+    {
+      "description": "https://krisp-khaki.vercel.app/admin/integrations  \n\nAdd a settings page so that the webhook can authenticate using the webhook secret. I believe we need to provide an admin page to allow the user to kind of figure this. \n\nIn Krisp.ai, their integration page shows the Request Header authorization secret. ",
+      "timestamp": "2026-03-01T00:45:06.671Z",
+      "source": "edit"
+    }
+  ],
+  "updatedAt": "2026-03-01T00:59:03.156Z",
+  "workMode": "custom",
+  "justFinishedAt": "2026-03-01T00:59:03.129Z",
+  "summary": "## Summary: Implement webhook authentication settings page\n\n### Changes Implemented\n- Added `webhook_secrets` database table with per-user secret storage, FK to users with cascade delete, and unique index on (user_id, name) for multi-integration support\n- Created `/api/webhook-secret` API route with GET (returns masked secret), POST (generates/regenerates secret via atomic upsert), and DELETE (revokes secret) - all protected by NextAuth session auth\n- Updated `/api/webhooks/key-points` route to validate incoming webhook Authorization headers against per-user secrets from the database, with fallback to the global `WEBHOOK_SECRET` env var\n- Replaced hand-rolled timing comparison with Node.js `crypto.timingSafeEqual` for proper timing-attack resistance\n- Built `WebhookSecretManager` interactive component in the Krisp Meetings tab of the Integrations page: generate, copy, regenerate, and revoke webhook secrets with proper masked display and one-time full secret visibility after generation\n- Updated Krisp setup guide Step 3 to reference the generated secret instead of the old env var approach\n- Generated and pushed database migration (`0001_melodic_solo.sql`)\n\n### Files Modified\n- `lib/db/schema.ts` - Added `webhookSecrets` table definition\n- `app/api/webhook-secret/route.ts` - **NEW** - CRUD API for managing webhook secrets\n- `app/api/webhooks/key-points/route.ts` - Updated auth to use per-user secrets with global fallback\n- `app/(app)/admin/integrations/IntegrationsClient.tsx` - Added `WebhookSecretManager` component, updated setup guide\n- `drizzle/migrations/0001_melodic_solo.sql` - **NEW** - Database migration for webhook_secrets table\n\n### Notes for Developer\n- The secret is shown in full only once after generation - users must copy it immediately before navigating away\n- If no per-user secret is configured, the webhook route falls back to the `WEBHOOK_SECRET` environment variable, then to allowing unauthenticated access (with a console warning)\n- The `name` column in `webhook_secrets` defaults to \"Krisp\" but supports future expansion to other integrations (Gmail, Microsoft 365, etc.)\n- The generated secret is 64 hex characters (256-bit entropy via `crypto.randomBytes`)\n- In Krisp.ai's webhook configuration, the user should paste the generated secret as the `Authorization` request header value"
+}

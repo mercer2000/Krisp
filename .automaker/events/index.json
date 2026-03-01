@@ -2,6 +2,55 @@
   "version": 1,
   "events": [
     {
+      "id": "evt-1772327559869-631d0a0e",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-01T01:12:39.869Z",
+      "featureName": "Implement webhook authentication settings page",
+      "featureId": "feature-1772325790634-c8jss2ji2vg"
+    },
+    {
+      "id": "evt-1772326743156-0e7e5861",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-01T00:59:03.156Z",
+      "featureName": "Implement webhook authentication settings page",
+      "featureId": "feature-1772325790634-c8jss2ji2vg"
+    },
+    {
+      "id": "evt-1772326507959-dc63aac1",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-01T00:55:07.959Z",
+      "featureName": "Hubspot itegration",
+      "featureId": "feature-1772326507437-spmtpzew2zq"
+    },
+    {
+      "id": "evt-1772325870525-0d2d1b8b",
+      "trigger": "feature_error",
+      "timestamp": "2026-03-01T00:44:30.525Z",
+      "featureName": "Implement webhook authentication settings page",
+      "featureId": "feature-1772325790634-c8jss2ji2vg"
+    },
+    {
+      "id": "evt-1772325858637-4598a302",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-01T00:44:18.637Z",
+      "featureName": "Implement Gmail email ingestion via Pub/Sub",
+      "featureId": "feature-1772315935958-xuspggepvk"
+    },
+    {
+      "id": "evt-1772325790935-b999cfdc",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-01T00:43:10.935Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772325790634-c8jss2ji2vg"
+    },
+    {
+      "id": "evt-1772324370309-8c92e455",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-01T00:19:30.309Z",
+      "featureName": "Add meeting cards grid with action items",
+      "featureId": "feature-1772322791949-la0b2p1sgoo"
+    },
+    {
       "id": "evt-1772323300742-bdea9f70",
       "trigger": "feature_success",
       "timestamp": "2026-03-01T00:01:40.742Z",

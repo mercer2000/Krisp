@@ -1,9 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { webhookSecrets } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
-import { randomBytes } from "crypto";
 
 /**
  * GET /api/webhook-secret
@@ -51,9 +50,9 @@ export async function GET() {
 
 /**
  * POST /api/webhook-secret
- * Generates a new webhook secret for the user. Replaces any existing one.
+ * Saves the user-provided Krisp webhook secret. Replaces any existing one.
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     const userId = session?.user?.id;
@@ -61,7 +60,15 @@ export async function POST() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const secret = randomBytes(32).toString("hex");
+    const body = await request.json();
+    const secret = typeof body.secret === "string" ? body.secret.trim() : "";
+
+    if (!secret) {
+      return NextResponse.json(
+        { error: "Secret is required" },
+        { status: 400 }
+      );
+    }
 
     const [row] = await db
       .insert(webhookSecrets)
@@ -80,14 +87,13 @@ export async function POST() {
       .returning();
 
     return NextResponse.json({
-      secret: row.secret,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     });
   } catch (error) {
-    console.error("Error creating webhook secret:", error);
+    console.error("Error saving webhook secret:", error);
     return NextResponse.json(
-      { error: "Failed to create webhook secret" },
+      { error: "Failed to save webhook secret" },
       { status: 500 }
     );
   }

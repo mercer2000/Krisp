@@ -1,0 +1,42 @@
+{
+  "category": "Uncategorized",
+  "description": "https://krisp-khaki.vercel.app/admin/integrations  \n\nAdd a settings page so that the webhook can authenticate using the webhook secret. I believe we need to provide an admin page to allow the user to kind of figure this. \n\nIn Krisp.ai, their integration page shows the Request Header authorization secret. ",
+  "title": "Implement webhook authentication settings page",
+  "images": [],
+  "imagePaths": [
+    {
+      "id": "img-1772325878427-0f3eaq5ou",
+      "path": "C:\\Code\\Krisp\\.automaker\\features\\feature-1772325790634-c8jss2ji2vg\\images\\pasted-image-2026-03-01T00-44-38-389Z-1772325878424.png",
+      "filename": "pasted-image-2026-03-01T00-44-38-389Z.png",
+      "mimeType": "image/png"
+    }
+  ],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-01T00:45:08.082Z",
+  "id": "feature-1772325790634-c8jss2ji2vg",
+  "descriptionHistory": [
+    {
+      "description": "https://krisp-khaki.vercel.app/admin/integrations  \n\nAdd a settings page so that the webhook can authenticate using the webhook secret. I believe we need to provide an admin page to allow the user to kind of figure this. \n",
+      "timestamp": "2026-03-01T00:43:10.930Z",
+      "source": "initial"
+    },
+    {
+      "description": "https://krisp-khaki.vercel.app/admin/integrations  \n\nAdd a settings page so that the webhook can authenticate using the webhook secret. I believe we need to provide an admin page to allow the user to kind of figure this. \n\nIn Krisp.ai, their integration page shows the Request Header authorization secret. ",
+      "timestamp": "2026-03-01T00:45:06.671Z",
+      "source": "edit"
+    }
+  ],
+  "updatedAt": "2026-03-01T00:59:03.129Z",
+  "workMode": "custom",
+  "justFinishedAt": "2026-03-01T00:59:03.129Z"
+}

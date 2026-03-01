@@ -105,13 +105,12 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 function WebhookSecretManager() {
-  const [secret, setSecret] = useState<string | null>(null);
   const [maskedSecret, setMaskedSecret] = useState<string | null>(null);
+  const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [showFull, setShowFull] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const fetchSecret = useCallback(async () => {
     try {
@@ -121,8 +120,6 @@ function WebhookSecretManager() {
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
       setMaskedSecret(data.secret);
-      setSecret(null);
-      setShowFull(false);
     } catch {
       setError("Failed to load webhook secret");
     } finally {
@@ -134,45 +131,42 @@ function WebhookSecretManager() {
     fetchSecret();
   }, [fetchSecret]);
 
-  const handleGenerate = async () => {
-    setGenerating(true);
+  const handleSave = async () => {
+    if (!inputValue.trim()) return;
+    setSaving(true);
     setError(null);
+    setSuccess(null);
     try {
-      const res = await fetch("/api/webhook-secret", { method: "POST" });
-      if (!res.ok) throw new Error("Failed to generate");
-      const data = await res.json();
-      setSecret(data.secret);
-      setMaskedSecret(null);
-      setShowFull(true);
+      const res = await fetch("/api/webhook-secret", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ secret: inputValue.trim() }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setInputValue("");
+      setSuccess("Webhook secret saved");
+      setTimeout(() => setSuccess(null), 3000);
+      await fetchSecret();
     } catch {
-      setError("Failed to generate webhook secret");
+      setError("Failed to save webhook secret");
     } finally {
-      setGenerating(false);
+      setSaving(false);
     }
   };
 
-  const handleRevoke = async () => {
+  const handleRemove = async () => {
     setError(null);
+    setSuccess(null);
     try {
       const res = await fetch("/api/webhook-secret", { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to revoke");
-      setSecret(null);
+      if (!res.ok) throw new Error("Failed to remove");
       setMaskedSecret(null);
-      setShowFull(false);
+      setSuccess("Webhook secret removed");
+      setTimeout(() => setSuccess(null), 3000);
     } catch {
-      setError("Failed to revoke webhook secret");
+      setError("Failed to remove webhook secret");
     }
   };
-
-  const handleCopy = async () => {
-    if (!secret) return;
-    await navigator.clipboard.writeText(secret);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const displayValue = showFull && secret ? secret : maskedSecret;
-  const hasSecret = !!(secret || maskedSecret);
 
   return (
     <div>
@@ -180,13 +174,13 @@ function WebhookSecretManager() {
         Authentication
       </h3>
       <p className="text-sm text-[var(--muted-foreground)] mb-3">
-        Generate a webhook secret below, then paste it into the Krisp webhook
-        configuration as an{" "}
+        Enter the{" "}
         <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">
           Authorization
         </code>{" "}
-        request header. Krisp will send this value with every webhook request
-        so the server can authenticate it.
+        secret from your Krisp webhook configuration. Krisp sends this value
+        in the request header with every webhook call so the server can
+        authenticate it.
       </p>
 
       {error && (
@@ -194,84 +188,63 @@ function WebhookSecretManager() {
           {error}
         </div>
       )}
+      {success && (
+        <div className="mb-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-sm text-green-600">
+          {success}
+        </div>
+      )}
 
       {loading ? (
         <div className="p-4 rounded-lg bg-[var(--secondary)] border border-[var(--border)] text-sm text-[var(--muted-foreground)]">
           Loading...
         </div>
-      ) : hasSecret ? (
-        <div className="space-y-3">
-          {/* Secret display */}
-          <div>
-            <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-              Request Header
-            </label>
-            <div className="mt-1 flex items-center gap-2 p-3 rounded-lg bg-[var(--secondary)] border border-[var(--border)]">
-              <span className="text-sm font-medium text-[var(--muted-foreground)] shrink-0">
-                Authorization
-              </span>
-              <code className="flex-1 text-sm text-[var(--foreground)] font-mono break-all">
-                {displayValue}
-              </code>
-              {secret && showFull && (
-                <button
-                  onClick={handleCopy}
-                  className="shrink-0 p-1.5 rounded-md border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
-                  title="Copy to clipboard"
-                >
-                  {copied ? (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  ) : (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                    </svg>
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleGenerate}
-              disabled={generating}
-              className="px-3 py-1.5 text-xs font-medium rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
-              {generating ? "Regenerating..." : "Regenerate Secret"}
-            </button>
-            <button
-              onClick={handleRevoke}
-              className="px-3 py-1.5 text-xs font-medium rounded-md border border-red-500/30 text-red-600 hover:bg-red-500/10 transition-colors"
-            >
-              Revoke
-            </button>
-          </div>
-
-          {secret && showFull && (
-            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-[var(--foreground)]">
-              Copy this secret now. It will be masked after you leave this page.
-              Paste it into the Krisp webhook&apos;s Request Headers as the{" "}
-              <code className="font-mono">Authorization</code> value.
-            </div>
-          )}
-        </div>
       ) : (
         <div className="space-y-3">
-          <div className="p-4 rounded-lg bg-[var(--secondary)] border border-[var(--border)] text-sm text-[var(--muted-foreground)]">
-            No webhook secret configured. Generate one to enable authenticated
-            webhook delivery from Krisp.
+          {/* Current secret display */}
+          {maskedSecret && (
+            <div>
+              <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                Current Secret
+              </label>
+              <div className="mt-1 flex items-center gap-2 p-3 rounded-lg bg-[var(--secondary)] border border-[var(--border)]">
+                <code className="flex-1 text-sm text-[var(--foreground)] font-mono">
+                  {maskedSecret}
+                </code>
+                <button
+                  onClick={handleRemove}
+                  className="shrink-0 px-3 py-1.5 text-xs font-medium rounded-md border border-red-500/30 text-red-600 hover:bg-red-500/10 transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Secret input */}
+          <div>
+            <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+              {maskedSecret ? "Update Secret" : "Webhook Secret"}
+            </label>
+            <div className="mt-1 flex items-center gap-2">
+              <input
+                type="password"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder="Paste your Krisp Authorization secret here"
+                className="flex-1 px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSave();
+                }}
+              />
+              <button
+                onClick={handleSave}
+                disabled={saving || !inputValue.trim()}
+                className="shrink-0 px-4 py-2 text-sm font-medium rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "Save"}
+              </button>
+            </div>
           </div>
-          <button
-            onClick={handleGenerate}
-            disabled={generating}
-            className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
-            {generating ? "Generating..." : "Generate Webhook Secret"}
-          </button>
         </div>
       )}
     </div>
@@ -1203,9 +1176,9 @@ export function IntegrationsClient({ tenantId }: { tenantId: string }) {
                         Configure Authentication Headers
                       </p>
                       <p className="text-sm text-[var(--muted-foreground)] mt-1">
-                        In the webhook&apos;s Request Headers section, add an{" "}
+                        In Krisp&apos;s webhook Request Headers section, add an{" "}
                         <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">Authorization</code>{" "}
-                        header with the secret generated in the Authentication section above.
+                        header. Then copy that same secret value and paste it into the Authentication section above.
                       </p>
                     </div>
                   </li>

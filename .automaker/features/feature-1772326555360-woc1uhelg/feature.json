@@ -1,0 +1,14 @@
+{
+  "category": "ui",
+  "description": "Auto-generate structured meeting summaries using customizable templates (e.g., standup, retrospective, sales call). Allow users to define which fields to extract per meeting type.\n\n**Rationale:** Different meeting types require different output formats. One-size summaries waste time as users manually reformat content for stakeholders or CRMs.",
+  "title": "AI-Powered Meeting Summaries with Templates",
+  "status": "backlog",
+  "id": "feature-1772326555360-woc1uhelg",
+  "descriptionHistory": [
+    {
+      "description": "Auto-generate structured meeting summaries using customizable templates (e.g., standup, retrospective, sales call). Allow users to define which fields to extract per meeting type.\n\n**Rationale:** Different meeting types require different output formats. One-size summaries waste time as users manually reformat content for stakeholders or CRMs.",
+      "timestamp": "2026-03-01T00:55:55.361Z",
+      "source": "initial"
+    }
+  ]
+}

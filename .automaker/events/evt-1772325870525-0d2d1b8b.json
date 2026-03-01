@@ -1,0 +1,11 @@
+{
+  "id": "evt-1772325870525-0d2d1b8b",
+  "trigger": "feature_error",
+  "timestamp": "2026-03-01T00:44:30.525Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772325790634-c8jss2ji2vg",
+  "featureName": "Implement webhook authentication settings page",
+  "error": "Operation was cancelled",
+  "errorType": "cancellation"
+}

@@ -1,0 +1,14 @@
+{
+  "category": "ui",
+  "description": "Sync meeting notes, key points, and action items to Salesforce contact or opportunity records. Automatically associate meetings with the right account based on attendee email domains.\n\n**Rationale:** Sales teams generate high volumes of meetings — automatically enriching CRM records with meeting intelligence eliminates manual note entry and improves pipeline visibility.",
+  "title": "Salesforce CRM Meeting Sync",
+  "status": "backlog",
+  "id": "feature-1772326668169-gzb2xnk22",
+  "descriptionHistory": [
+    {
+      "description": "Sync meeting notes, key points, and action items to Salesforce contact or opportunity records. Automatically associate meetings with the right account based on attendee email domains.\n\n**Rationale:** Sales teams generate high volumes of meetings — automatically enriching CRM records with meeting intelligence eliminates manual note entry and improves pipeline visibility.",
+      "timestamp": "2026-03-01T00:57:48.171Z",
+      "source": "initial"
+    }
+  ]
+}

@@ -55,6 +55,50 @@
       "dismissed": false,
       "featureId": "feature-1772315391401-82tu0yelank",
       "projectPath": "C:\\Code\\Krisp"
+    },
+    {
+      "id": "8df34458-0811-4c9a-8009-b07909316b8a",
+      "type": "feature_waiting_approval",
+      "title": "Feature Ready for Review",
+      "message": "\"feature-1772322791949-la0b2p1sgoo\" is ready for your review and approval.",
+      "createdAt": "2026-03-01T00:19:30.307Z",
+      "read": false,
+      "dismissed": false,
+      "featureId": "feature-1772322791949-la0b2p1sgoo",
+      "projectPath": "C:\\Code\\Krisp"
+    },
+    {
+      "id": "17f157d6-e485-425d-b8b6-c3ccb381b5be",
+      "type": "feature_waiting_approval",
+      "title": "Feature Ready for Review",
+      "message": "\"feature-1772315935958-xuspggepvk\" is ready for your review and approval.",
+      "createdAt": "2026-03-01T00:44:18.617Z",
+      "read": false,
+      "dismissed": false,
+      "featureId": "feature-1772315935958-xuspggepvk",
+      "projectPath": "C:\\Code\\Krisp"
+    },
+    {
+      "id": "d43c0acd-f09b-4f37-86d1-35ca984373bf",
+      "type": "feature_waiting_approval",
+      "title": "Feature Ready for Review",
+      "message": "\"feature-1772325790634-c8jss2ji2vg\" is ready for your review and approval.",
+      "createdAt": "2026-03-01T00:59:03.140Z",
+      "read": false,
+      "dismissed": false,
+      "featureId": "feature-1772325790634-c8jss2ji2vg",
+      "projectPath": "C:\\Code\\Krisp"
+    },
+    {
+      "id": "f2a7b2b2-bdb0-4ef0-a547-3ee061d04eb0",
+      "type": "feature_waiting_approval",
+      "title": "Feature Ready for Review",
+      "message": "\"feature-1772325790634-c8jss2ji2vg\" is ready for your review and approval.",
+      "createdAt": "2026-03-01T01:12:39.854Z",
+      "read": false,
+      "dismissed": false,
+      "featureId": "feature-1772325790634-c8jss2ji2vg",
+      "projectPath": "C:\\Code\\Krisp"
     }
   ]
 }
