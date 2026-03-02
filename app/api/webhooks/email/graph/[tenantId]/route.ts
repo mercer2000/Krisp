@@ -78,6 +78,17 @@ export async function POST(
       );
     }
 
+    // Microsoft Graph sends validation via POST with validationToken in query string.
+    // Must respond with 200 and the token as text/plain.
+    const validationToken =
+      request.nextUrl.searchParams.get("validationToken");
+    if (validationToken) {
+      return new NextResponse(validationToken, {
+        status: 200,
+        headers: { "Content-Type": "text/plain" },
+      });
+    }
+
     // Parse the notification payload
     let body: unknown;
     try {
