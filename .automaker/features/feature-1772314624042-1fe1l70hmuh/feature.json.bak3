@@ -14,7 +14,7 @@
   "planningMode": "spec",
   "requirePlanApproval": false,
   "dependencies": [],
-  "status": "backlog",
+  "status": "waiting_approval",
   "id": "feature-1772314624042-1fe1l70hmuh",
   "descriptionHistory": [
     {
@@ -22,5 +22,9 @@
       "timestamp": "2026-02-28T21:37:04.260Z",
       "source": "initial"
     }
-  ]
+  ],
+  "startedAt": "2026-03-01T23:41:32.585Z",
+  "updatedAt": "2026-03-01T23:54:03.148Z",
+  "justFinishedAt": "2026-03-01T23:54:03.148Z",
+  "summary": "### New file: `app/api/graph/subscriptions/route.ts`\nA server-side API route with three endpoints:\n- **GET** — Lists all active Graph subscriptions for the authenticated user\n- **POST** — Creates a subscription by proxying to Microsoft Graph API (`POST /v1.0/subscriptions`), then storing the result in the `graph_subscriptions` table. The access token is used transiently and never stored.\n- **DELETE** — Deactivates a subscription locally and optionally deletes it from Microsoft Graph (if an acces..."
 }

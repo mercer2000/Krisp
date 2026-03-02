@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772419634387-5afb5700",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-02T02:47:14.387Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772325790634-c8jss2ji2vg",
+  "featureName": "Implement webhook authentication settings page",
+  "passes": true
+}

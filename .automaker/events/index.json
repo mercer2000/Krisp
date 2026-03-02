@@ -2,6 +2,125 @@
   "version": 1,
   "events": [
     {
+      "id": "evt-1772419684827-2f7fbb20",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T02:48:04.827Z",
+      "featureName": "Update project database to Neon Postgres with schema",
+      "featureId": "feature-1772311849333-xdqh7blmszq"
+    },
+    {
+      "id": "evt-1772419655535-d4b50296",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T02:47:35.535Z",
+      "featureName": "Update Crisp webhook endpoint for multi-tenant support",
+      "featureId": "feature-1772314214656-hj063p7gxns"
+    },
+    {
+      "id": "evt-1772419648903-0a22f7c5",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T02:47:28.904Z",
+      "featureName": "Implement Microsoft 365 Exchange Email Ingestion",
+      "featureId": "feature-1772314624042-1fe1l70hmuh"
+    },
+    {
+      "id": "evt-1772419646512-1e8a6560",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T02:47:26.512Z",
+      "featureName": "Create admin integrations setup page",
+      "featureId": "feature-1772315256112-wk4j0deqy79"
+    },
+    {
+      "id": "evt-1772419637207-e854c0fd",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T02:47:17.207Z",
+      "featureName": "Add meeting cards grid with action items",
+      "featureId": "feature-1772322791949-la0b2p1sgoo"
+    },
+    {
+      "id": "evt-1772419634387-5afb5700",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T02:47:14.387Z",
+      "featureName": "Implement webhook authentication settings page",
+      "featureId": "feature-1772325790634-c8jss2ji2vg"
+    },
+    {
+      "id": "evt-1772419623985-247bd650",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T02:47:03.985Z",
+      "featureName": "Simplify Microsoft Graph API setup process",
+      "featureId": "feature-1772411598790-4enofjepsod"
+    },
+    {
+      "id": "evt-1772419272749-8e306ee1",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T02:41:12.749Z",
+      "featureName": "Implement Microsoft 365 Exchange Email Ingestion",
+      "featureId": "feature-1772314624042-1fe1l70hmuh"
+    },
+    {
+      "id": "evt-1772412618526-5baccc14",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T00:50:18.526Z",
+      "featureName": "Simplify Microsoft Graph API setup process",
+      "featureId": "feature-1772411598790-4enofjepsod"
+    },
+    {
+      "id": "evt-1772411599151-ad4c9c0f",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-02T00:33:19.151Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772411598790-4enofjepsod"
+    },
+    {
+      "id": "evt-1772409243170-046d7554",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-01T23:54:03.170Z",
+      "featureName": "Implement Microsoft 365 Exchange Email Ingestion",
+      "featureId": "feature-1772314624042-1fe1l70hmuh"
+    },
+    {
+      "id": "evt-1772408377835-3039cc8c",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-01T23:39:37.835Z",
+      "featureName": "Implement Microsoft 365 Exchange Email Ingestion",
+      "featureId": "feature-1772314624042-1fe1l70hmuh"
+    },
+    {
+      "id": "evt-1772408145195-2e9dd9ea",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-01T23:35:45.195Z",
+      "featureName": "Implement Gmail email ingestion via Pub/Sub",
+      "featureId": "feature-1772315935958-xuspggepvk"
+    },
+    {
+      "id": "evt-1772408077728-4dffb760",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-01T23:34:37.728Z",
+      "featureName": "Implement Microsoft 365 Exchange Email Ingestion",
+      "featureId": "feature-1772314624042-1fe1l70hmuh"
+    },
+    {
+      "id": "evt-1772407852932-2005ccc4",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-01T23:30:52.932Z",
+      "featureName": "Implement Microsoft 365 Exchange Email Ingestion",
+      "featureId": "feature-1772314624042-1fe1l70hmuh"
+    },
+    {
+      "id": "evt-1772406471569-dc3aefb3",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-01T23:07:51.569Z",
+      "featureName": "Implement Microsoft 365 Exchange Email Ingestion",
+      "featureId": "feature-1772314624042-1fe1l70hmuh"
+    },
+    {
+      "id": "evt-1772406328645-c09d90e5",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-01T23:05:28.645Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772406328272-x8jr1l28u3j"
+    },
+    {
       "id": "evt-1772402384999-7835c1dd",
       "trigger": "feature_success",
       "timestamp": "2026-03-01T21:59:44.999Z",

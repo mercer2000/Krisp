@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772419272749-8e306ee1",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-02T02:41:12.749Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772314624042-1fe1l70hmuh",
+  "featureName": "Implement Microsoft 365 Exchange Email Ingestion",
+  "passes": true
+}

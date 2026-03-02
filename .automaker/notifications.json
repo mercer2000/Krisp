@@ -121,6 +121,94 @@
       "dismissed": false,
       "featureId": "feature-1772326534400-ishpeuzrf",
       "projectPath": "C:\\Code\\Krisp"
+    },
+    {
+      "id": "258f1a26-c62e-491c-9ff9-56eb35b55b68",
+      "type": "feature_waiting_approval",
+      "title": "Feature Ready for Review",
+      "message": "\"feature-1772314624042-1fe1l70hmuh\" is ready for your review and approval.",
+      "createdAt": "2026-03-01T23:07:51.565Z",
+      "read": false,
+      "dismissed": false,
+      "featureId": "feature-1772314624042-1fe1l70hmuh",
+      "projectPath": "C:\\Code\\Krisp"
+    },
+    {
+      "id": "00fedc14-3ffc-4104-9864-7c6930e4cceb",
+      "type": "feature_waiting_approval",
+      "title": "Feature Ready for Review",
+      "message": "\"feature-1772314624042-1fe1l70hmuh\" is ready for your review and approval.",
+      "createdAt": "2026-03-01T23:30:52.912Z",
+      "read": false,
+      "dismissed": false,
+      "featureId": "feature-1772314624042-1fe1l70hmuh",
+      "projectPath": "C:\\Code\\Krisp"
+    },
+    {
+      "id": "6fdab102-d1ee-4ead-8ab4-a6fe1cf5460b",
+      "type": "feature_waiting_approval",
+      "title": "Feature Ready for Review",
+      "message": "\"feature-1772314624042-1fe1l70hmuh\" is ready for your review and approval.",
+      "createdAt": "2026-03-01T23:34:37.714Z",
+      "read": false,
+      "dismissed": false,
+      "featureId": "feature-1772314624042-1fe1l70hmuh",
+      "projectPath": "C:\\Code\\Krisp"
+    },
+    {
+      "id": "58c1973a-770b-4bc8-aa4a-07f96e023fb6",
+      "type": "feature_waiting_approval",
+      "title": "Feature Ready for Review",
+      "message": "\"feature-1772315935958-xuspggepvk\" is ready for your review and approval.",
+      "createdAt": "2026-03-01T23:35:45.167Z",
+      "read": false,
+      "dismissed": false,
+      "featureId": "feature-1772315935958-xuspggepvk",
+      "projectPath": "C:\\Code\\Krisp"
+    },
+    {
+      "id": "83ce6ae7-eda9-48eb-8ca9-fe260cc41904",
+      "type": "feature_waiting_approval",
+      "title": "Feature Ready for Review",
+      "message": "\"feature-1772314624042-1fe1l70hmuh\" is ready for your review and approval.",
+      "createdAt": "2026-03-01T23:39:37.819Z",
+      "read": false,
+      "dismissed": false,
+      "featureId": "feature-1772314624042-1fe1l70hmuh",
+      "projectPath": "C:\\Code\\Krisp"
+    },
+    {
+      "id": "20f47f13-f456-4205-a419-d8988f0c75f3",
+      "type": "feature_waiting_approval",
+      "title": "Feature Ready for Review",
+      "message": "\"feature-1772314624042-1fe1l70hmuh\" is ready for your review and approval.",
+      "createdAt": "2026-03-01T23:54:03.156Z",
+      "read": false,
+      "dismissed": false,
+      "featureId": "feature-1772314624042-1fe1l70hmuh",
+      "projectPath": "C:\\Code\\Krisp"
+    },
+    {
+      "id": "531ea3a6-d277-46e7-a03b-380cb855d4a5",
+      "type": "feature_waiting_approval",
+      "title": "Feature Ready for Review",
+      "message": "\"feature-1772411598790-4enofjepsod\" is ready for your review and approval.",
+      "createdAt": "2026-03-02T00:50:18.521Z",
+      "read": false,
+      "dismissed": false,
+      "featureId": "feature-1772411598790-4enofjepsod",
+      "projectPath": "C:\\Code\\Krisp"
+    },
+    {
+      "id": "edfc72d7-0b3b-4dec-8aaf-9eda540baf32",
+      "type": "feature_waiting_approval",
+      "title": "Feature Ready for Review",
+      "message": "\"feature-1772314624042-1fe1l70hmuh\" is ready for your review and approval.",
+      "createdAt": "2026-03-02T02:41:12.719Z",
+      "read": false,
+      "dismissed": false,
+      "featureId": "feature-1772314624042-1fe1l70hmuh",
+      "projectPath": "C:\\Code\\Krisp"
     }
   ]
 }

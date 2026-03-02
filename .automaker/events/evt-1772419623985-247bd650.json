@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772419623985-247bd650",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-02T02:47:03.985Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772411598790-4enofjepsod",
+  "featureName": "Simplify Microsoft Graph API setup process",
+  "passes": true
+}

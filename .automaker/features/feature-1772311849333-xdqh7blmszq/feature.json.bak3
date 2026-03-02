@@ -1,7 +1,7 @@
 {
   "category": "Uncategorized",
   "description": "psql 'postgresql://neondb_owner:npg_HUFP6D5rCtcl@ep-summer-dew-ailioqae-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'\n\nUpdate the project to use Neon Postgres. You will need to assist in creating the schema. \n",
-  "title": "",
+  "title": "Update project database to Neon Postgres with schema",
   "images": [],
   "imagePaths": [],
   "textFilePaths": [],

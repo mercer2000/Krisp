@@ -6,6 +6,33 @@ import type {
 } from "@/types/email";
 
 /**
+ * Update an existing email stub with full content fetched from Graph API.
+ */
+export async function updateEmailByMessageId(
+  tenantId: string,
+  messageId: string,
+  data: EmailWebhookPayload
+): Promise<void> {
+  await sql`
+    UPDATE emails
+    SET
+      sender            = ${data.from},
+      recipients        = ${JSON.stringify(data.to)},
+      cc                = ${JSON.stringify(data.cc ?? [])},
+      bcc               = ${JSON.stringify(data.bcc ?? [])},
+      subject           = ${data.subject ?? null},
+      body_plain_text   = ${data.bodyPlainText ?? null},
+      body_html         = ${data.bodyHtml ?? null},
+      received_at       = ${new Date(data.receivedDateTime).toISOString()},
+      attachments_metadata = ${JSON.stringify(data.attachments ?? [])},
+      raw_payload       = ${JSON.stringify(data)},
+      updated_at        = NOW()
+    WHERE tenant_id = ${tenantId}
+      AND message_id = ${messageId}
+  `;
+}
+
+/**
  * Insert a new email record into the database
  */
 export async function insertEmail(

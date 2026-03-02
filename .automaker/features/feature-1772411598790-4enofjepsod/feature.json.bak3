@@ -1,0 +1,27 @@
+{
+  "category": "Uncategorized",
+  "description": "Determine if you can simplify the setup of microsoft graph api. \n\nhttp://localhost:3000/admin/integrations\n\nConfigure API Permissions\n\nUnder API permissions, add Microsoft Graph → Mail.Read. For daemon/background access, use Application permissions and grant admin consent.\n\n3\nCreate a Client Secret\n\nUnder Certificates & secrets, create a new client secret. Save the value securely — you'll need it for obtaining access tokens.\n\n4\nCreate the Subscription\n\nEnter your access token below to create a Graph subscription directly. The notification URL, expiration, and client state are configured automatically. You can also manage existing subscriptions here.\n\nAccess Token *\n••••••••••••••••••••••••••••••••••••\nMust be a valid JWT access token for Microsoft Graph with Mail.Read scope. Get one from Graph Explorer or via your Azure AD app's OAuth2 token endpoint. Not stored on the server.\n\nResource\nme/mailFolders/inbox/messages\nClient State (optional)\nAuto-generated if empty\nNotification URL\nhttp://localhost:3000/api/webhooks/email/graph/b615ea88-f232-451a-8b95-313773802ab1\nSet automatically. Expiration is set to ~3 days (the maximum for mail resources).\n\nInvalid access token format. The token must be a valid JWT (three dot-separated segments like xxxxx.yyyyy.zzzzz). Copy the full token from Azure AD or Graph Explorer — make sure you haven't truncated it.\nCreate Subscription\n\nIt's not clear how the user is to get an access token. Is this something we can do programiatically for the user?",
+  "title": "Simplify Microsoft Graph API setup process",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "skip",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "in_progress",
+  "startedAt": "2026-03-02T00:33:18.790Z",
+  "id": "feature-1772411598790-4enofjepsod",
+  "descriptionHistory": [
+    {
+      "description": "Determine if you can simplify the setup of microsoft graph api. \n\nhttp://localhost:3000/admin/integrations\n\nConfigure API Permissions\n\nUnder API permissions, add Microsoft Graph → Mail.Read. For daemon/background access, use Application permissions and grant admin consent.\n\n3\nCreate a Client Secret\n\nUnder Certificates & secrets, create a new client secret. Save the value securely — you'll need it for obtaining access tokens.\n\n4\nCreate the Subscription\n\nEnter your access token below to create a Graph subscription directly. The notification URL, expiration, and client state are configured automatically. You can also manage existing subscriptions here.\n\nAccess Token *\n••••••••••••••••••••••••••••••••••••\nMust be a valid JWT access token for Microsoft Graph with Mail.Read scope. Get one from Graph Explorer or via your Azure AD app's OAuth2 token endpoint. Not stored on the server.\n\nResource\nme/mailFolders/inbox/messages\nClient State (optional)\nAuto-generated if empty\nNotification URL\nhttp://localhost:3000/api/webhooks/email/graph/b615ea88-f232-451a-8b95-313773802ab1\nSet automatically. Expiration is set to ~3 days (the maximum for mail resources).\n\nInvalid access token format. The token must be a valid JWT (three dot-separated segments like xxxxx.yyyyy.zzzzz). Copy the full token from Azure AD or Graph Explorer — make sure you haven't truncated it.\nCreate Subscription\n\nIt's not clear how the user is to get an access token. Is this something we can do programiatically for the user?",
+      "timestamp": "2026-03-02T00:33:19.146Z",
+      "source": "initial"
+    }
+  ]
+}

@@ -24,6 +24,7 @@
     }
   ],
   "startedAt": "2026-03-01T00:12:34.200Z",
-  "updatedAt": "2026-03-01T00:19:30.287Z",
-  "justFinishedAt": "2026-03-01T00:19:30.287Z"
+  "updatedAt": "2026-03-01T00:19:30.313Z",
+  "justFinishedAt": "2026-03-01T00:19:30.287Z",
+  "summary": "## Summary: Meeting Card Grid View\n\n### Changes Implemented\n- Created a new API route `GET /api/meetings` that returns authenticated user's recent meetings\n- Updated the Krisp page with a 3-column responsive card grid showing recorded meetings\n- Each card displays meeting title, date/duration, action items (key points), and speaker badges\n- Added loading skeleton state and empty state for when no meetings exist\n- Preserved all existing search functionality\n\n### Files Modified\n- `app/api/meetings/route.ts` (new file)\n- `app/(app)/krisp/page.tsx` (modified)\n\n### Notes for Developer\n- The card grid uses responsive columns: 1 column on mobile, 2 on medium screens, 3 on large screens\n- Action items are limited to 4 per card with a \"+N more\" overflow indicator\n- Speaker badges are limited to 3 per card with a \"+N\" overflow indicator\n- The grid fetches meetings on page load via `useEffect` and the new `/api/meetings` endpoint\n- The existing AI-powered search functionality remains fully intact above the card grid"
 }

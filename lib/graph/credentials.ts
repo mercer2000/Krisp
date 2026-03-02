@@ -1,65 +1,107 @@
 import { db } from "@/lib/db";
 import { graphCredentials } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 export interface GraphCredentialsInsert {
   tenantId: string;
+  label: string;
   azureTenantId: string;
   clientId: string;
   clientSecret: string;
 }
 
 /**
- * Save or update Azure AD app credentials for a tenant.
- * Uses atomic upsert to avoid race conditions.
+ * Create new Azure AD app credentials for a tenant.
  */
-export async function upsertGraphCredentials(data: GraphCredentialsInsert) {
+export async function createGraphCredentials(data: GraphCredentialsInsert) {
   const [result] = await db
     .insert(graphCredentials)
     .values(data)
-    .onConflictDoUpdate({
-      target: graphCredentials.tenantId,
-      set: {
-        azureTenantId: data.azureTenantId,
-        clientId: data.clientId,
-        clientSecret: data.clientSecret,
-        updatedAt: new Date(),
-      },
-    })
     .returning();
   return result;
 }
 
 /**
- * Get stored Azure AD credentials for a tenant.
+ * Update existing Azure AD app credentials.
  */
-export async function getGraphCredentials(tenantId: string) {
+export async function updateGraphCredentials(
+  id: string,
+  tenantId: string,
+  data: Partial<Pick<GraphCredentialsInsert, "label" | "azureTenantId" | "clientId" | "clientSecret">>
+) {
   const [result] = await db
+    .update(graphCredentials)
+    .set({ ...data, updatedAt: new Date() })
+    .where(
+      and(
+        eq(graphCredentials.id, id),
+        eq(graphCredentials.tenantId, tenantId)
+      )
+    )
+    .returning();
+  return result ?? null;
+}
+
+/**
+ * Get all Azure AD credentials for a tenant.
+ */
+export async function getAllGraphCredentials(tenantId: string) {
+  return db
     .select()
     .from(graphCredentials)
     .where(eq(graphCredentials.tenantId, tenantId));
+}
+
+/**
+ * Get a specific credential by ID, scoped to tenant.
+ */
+export async function getGraphCredentialsById(id: string, tenantId: string) {
+  const [result] = await db
+    .select()
+    .from(graphCredentials)
+    .where(
+      and(
+        eq(graphCredentials.id, id),
+        eq(graphCredentials.tenantId, tenantId)
+      )
+    );
+  return result ?? null;
+}
+
+/**
+ * Get a credential by ID (no tenant scoping — for webhook handler use).
+ */
+export async function getGraphCredentialsByIdUnsafe(id: string) {
+  const [result] = await db
+    .select()
+    .from(graphCredentials)
+    .where(eq(graphCredentials.id, id));
   return result ?? null;
 }
 
 /**
  * Delete Azure AD credentials for a tenant.
  */
-export async function deleteGraphCredentials(tenantId: string) {
+export async function deleteGraphCredentials(id: string, tenantId: string) {
   await db
     .delete(graphCredentials)
-    .where(eq(graphCredentials.tenantId, tenantId));
+    .where(
+      and(
+        eq(graphCredentials.id, id),
+        eq(graphCredentials.tenantId, tenantId)
+      )
+    );
 }
 
 /**
  * Obtain an access token from Azure AD using the client credentials flow.
- * This is used for application-level (daemon) access to Microsoft Graph.
+ * Accepts the credential record directly to avoid extra DB lookups.
  */
-export async function getGraphAccessToken(tenantId: string): Promise<string> {
-  const creds = await getGraphCredentials(tenantId);
-  if (!creds) {
-    throw new Error("No Azure AD credentials configured. Set up your Azure AD app credentials first.");
-  }
-
+export async function getGraphAccessTokenFromCreds(creds: {
+  azureTenantId: string;
+  clientId: string;
+  clientSecret: string;
+}): Promise<string> {
   // Validate stored tenant ID format to prevent SSRF via URL injection
   const guidRegex =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -96,4 +138,15 @@ export async function getGraphAccessToken(tenantId: string): Promise<string> {
 
   const data = await response.json();
   return data.access_token;
+}
+
+/**
+ * Get an access token for a specific credential by ID (tenant-scoped).
+ */
+export async function getGraphAccessToken(credentialId: string, tenantId: string): Promise<string> {
+  const creds = await getGraphCredentialsById(credentialId, tenantId);
+  if (!creds) {
+    throw new Error("Credential not found. Set up your Azure AD app credentials first.");
+  }
+  return getGraphAccessTokenFromCreds(creds);
 }

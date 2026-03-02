@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772419637207-e854c0fd",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-02T02:47:17.207Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772322791949-la0b2p1sgoo",
+  "featureName": "Add meeting cards grid with action items",
+  "passes": true
+}

@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772419684827-2f7fbb20",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-02T02:48:04.827Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772311849333-xdqh7blmszq",
+  "featureName": "Update project database to Neon Postgres with schema",
+  "passes": true
+}

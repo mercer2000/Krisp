@@ -293,6 +293,7 @@ export const graphCredentials = pgTable(
     tenantId: uuid("tenant_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    label: varchar("label", { length: 255 }).notNull().default("Default"),
     azureTenantId: varchar("azure_tenant_id", { length: 255 }).notNull(),
     clientId: varchar("client_id", { length: 255 }).notNull(),
     clientSecret: text("client_secret").notNull(),
@@ -304,7 +305,7 @@ export const graphCredentials = pgTable(
       .notNull(),
   },
   (table) => [
-    uniqueIndex("uq_graph_credentials_tenant").on(table.tenantId),
+    index("idx_graph_credentials_tenant").on(table.tenantId),
   ]
 );
 
@@ -316,6 +317,9 @@ export const graphSubscriptions = pgTable(
     tenantId: uuid("tenant_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    credentialId: uuid("credential_id").references(() => graphCredentials.id, {
+      onDelete: "set null",
+    }),
     subscriptionId: varchar("subscription_id", { length: 512 }).notNull(),
     resource: varchar("resource", { length: 512 }).notNull(),
     changeType: varchar("change_type", { length: 100 }).notNull(),
@@ -336,6 +340,7 @@ export const graphSubscriptions = pgTable(
     uniqueIndex("uq_graph_subscription_id").on(table.subscriptionId),
     index("idx_graph_subscriptions_tenant").on(table.tenantId),
     index("idx_graph_subscriptions_expiration").on(table.expirationDateTime),
+    index("idx_graph_subscriptions_credential").on(table.credentialId),
   ]
 );
 

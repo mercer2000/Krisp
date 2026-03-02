@@ -1,16 +1,20 @@
 import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
 import {
-  upsertGraphCredentials,
-  getGraphCredentials,
+  createGraphCredentials,
+  getAllGraphCredentials,
+  getGraphCredentialsById,
   deleteGraphCredentials,
-  getGraphAccessToken,
+  getGraphAccessTokenFromCreds,
 } from "@/lib/graph/credentials";
+
+const GUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * GET /api/graph/credentials
- * Check if Azure AD credentials are configured for the current user.
- * Returns masked client ID and azure tenant ID (never the secret).
+ * List all Azure AD credentials for the current user.
+ * Returns masked secrets — never the full client secret.
  */
 export async function GET() {
   try {
@@ -20,21 +24,21 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const creds = await getGraphCredentials(userId);
-    if (!creds) {
-      return NextResponse.json({ configured: false });
-    }
+    const credentials = await getAllGraphCredentials(userId);
 
     return NextResponse.json({
-      configured: true,
-      azureTenantId: creds.azureTenantId,
-      clientId: creds.clientId,
-      // Never return the client secret — mask safely
-      clientSecretHint:
-        creds.clientSecret.length > 8
-          ? creds.clientSecret.slice(0, 4) + "..." + creds.clientSecret.slice(-4)
-          : "****",
-      updatedAt: creds.updatedAt,
+      credentials: credentials.map((c) => ({
+        id: c.id,
+        label: c.label,
+        azureTenantId: c.azureTenantId,
+        clientId: c.clientId,
+        clientSecretHint:
+          c.clientSecret.length > 8
+            ? c.clientSecret.slice(0, 4) + "..." + c.clientSecret.slice(-4)
+            : "****",
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt,
+      })),
     });
   } catch (error) {
     console.error("Error fetching Graph credentials:", error);
@@ -47,9 +51,9 @@ export async function GET() {
 
 /**
  * POST /api/graph/credentials
- * Save Azure AD app credentials for the current user.
+ * Create a new set of Azure AD app credentials.
  *
- * Body: { azureTenantId, clientId, clientSecret }
+ * Body: { label, azureTenantId, clientId, clientSecret }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -60,6 +64,7 @@ export async function POST(request: NextRequest) {
     }
 
     let body: {
+      label?: string;
       azureTenantId?: string;
       clientId?: string;
       clientSecret?: string;
@@ -74,6 +79,8 @@ export async function POST(request: NextRequest) {
     }
 
     const { azureTenantId, clientId, clientSecret } = body;
+    const label = body.label?.trim() || "Default";
+
     if (!azureTenantId || !clientId || !clientSecret) {
       return NextResponse.json(
         { error: "azureTenantId, clientId, and clientSecret are all required" },
@@ -81,16 +88,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate format — Azure tenant ID and client ID should be GUIDs
-    const guidRegex =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!guidRegex.test(azureTenantId.trim())) {
+    if (!GUID_REGEX.test(azureTenantId.trim())) {
       return NextResponse.json(
         { error: "Azure Tenant ID must be a valid GUID (e.g. 12345678-abcd-1234-abcd-123456789abc)" },
         { status: 400 }
       );
     }
-    if (!guidRegex.test(clientId.trim())) {
+    if (!GUID_REGEX.test(clientId.trim())) {
       return NextResponse.json(
         { error: "Application (Client) ID must be a valid GUID" },
         { status: 400 }
@@ -103,14 +107,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await upsertGraphCredentials({
+    const result = await createGraphCredentials({
       tenantId: userId,
+      label,
       azureTenantId: azureTenantId.trim(),
       clientId: clientId.trim(),
       clientSecret: clientSecret.trim(),
     });
 
-    return NextResponse.json({ message: "Credentials saved" }, { status: 200 });
+    return NextResponse.json(
+      {
+        message: "Credentials saved",
+        credential: {
+          id: result.id,
+          label: result.label,
+          azureTenantId: result.azureTenantId,
+          clientId: result.clientId,
+        },
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Error saving Graph credentials:", error);
     return NextResponse.json(
@@ -122,9 +138,11 @@ export async function POST(request: NextRequest) {
 
 /**
  * PUT /api/graph/credentials
- * Test the stored credentials by requesting an access token from Azure AD.
+ * Test a specific credential by requesting an access token from Azure AD.
+ *
+ * Body: { credentialId }
  */
-export async function PUT() {
+export async function PUT(request: NextRequest) {
   try {
     const session = await auth();
     const userId = session?.user?.id;
@@ -132,8 +150,32 @@ export async function PUT() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const token = await getGraphAccessToken(userId);
-    // Return just a success indicator, never the token itself to the client
+    let body: { credentialId?: string };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON payload" },
+        { status: 400 }
+      );
+    }
+
+    if (!body.credentialId) {
+      return NextResponse.json(
+        { error: "credentialId is required" },
+        { status: 400 }
+      );
+    }
+
+    const creds = await getGraphCredentialsById(body.credentialId, userId);
+    if (!creds) {
+      return NextResponse.json(
+        { error: "Credential not found" },
+        { status: 404 }
+      );
+    }
+
+    const token = await getGraphAccessTokenFromCreds(creds);
     return NextResponse.json({
       success: true,
       tokenLength: token.length,
@@ -148,9 +190,11 @@ export async function PUT() {
 
 /**
  * DELETE /api/graph/credentials
- * Remove stored Azure AD credentials.
+ * Remove a specific set of Azure AD credentials.
+ *
+ * Body: { credentialId }
  */
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   try {
     const session = await auth();
     const userId = session?.user?.id;
@@ -158,7 +202,24 @@ export async function DELETE() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await deleteGraphCredentials(userId);
+    let body: { credentialId?: string };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON payload" },
+        { status: 400 }
+      );
+    }
+
+    if (!body.credentialId) {
+      return NextResponse.json(
+        { error: "credentialId is required" },
+        { status: 400 }
+      );
+    }
+
+    await deleteGraphCredentials(body.credentialId, userId);
     return NextResponse.json({ message: "Credentials removed" });
   } catch (error) {
     console.error("Error removing Graph credentials:", error);

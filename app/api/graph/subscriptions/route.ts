@@ -5,7 +5,10 @@ import {
   getActiveSubscriptions,
   deactivateSubscription,
 } from "@/lib/graph/subscriptions";
-import { getGraphAccessToken } from "@/lib/graph/credentials";
+import {
+  getGraphCredentialsById,
+  getGraphAccessTokenFromCreds,
+} from "@/lib/graph/credentials";
 
 const GRAPH_SUBSCRIPTIONS_URL =
   "https://graph.microsoft.com/v1.0/subscriptions";
@@ -38,8 +41,7 @@ export async function GET() {
  * Create a new Graph subscription by proxying to Microsoft Graph API,
  * then storing the result in our database.
  *
- * The access token is obtained automatically from stored Azure AD credentials.
- * Optionally accepts { resource?, changeType?, clientState? } in body.
+ * Body: { credentialId, mailbox, changeType?, clientState? }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -50,6 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     let body: {
+      credentialId?: string;
       mailbox?: string;
       changeType?: string;
       clientState?: string;
@@ -60,6 +63,14 @@ export async function POST(request: NextRequest) {
       body = {};
     }
 
+    const credentialId = body.credentialId?.trim();
+    if (!credentialId) {
+      return NextResponse.json(
+        { error: "credentialId is required" },
+        { status: 400 }
+      );
+    }
+
     const mailbox = body.mailbox?.trim();
     if (!mailbox) {
       return NextResponse.json(
@@ -68,10 +79,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get access token from stored Azure AD credentials
+    // Get the credential and obtain an access token
+    const creds = await getGraphCredentialsById(credentialId, userId);
+    if (!creds) {
+      return NextResponse.json(
+        { error: "Credential not found" },
+        { status: 404 }
+      );
+    }
+
     let accessToken: string;
     try {
-      accessToken = await getGraphAccessToken(userId);
+      accessToken = await getGraphAccessTokenFromCreds(creds);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to obtain access token";
@@ -138,6 +157,7 @@ export async function POST(request: NextRequest) {
     // Store in our database
     const subscription = await createGraphSubscription({
       tenantId: userId,
+      credentialId,
       subscriptionId: graphResult.id,
       resource: graphResult.resource,
       changeType: graphResult.changeType,
@@ -156,6 +176,7 @@ export async function POST(request: NextRequest) {
           changeType: graphResult.changeType,
           expirationDateTime: graphResult.expirationDateTime,
           notificationUrl,
+          credentialId,
         },
       },
       { status: 201 }
@@ -202,32 +223,40 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Try to delete from Microsoft Graph using stored credentials
-    try {
-      const accessToken = await getGraphAccessToken(userId);
-      const graphResponse = await fetch(
-        `${GRAPH_SUBSCRIPTIONS_URL}/${subscriptionId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
+    // Look up the subscription to find its credentialId
+    const subscriptions = await getActiveSubscriptions(userId);
+    const sub = subscriptions.find((s) => s.subscriptionId === subscriptionId);
 
-      if (!graphResponse.ok && graphResponse.status !== 404) {
-        const errorBody = await graphResponse.text();
+    // Try to delete from Microsoft Graph using the linked credential
+    if (sub?.credentialId) {
+      try {
+        const creds = await getGraphCredentialsById(sub.credentialId, userId);
+        if (creds) {
+          const accessToken = await getGraphAccessTokenFromCreds(creds);
+          const graphResponse = await fetch(
+            `${GRAPH_SUBSCRIPTIONS_URL}/${subscriptionId}`,
+            {
+              method: "DELETE",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+            }
+          );
+
+          if (!graphResponse.ok && graphResponse.status !== 404) {
+            const errorBody = await graphResponse.text();
+            console.warn(
+              `[Graph] Failed to delete subscription ${subscriptionId} from Graph:`,
+              errorBody
+            );
+          }
+        }
+      } catch (error) {
         console.warn(
-          `[Graph] Failed to delete subscription ${subscriptionId} from Graph:`,
-          errorBody
+          `[Graph] Could not obtain token to delete subscription from Graph:`,
+          error instanceof Error ? error.message : error
         );
       }
-    } catch (error) {
-      // If credentials aren't configured, still deactivate locally
-      console.warn(
-        `[Graph] Could not obtain token to delete subscription from Graph:`,
-        error instanceof Error ? error.message : error
-      );
     }
 
     // Deactivate in our database

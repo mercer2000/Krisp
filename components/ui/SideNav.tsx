@@ -13,9 +13,9 @@ import { ThemeToggle } from "./ThemeToggle";
 const NAV_ITEMS = [
   {
     key: "krisp",
-    label: "Krisp",
+    label: "Meetings",
     href: "/krisp",
-    icon: KrispIcon,
+    icon: MeetingsIcon,
   },
   {
     key: "action-items",
@@ -41,7 +41,7 @@ const NAV_ITEMS = [
 // Icons
 // ---------------------------------------------------------------------------
 
-function KrispIcon({ size = 20 }: { size?: number }) {
+function MeetingsIcon({ size = 20 }: { size?: number }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -54,8 +54,11 @@ function KrispIcon({ size = 20 }: { size?: number }) {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
-      <line x1="4" y1="22" x2="4" y2="15" />
+      <path d="M17 18a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2" />
+      <rect width="18" height="18" x="3" y="4" rx="2" />
+      <circle cx="12" cy="10" r="2" />
+      <line x1="8" x2="8" y1="2" y2="4" />
+      <line x1="16" x2="16" y1="2" y2="4" />
     </svg>
   );
 }

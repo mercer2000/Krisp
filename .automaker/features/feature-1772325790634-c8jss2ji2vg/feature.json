@@ -21,7 +21,7 @@
   "planningMode": "spec",
   "requirePlanApproval": false,
   "dependencies": [],
-  "status": "waiting_approval",
+  "status": "verified",
   "startedAt": "2026-03-01T01:09:51.340Z",
   "id": "feature-1772325790634-c8jss2ji2vg",
   "descriptionHistory": [

@@ -23,7 +23,8 @@
       "source": "initial"
     }
   ],
-  "startedAt": "2026-02-28T21:40:40.309Z",
-  "updatedAt": "2026-02-28T21:52:05.070Z",
-  "justFinishedAt": "2026-02-28T21:52:05.070Z"
+  "startedAt": "2026-03-02T02:27:03.745Z",
+  "updatedAt": "2026-03-02T02:41:12.708Z",
+  "justFinishedAt": "2026-03-02T02:41:12.708Z",
+  "summary": "### New file: `app/api/graph/subscriptions/route.ts`\nA server-side API route with three endpoints:\n- **GET** — Lists all active Graph subscriptions for the authenticated user\n- **POST** — Creates a subscription by proxying to Microsoft Graph API (`POST /v1.0/subscriptions`), then storing the result in the `graph_subscriptions` table. The access token is used transiently and never stored.\n- **DELETE** — Deactivates a subscription locally and optionally deletes it from Microsoft Graph (if an acces..."
 }

@@ -264,53 +264,59 @@ function WebhookSecretManager() {
 interface GraphSubscription {
   id: string;
   subscriptionId: string;
+  credentialId: string | null;
   resource: string;
   changeType: string;
   expirationDateTime: string;
   active: boolean;
 }
 
-interface GraphCredentialsStatus {
-  configured: boolean;
-  azureTenantId?: string;
-  clientId?: string;
-  clientSecretHint?: string;
-  updatedAt?: string;
+interface GraphCredential {
+  id: string;
+  label: string;
+  azureTenantId: string;
+  clientId: string;
+  clientSecretHint: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 function GraphCredentialsManager({
-  onStatusChange,
+  onCredentialsChange,
 }: {
-  onStatusChange: (configured: boolean) => void;
+  onCredentialsChange: (credentials: GraphCredential[]) => void;
 }) {
+  const [credentials, setCredentials] = useState<GraphCredential[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [label, setLabel] = useState("");
   const [azureTenantId, setAzureTenantId] = useState("");
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(false);
+  const [testingId, setTestingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [status, setStatus] = useState<GraphCredentialsStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchStatus = useCallback(async () => {
+  const fetchCredentials = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch("/api/graph/credentials");
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
-      setStatus(data);
-      onStatusChange(data.configured);
+      const creds = data.credentials || [];
+      setCredentials(creds);
+      onCredentialsChange(creds);
     } catch {
       // Silently fail
     } finally {
       setLoading(false);
     }
-  }, [onStatusChange]);
+  }, [onCredentialsChange]);
 
   useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
+    fetchCredentials();
+  }, [fetchCredentials]);
 
   const handleSave = async () => {
     if (!azureTenantId.trim() || !clientId.trim() || !clientSecret.trim()) return;
@@ -322,6 +328,7 @@ function GraphCredentialsManager({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          label: label.trim() || undefined,
           azureTenantId: azureTenantId.trim(),
           clientId: clientId.trim(),
           clientSecret: clientSecret.trim(),
@@ -331,12 +338,14 @@ function GraphCredentialsManager({
         const data = await res.json();
         throw new Error(data.error || "Failed to save");
       }
-      setSuccess("Credentials saved successfully");
+      setSuccess("Connection added successfully");
+      setLabel("");
       setAzureTenantId("");
       setClientId("");
       setClientSecret("");
+      setShowForm(false);
       setTimeout(() => setSuccess(null), 5000);
-      await fetchStatus();
+      await fetchCredentials();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save credentials");
     } finally {
@@ -344,12 +353,16 @@ function GraphCredentialsManager({
     }
   };
 
-  const handleTest = async () => {
-    setTesting(true);
+  const handleTest = async (credentialId: string) => {
+    setTestingId(credentialId);
     setError(null);
     setSuccess(null);
     try {
-      const res = await fetch("/api/graph/credentials", { method: "PUT" });
+      const res = await fetch("/api/graph/credentials", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credentialId }),
+      });
       const data = await res.json();
       if (!data.success) {
         setError(data.error || "Token test failed");
@@ -360,19 +373,23 @@ function GraphCredentialsManager({
     } catch {
       setError("Failed to test connection");
     } finally {
-      setTesting(false);
+      setTestingId(null);
     }
   };
 
-  const handleRemove = async () => {
+  const handleRemove = async (credentialId: string) => {
     setError(null);
     setSuccess(null);
     try {
-      const res = await fetch("/api/graph/credentials", { method: "DELETE" });
+      const res = await fetch("/api/graph/credentials", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credentialId }),
+      });
       if (!res.ok) throw new Error("Failed to remove");
-      setSuccess("Credentials removed");
+      setSuccess("Connection removed");
       setTimeout(() => setSuccess(null), 3000);
-      await fetchStatus();
+      await fetchCredentials();
     } catch {
       setError("Failed to remove credentials");
     }
@@ -388,37 +405,66 @@ function GraphCredentialsManager({
 
   return (
     <div className="space-y-4">
-      {status?.configured && (
-        <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500" />
-            <span className="text-sm font-medium text-green-600">Connected</span>
-          </div>
-          <div className="text-xs text-[var(--muted-foreground)] space-y-1">
-            <p>Azure Tenant: <code className="px-1 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)]">{status.azureTenantId}</code></p>
-            <p>Client ID: <code className="px-1 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)]">{status.clientId}</code></p>
-            <p>Client Secret: <code className="px-1 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)]">{status.clientSecretHint}</code></p>
-          </div>
-          <div className="flex gap-2 mt-3">
-            <button
-              onClick={handleTest}
-              disabled={testing}
-              className="px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors disabled:opacity-50"
-            >
-              {testing ? "Testing..." : "Test Connection"}
-            </button>
-            <button
-              onClick={handleRemove}
-              className="px-3 py-1.5 text-xs font-medium rounded-md border border-red-500/30 text-red-600 hover:bg-red-500/10 transition-colors"
-            >
-              Remove
-            </button>
-          </div>
+      {/* Existing credentials list */}
+      {credentials.length > 0 && (
+        <div className="space-y-3">
+          {credentials.map((cred) => (
+            <div key={cred.id} className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500" />
+                <span className="text-sm font-medium text-green-600">{cred.label}</span>
+              </div>
+              <div className="text-xs text-[var(--muted-foreground)] space-y-1">
+                <p>Azure Tenant: <code className="px-1 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)]">{cred.azureTenantId}</code></p>
+                <p>Client ID: <code className="px-1 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)]">{cred.clientId}</code></p>
+                <p>Client Secret: <code className="px-1 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)]">{cred.clientSecretHint}</code></p>
+              </div>
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => handleTest(cred.id)}
+                  disabled={testingId !== null}
+                  className="px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors disabled:opacity-50"
+                >
+                  {testingId === cred.id ? "Testing..." : "Test Connection"}
+                </button>
+                <button
+                  onClick={() => handleRemove(cred.id)}
+                  className="px-3 py-1.5 text-xs font-medium rounded-md border border-red-500/30 text-red-600 hover:bg-red-500/10 transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {!status?.configured && (
+      {/* Add connection button / form */}
+      {!showForm ? (
+        <button
+          onClick={() => setShowForm(true)}
+          className="px-4 py-2 text-sm font-medium rounded-md border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
+        >
+          + Add Connection
+        </button>
+      ) : (
         <div className="p-5 rounded-lg border border-[var(--border)] bg-[var(--secondary)]/50 space-y-4">
+          <div>
+            <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+              Connection Label
+            </label>
+            <input
+              type="text"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="e.g. Sales Team Inbox, Support Mailbox"
+              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            />
+            <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+              A friendly name to identify this connection. Defaults to &ldquo;Default&rdquo; if left blank.
+            </p>
+          </div>
+
           <div>
             <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
               Azure Tenant ID <span className="text-red-500">*</span>
@@ -467,13 +513,27 @@ function GraphCredentialsManager({
             </p>
           </div>
 
-          <button
-            onClick={handleSave}
-            disabled={saving || !azureTenantId.trim() || !clientId.trim() || !clientSecret.trim()}
-            className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
-            {saving ? "Saving..." : "Save Credentials"}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleSave}
+              disabled={saving || !azureTenantId.trim() || !clientId.trim() || !clientSecret.trim()}
+              className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Connection"}
+            </button>
+            <button
+              onClick={() => {
+                setShowForm(false);
+                setLabel("");
+                setAzureTenantId("");
+                setClientId("");
+                setClientSecret("");
+              }}
+              className="px-4 py-2 text-sm font-medium rounded-md border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
@@ -493,11 +553,12 @@ function GraphCredentialsManager({
 
 function GraphSubscriptionManager({
   graphWebhookUrl,
-  credentialsConfigured,
+  credentials,
 }: {
   graphWebhookUrl: string;
-  credentialsConfigured: boolean;
+  credentials: GraphCredential[];
 }) {
+  const [selectedCredentialId, setSelectedCredentialId] = useState("");
   const [mailbox, setMailbox] = useState("");
   const [clientState, setClientState] = useState("");
   const [creating, setCreating] = useState(false);
@@ -505,6 +566,17 @@ function GraphSubscriptionManager({
   const [success, setSuccess] = useState<string | null>(null);
   const [subscriptions, setSubscriptions] = useState<GraphSubscription[]>([]);
   const [loadingSubs, setLoadingSubs] = useState(true);
+
+  // Auto-select the first credential when credentials load
+  useEffect(() => {
+    if (credentials.length > 0 && !selectedCredentialId) {
+      setSelectedCredentialId(credentials[0].id);
+    }
+    // Clear selection if the selected credential was removed
+    if (selectedCredentialId && !credentials.find((c) => c.id === selectedCredentialId)) {
+      setSelectedCredentialId(credentials[0]?.id || "");
+    }
+  }, [credentials, selectedCredentialId]);
 
   const fetchSubscriptions = useCallback(async () => {
     try {
@@ -533,6 +605,7 @@ function GraphSubscriptionManager({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          credentialId: selectedCredentialId,
           mailbox: mailbox.trim(),
           clientState: clientState.trim() || undefined,
         }),
@@ -575,13 +648,40 @@ function GraphSubscriptionManager({
 
   const isExpired = (dateStr: string) => new Date(dateStr) < new Date();
 
+  const getCredentialLabel = (credentialId: string | null) => {
+    if (!credentialId) return null;
+    return credentials.find((c) => c.id === credentialId)?.label || null;
+  };
+
   return (
     <div className="space-y-6">
       {/* Create subscription form */}
       <div className="p-5 rounded-lg border border-[var(--border)] bg-[var(--secondary)]/50 space-y-4">
-        {!credentialsConfigured && (
+        {credentials.length === 0 && (
           <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-600">
-            Configure your Azure AD credentials above before creating a subscription.
+            Add at least one Azure AD connection above before creating a subscription.
+          </div>
+        )}
+
+        {credentials.length > 0 && (
+          <div>
+            <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+              Connection <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={selectedCredentialId}
+              onChange={(e) => setSelectedCredentialId(e.target.value)}
+              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            >
+              {credentials.map((cred) => (
+                <option key={cred.id} value={cred.id}>
+                  {cred.label} ({cred.azureTenantId.slice(0, 8)}...)
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+              Select which Azure AD connection to use for this subscription.
+            </p>
           </div>
         )}
 
@@ -657,7 +757,7 @@ function GraphSubscriptionManager({
 
         <button
           onClick={handleCreate}
-          disabled={creating || !credentialsConfigured || !mailbox.trim()}
+          disabled={creating || credentials.length === 0 || !selectedCredentialId || !mailbox.trim()}
           className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {creating ? "Creating..." : "Create Subscription"}
@@ -693,6 +793,11 @@ function GraphSubscriptionManager({
                     {isExpired(sub.expirationDateTime) && (
                       <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold rounded bg-red-500/10 text-red-600 uppercase">
                         Expired
+                      </span>
+                    )}
+                    {getCredentialLabel(sub.credentialId) && (
+                      <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-medium rounded bg-blue-500/10 text-blue-600">
+                        {getCredentialLabel(sub.credentialId)}
                       </span>
                     )}
                   </div>
@@ -1042,7 +1147,7 @@ function GmailWatchManager() {
 
 export function IntegrationsClient({ tenantId }: { tenantId: string }) {
   const [activeTab, setActiveTab] = useState<TabId>("microsoft365");
-  const [graphCredentialsConfigured, setGraphCredentialsConfigured] = useState(false);
+  const [graphCredentials, setGraphCredentials] = useState<GraphCredential[]>([]);
   const origin = typeof window !== "undefined" ? window.location.origin : "https://your-domain.com";
   const webhookUrl = `${origin}/api/webhooks/email/microsoft365/${tenantId}`;
   const graphWebhookUrl = `${origin}/api/webhooks/email/graph/${tenantId}`;
@@ -1524,7 +1629,7 @@ export function IntegrationsClient({ tenantId }: { tenantId: string }) {
                         Paste the three values from your Azure app registration. These are stored
                         securely and used to obtain access tokens automatically.
                       </p>
-                      <GraphCredentialsManager onStatusChange={setGraphCredentialsConfigured} />
+                      <GraphCredentialsManager onCredentialsChange={setGraphCredentials} />
                     </div>
                   </li>
 
@@ -1542,7 +1647,7 @@ export function IntegrationsClient({ tenantId }: { tenantId: string }) {
                         subscription will be created to push new emails to your webhook in real time.
                         Subscriptions expire after ~3 days and need to be renewed.
                       </p>
-                      <GraphSubscriptionManager graphWebhookUrl={graphWebhookUrl} credentialsConfigured={graphCredentialsConfigured} />
+                      <GraphSubscriptionManager graphWebhookUrl={graphWebhookUrl} credentials={graphCredentials} />
                     </div>
                   </li>
 

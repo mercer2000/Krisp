@@ -1,9 +1,17 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { graphNotificationPayloadSchema } from "@/lib/validators/schemas";
 import { db } from "@/lib/db";
 import { users, graphSubscriptions } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { insertEmail, emailExists } from "@/lib/email/emails";
+import { insertEmail, emailExists, updateEmailByMessageId } from "@/lib/email/emails";
+import {
+  getGraphCredentialsByIdUnsafe,
+  getGraphAccessTokenFromCreds,
+} from "@/lib/graph/credentials";
+import {
+  fetchGraphMessage,
+  extractUserFromResource,
+} from "@/lib/graph/messages";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -113,7 +121,14 @@ export async function POST(
 
     const notifications = parsed.data.value;
 
-    // Process each notification
+    // Collect items that need async Graph API fetch after we respond
+    const pendingFetches: {
+      messageId: string;
+      credentialId: string;
+      resource: string;
+    }[] = [];
+
+    // Process each notification: validate, dedup, insert stub
     for (const notification of notifications) {
       // Validate clientState against stored subscription
       const [subscription] = await db
@@ -162,9 +177,7 @@ export async function POST(
         continue;
       }
 
-      // Store a stub record — full email content requires a follow-up
-      // Graph API call with the tenant's OAuth token to fetch the message.
-      // For now, store what we know from the notification.
+      // Insert stub record immediately so we respond fast
       try {
         await insertEmail(
           {
@@ -183,17 +196,63 @@ export async function POST(
           continue;
         }
         console.error(
-          `[Graph] Error storing notification for message ${messageId}:`,
+          `[Graph] Error storing stub for message ${messageId}:`,
           err
         );
+        continue;
       }
 
       console.log(
-        `[Graph] Tenant ${tenantId}: change notification for ${notification.resource}, changeType=${notification.changeType}`
+        `[Graph] Tenant ${tenantId}: stub inserted for ${notification.resource}, changeType=${notification.changeType}`
       );
+
+      // Queue for async fetch if we have credentials
+      if (subscription.credentialId) {
+        pendingFetches.push({
+          messageId,
+          credentialId: subscription.credentialId,
+          resource: subscription.resource,
+        });
+      }
     }
 
-    // Microsoft expects 202 Accepted
+    // Schedule background fetch of full email content after responding 202
+    if (pendingFetches.length > 0) {
+      after(async () => {
+        for (const item of pendingFetches) {
+          try {
+            const creds = await getGraphCredentialsByIdUnsafe(item.credentialId);
+            if (!creds) {
+              console.warn(`[Graph] Credential ${item.credentialId} not found for async fetch`);
+              continue;
+            }
+
+            const token = await getGraphAccessTokenFromCreds(creds);
+            const userMailbox = extractUserFromResource(item.resource);
+            if (!userMailbox) {
+              console.warn(`[Graph] Could not extract user from resource: ${item.resource}`);
+              continue;
+            }
+
+            const fullEmail = await fetchGraphMessage(userMailbox, item.messageId, token);
+            if (!fullEmail) {
+              console.warn(`[Graph] Could not fetch full email for ${item.messageId}`);
+              continue;
+            }
+
+            await updateEmailByMessageId(tenantId, item.messageId, fullEmail);
+            console.log(`[Graph] Fetched full email for message ${item.messageId}`);
+          } catch (err) {
+            console.error(
+              `[Graph] Error in async fetch for message ${item.messageId}:`,
+              err instanceof Error ? err.message : err
+            );
+          }
+        }
+      });
+    }
+
+    // Microsoft expects 202 Accepted — respond fast
     return NextResponse.json(
       { message: "Notifications processed" },
       { status: 202 }
