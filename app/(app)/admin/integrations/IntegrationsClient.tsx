@@ -73,6 +73,16 @@ const TABS = [
     color: "#0078D4",
   },
   {
+    id: "graph" as const,
+    label: "Graph API",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M21.17 3.25q.33 0 .59.25.24.25.24.58 0 .34-.24.59l-7.83 7.83L15 15.58l-1.41-1.41 1.07-1.08-7.83-7.83a.81.81 0 0 1-.25-.59q0-.33.25-.58.26-.25.59-.25.33 0 .58.25l7 7 7-7q.25-.25.58-.25zM3.83 19q0-.41.29-.71.3-.29.71-.29h14.34q.41 0 .71.29.29.3.29.71 0 .41-.29.71-.3.29-.71.29H4.83q-.41 0-.71-.29Q3.83 19.41 3.83 19z" />
+      </svg>
+    ),
+    color: "#0078D4",
+  },
+  {
     id: "gmail" as const,
     label: "Gmail",
     icon: (
@@ -251,10 +261,791 @@ function WebhookSecretManager() {
   );
 }
 
+interface GraphSubscription {
+  id: string;
+  subscriptionId: string;
+  resource: string;
+  changeType: string;
+  expirationDateTime: string;
+  active: boolean;
+}
+
+interface GraphCredentialsStatus {
+  configured: boolean;
+  azureTenantId?: string;
+  clientId?: string;
+  clientSecretHint?: string;
+  updatedAt?: string;
+}
+
+function GraphCredentialsManager({
+  onStatusChange,
+}: {
+  onStatusChange: (configured: boolean) => void;
+}) {
+  const [azureTenantId, setAzureTenantId] = useState("");
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [status, setStatus] = useState<GraphCredentialsStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchStatus = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/graph/credentials");
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      setStatus(data);
+      onStatusChange(data.configured);
+    } catch {
+      // Silently fail
+    } finally {
+      setLoading(false);
+    }
+  }, [onStatusChange]);
+
+  useEffect(() => {
+    fetchStatus();
+  }, [fetchStatus]);
+
+  const handleSave = async () => {
+    if (!azureTenantId.trim() || !clientId.trim() || !clientSecret.trim()) return;
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch("/api/graph/credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          azureTenantId: azureTenantId.trim(),
+          clientId: clientId.trim(),
+          clientSecret: clientSecret.trim(),
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to save");
+      }
+      setSuccess("Credentials saved successfully");
+      setAzureTenantId("");
+      setClientId("");
+      setClientSecret("");
+      setTimeout(() => setSuccess(null), 5000);
+      await fetchStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save credentials");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch("/api/graph/credentials", { method: "PUT" });
+      const data = await res.json();
+      if (!data.success) {
+        setError(data.error || "Token test failed");
+        return;
+      }
+      setSuccess("Connection successful — obtained access token from Azure AD");
+      setTimeout(() => setSuccess(null), 5000);
+    } catch {
+      setError("Failed to test connection");
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch("/api/graph/credentials", { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to remove");
+      setSuccess("Credentials removed");
+      setTimeout(() => setSuccess(null), 3000);
+      await fetchStatus();
+    } catch {
+      setError("Failed to remove credentials");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-4 rounded-lg bg-[var(--secondary)] border border-[var(--border)] text-sm text-[var(--muted-foreground)]">
+        Loading...
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {status?.configured && (
+        <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-green-500" />
+            <span className="text-sm font-medium text-green-600">Connected</span>
+          </div>
+          <div className="text-xs text-[var(--muted-foreground)] space-y-1">
+            <p>Azure Tenant: <code className="px-1 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)]">{status.azureTenantId}</code></p>
+            <p>Client ID: <code className="px-1 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)]">{status.clientId}</code></p>
+            <p>Client Secret: <code className="px-1 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)]">{status.clientSecretHint}</code></p>
+          </div>
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={handleTest}
+              disabled={testing}
+              className="px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors disabled:opacity-50"
+            >
+              {testing ? "Testing..." : "Test Connection"}
+            </button>
+            <button
+              onClick={handleRemove}
+              className="px-3 py-1.5 text-xs font-medium rounded-md border border-red-500/30 text-red-600 hover:bg-red-500/10 transition-colors"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!status?.configured && (
+        <div className="p-5 rounded-lg border border-[var(--border)] bg-[var(--secondary)]/50 space-y-4">
+          <div>
+            <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+              Azure Tenant ID <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={azureTenantId}
+              onChange={(e) => setAzureTenantId(e.target.value)}
+              placeholder="e.g. 12345678-abcd-1234-abcd-123456789abc"
+              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] font-mono focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            />
+            <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+              Found in Azure Portal &rarr; Azure Active Directory &rarr; Overview &rarr; Tenant ID
+            </p>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+              Application (Client) ID <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={clientId}
+              onChange={(e) => setClientId(e.target.value)}
+              placeholder="e.g. 12345678-abcd-1234-abcd-123456789abc"
+              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] font-mono focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            />
+            <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+              Found in Azure Portal &rarr; App registrations &rarr; Your app &rarr; Application (client) ID
+            </p>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+              Client Secret <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="password"
+              value={clientSecret}
+              onChange={(e) => setClientSecret(e.target.value)}
+              placeholder="Paste the client secret value"
+              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            />
+            <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+              Found in Azure Portal &rarr; App registrations &rarr; Your app &rarr; Certificates &amp; secrets
+            </p>
+          </div>
+
+          <button
+            onClick={handleSave}
+            disabled={saving || !azureTenantId.trim() || !clientId.trim() || !clientSecret.trim()}
+            className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save Credentials"}
+          </button>
+        </div>
+      )}
+
+      {error && (
+        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-600">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-sm text-green-600">
+          {success}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GraphSubscriptionManager({
+  graphWebhookUrl,
+  credentialsConfigured,
+}: {
+  graphWebhookUrl: string;
+  credentialsConfigured: boolean;
+}) {
+  const [mailbox, setMailbox] = useState("");
+  const [clientState, setClientState] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [subscriptions, setSubscriptions] = useState<GraphSubscription[]>([]);
+  const [loadingSubs, setLoadingSubs] = useState(true);
+
+  const fetchSubscriptions = useCallback(async () => {
+    try {
+      setLoadingSubs(true);
+      const res = await fetch("/api/graph/subscriptions");
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      setSubscriptions(data.subscriptions || []);
+    } catch {
+      // Silently fail — subscriptions list is supplementary
+    } finally {
+      setLoadingSubs(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSubscriptions();
+  }, [fetchSubscriptions]);
+
+  const handleCreate = async () => {
+    setCreating(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch("/api/graph/subscriptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mailbox: mailbox.trim(),
+          clientState: clientState.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.detail || data.error || "Failed to create subscription");
+        return;
+      }
+      setSuccess(
+        `Subscription created (ID: ${data.subscription.subscriptionId.slice(0, 8)}...). Expires: ${new Date(data.subscription.expirationDateTime).toLocaleString()}`
+      );
+      setClientState("");
+      setTimeout(() => setSuccess(null), 8000);
+      await fetchSubscriptions();
+    } catch {
+      setError("Failed to create subscription");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDelete = async (subscriptionId: string) => {
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch("/api/graph/subscriptions", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscriptionId }),
+      });
+      if (!res.ok) throw new Error("Failed to delete");
+      setSuccess("Subscription deleted");
+      setTimeout(() => setSuccess(null), 3000);
+      await fetchSubscriptions();
+    } catch {
+      setError("Failed to delete subscription");
+    }
+  };
+
+  const isExpired = (dateStr: string) => new Date(dateStr) < new Date();
+
+  return (
+    <div className="space-y-6">
+      {/* Create subscription form */}
+      <div className="p-5 rounded-lg border border-[var(--border)] bg-[var(--secondary)]/50 space-y-4">
+        {!credentialsConfigured && (
+          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-600">
+            Configure your Azure AD credentials above before creating a subscription.
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+              Mailbox Email <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="email"
+              value={mailbox}
+              onChange={(e) => setMailbox(e.target.value)}
+              placeholder="user@yourdomain.com"
+              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] font-mono focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            />
+            <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+              The Microsoft 365 mailbox to monitor for new emails.
+            </p>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+              Client State{" "}
+              <span className="normal-case font-normal">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={clientState}
+              onChange={(e) => setClientState(e.target.value)}
+              placeholder="Auto-generated if empty"
+              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] font-mono focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            />
+          </div>
+        </div>
+
+        {mailbox.trim() && (
+          <div>
+            <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+              Resource
+            </label>
+            <div className="mt-1 flex items-center p-2 rounded-md bg-[var(--secondary)] border border-[var(--border)]">
+              <code className="flex-1 text-sm text-[var(--muted-foreground)] break-all">
+                users/{mailbox.trim()}/mailFolders/inbox/messages
+              </code>
+            </div>
+          </div>
+        )}
+
+        <div>
+          <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+            Notification URL
+          </label>
+          <div className="mt-1 flex items-center p-2 rounded-md bg-[var(--secondary)] border border-[var(--border)]">
+            <code className="flex-1 text-sm text-[var(--muted-foreground)] break-all">
+              {graphWebhookUrl}
+            </code>
+          </div>
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+            Set automatically. Expiration is set to ~3 days (the maximum for
+            mail resources).
+          </p>
+        </div>
+
+        {error && (
+          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-600">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-sm text-green-600">
+            {success}
+          </div>
+        )}
+
+        <button
+          onClick={handleCreate}
+          disabled={creating || !credentialsConfigured || !mailbox.trim()}
+          className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity disabled:opacity-50"
+        >
+          {creating ? "Creating..." : "Create Subscription"}
+        </button>
+      </div>
+
+      {/* Active subscriptions list */}
+      <div>
+        <h4 className="text-sm font-semibold text-[var(--foreground)] mb-3">
+          Active Subscriptions
+        </h4>
+        {loadingSubs ? (
+          <div className="p-4 rounded-lg bg-[var(--secondary)] border border-[var(--border)] text-sm text-[var(--muted-foreground)]">
+            Loading...
+          </div>
+        ) : subscriptions.length === 0 ? (
+          <div className="p-4 rounded-lg bg-[var(--secondary)] border border-[var(--border)] text-sm text-[var(--muted-foreground)]">
+            No active subscriptions. Create one above to start receiving email
+            notifications.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {subscriptions.map((sub) => (
+              <div
+                key={sub.id}
+                className="flex items-center gap-3 p-3 rounded-lg bg-[var(--secondary)] border border-[var(--border)]"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <code className="text-xs text-[var(--foreground)] font-mono truncate">
+                      {sub.subscriptionId}
+                    </code>
+                    {isExpired(sub.expirationDateTime) && (
+                      <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold rounded bg-red-500/10 text-red-600 uppercase">
+                        Expired
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                    {sub.resource} &middot; {sub.changeType} &middot; Expires{" "}
+                    {new Date(sub.expirationDateTime).toLocaleString()}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleDelete(sub.subscriptionId)}
+                  className="shrink-0 px-3 py-1.5 text-xs font-medium rounded-md border border-red-500/30 text-red-600 hover:bg-red-500/10 transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface WatchStatus {
+  active: boolean;
+  watch: {
+    id: string;
+    emailAddress: string;
+    historyId: string | null;
+    expiration: string | null;
+    topicName: string;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
+}
+
+function GmailWatchManager() {
+  const [status, setStatus] = useState<WatchStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Setup form state
+  const [showSetup, setShowSetup] = useState(false);
+  const [setupForm, setSetupForm] = useState({
+    emailAddress: "",
+    topicName: "",
+    accessToken: "",
+    refreshToken: "",
+  });
+
+  const fetchStatus = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch("/api/gmail/watch");
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      setStatus(data);
+    } catch {
+      setError("Failed to load watch status");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStatus();
+  }, [fetchStatus]);
+
+  const handleSetup = async () => {
+    if (!setupForm.emailAddress || !setupForm.topicName || !setupForm.accessToken || !setupForm.refreshToken) {
+      setError("All fields are required");
+      return;
+    }
+    setActionLoading("setup");
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch("/api/gmail/watch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(setupForm),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.details || data.error || "Setup failed");
+      }
+      setSuccess("Gmail watch created successfully");
+      setShowSetup(false);
+      setSetupForm({ emailAddress: "", topicName: "", accessToken: "", refreshToken: "" });
+      setTimeout(() => setSuccess(null), 5000);
+      await fetchStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to set up watch");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRenew = async () => {
+    setActionLoading("renew");
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch("/api/gmail/watch", { method: "PUT" });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.details || data.error || "Renewal failed");
+      }
+      setSuccess("Gmail watch renewed successfully");
+      setTimeout(() => setSuccess(null), 5000);
+      await fetchStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to renew watch");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleStop = async () => {
+    setActionLoading("stop");
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch("/api/gmail/watch", { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.details || data.error || "Stop failed");
+      }
+      setSuccess("Gmail watch stopped");
+      setTimeout(() => setSuccess(null), 5000);
+      await fetchStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to stop watch");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const isExpiringSoon = status?.watch?.expiration
+    ? new Date(status.watch.expiration).getTime() - Date.now() < 24 * 60 * 60 * 1000
+    : false;
+
+  const isExpired = status?.watch?.expiration
+    ? new Date(status.watch.expiration).getTime() < Date.now()
+    : false;
+
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
+        Gmail Watch Status
+      </h3>
+      <p className="text-sm text-[var(--muted-foreground)] mb-3">
+        The Gmail Watch monitors your inbox via Pub/Sub and automatically
+        fetches new emails. Watch subscriptions expire after 7 days and must
+        be renewed.
+      </p>
+
+      {error && (
+        <div className="mb-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-600">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="mb-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-sm text-green-600">
+          {success}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="p-4 rounded-lg bg-[var(--secondary)] border border-[var(--border)] text-sm text-[var(--muted-foreground)]">
+          Loading...
+        </div>
+      ) : status?.active && status.watch ? (
+        <div className="space-y-4">
+          {/* Active watch display */}
+          <div className="p-4 rounded-lg border border-[var(--border)] bg-[var(--secondary)]">
+            <div className="flex items-center gap-2 mb-3">
+              <div className={`w-2.5 h-2.5 rounded-full ${isExpired ? "bg-red-500" : isExpiringSoon ? "bg-amber-500" : "bg-green-500"}`} />
+              <span className="text-sm font-medium text-[var(--foreground)]">
+                {isExpired ? "Watch Expired" : isExpiringSoon ? "Watch Expiring Soon" : "Watch Active"}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                  Email
+                </span>
+                <p className="text-[var(--foreground)] mt-0.5">{status.watch.emailAddress}</p>
+              </div>
+              <div>
+                <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                  Topic
+                </span>
+                <p className="text-[var(--foreground)] mt-0.5 break-all">{status.watch.topicName}</p>
+              </div>
+              <div>
+                <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                  History ID
+                </span>
+                <p className="text-[var(--foreground)] mt-0.5 font-mono">{status.watch.historyId ?? "—"}</p>
+              </div>
+              <div>
+                <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                  Expires
+                </span>
+                <p className={`mt-0.5 ${isExpired ? "text-red-600 font-medium" : isExpiringSoon ? "text-amber-600 font-medium" : "text-[var(--foreground)]"}`}>
+                  {status.watch.expiration
+                    ? new Date(status.watch.expiration).toLocaleString()
+                    : "—"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {(isExpiringSoon || isExpired) && (
+            <div className={`p-3 rounded-lg text-sm ${isExpired ? "bg-red-500/10 border border-red-500/20 text-red-600" : "bg-amber-500/10 border border-amber-500/20 text-amber-700"}`}>
+              {isExpired
+                ? "Your watch subscription has expired. Pub/Sub notifications are no longer being delivered. Renew now to resume email ingestion."
+                : "Your watch subscription expires within 24 hours. Renew it to prevent interruption."}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              onClick={handleRenew}
+              disabled={actionLoading !== null}
+              className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {actionLoading === "renew" ? "Renewing..." : "Renew Watch"}
+            </button>
+            <button
+              onClick={handleStop}
+              disabled={actionLoading !== null}
+              className="px-4 py-2 text-sm font-medium rounded-md border border-red-500/30 text-red-600 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+            >
+              {actionLoading === "stop" ? "Stopping..." : "Stop Watch"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="p-4 rounded-lg border border-[var(--border)] bg-[var(--secondary)]">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-gray-400" />
+              <span className="text-sm font-medium text-[var(--muted-foreground)]">
+                No Active Watch
+              </span>
+            </div>
+            <p className="text-sm text-[var(--muted-foreground)]">
+              Set up a Gmail watch to start receiving real-time email
+              notifications via Pub/Sub. You&apos;ll need OAuth tokens from
+              a Google Cloud project with the Gmail API enabled.
+            </p>
+          </div>
+
+          {!showSetup ? (
+            <button
+              onClick={() => setShowSetup(true)}
+              className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity"
+            >
+              Set Up Gmail Watch
+            </button>
+          ) : (
+            <div className="space-y-3 p-4 rounded-lg border border-[var(--border)] bg-[var(--card)]">
+              <h4 className="text-sm font-semibold text-[var(--foreground)]">
+                Configure Gmail Watch
+              </h4>
+              <p className="text-xs text-[var(--muted-foreground)]">
+                Provide your Gmail address, Google Cloud Pub/Sub topic name, and
+                OAuth tokens obtained from the Google OAuth consent flow with the{" "}
+                <code className="px-1 py-0.5 rounded bg-[var(--secondary)] text-xs">gmail.readonly</code>{" "}
+                scope.
+              </p>
+              <div>
+                <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                  Gmail Address
+                </label>
+                <input
+                  type="email"
+                  value={setupForm.emailAddress}
+                  onChange={(e) => setSetupForm({ ...setupForm, emailAddress: e.target.value })}
+                  placeholder="user@gmail.com"
+                  className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                  Pub/Sub Topic Name
+                </label>
+                <input
+                  type="text"
+                  value={setupForm.topicName}
+                  onChange={(e) => setSetupForm({ ...setupForm, topicName: e.target.value })}
+                  placeholder="projects/my-project/topics/gmail-inbound"
+                  className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                  Access Token
+                </label>
+                <input
+                  type="password"
+                  value={setupForm.accessToken}
+                  onChange={(e) => setSetupForm({ ...setupForm, accessToken: e.target.value })}
+                  placeholder="ya29.a0..."
+                  className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                  Refresh Token
+                </label>
+                <input
+                  type="password"
+                  value={setupForm.refreshToken}
+                  onChange={(e) => setSetupForm({ ...setupForm, refreshToken: e.target.value })}
+                  placeholder="1//0e..."
+                  className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={handleSetup}
+                  disabled={actionLoading !== null}
+                  className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {actionLoading === "setup" ? "Creating..." : "Create Watch"}
+                </button>
+                <button
+                  onClick={() => setShowSetup(false)}
+                  className="px-4 py-2 text-sm font-medium rounded-md border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function IntegrationsClient({ tenantId }: { tenantId: string }) {
   const [activeTab, setActiveTab] = useState<TabId>("microsoft365");
+  const [graphCredentialsConfigured, setGraphCredentialsConfigured] = useState(false);
   const origin = typeof window !== "undefined" ? window.location.origin : "https://your-domain.com";
   const webhookUrl = `${origin}/api/webhooks/email/microsoft365/${tenantId}`;
+  const graphWebhookUrl = `${origin}/api/webhooks/email/graph/${tenantId}`;
   const gmailWebhookUrl = `${origin}/api/webhooks/email/gmail/${tenantId}`;
   const crispWebhookUrl = `${origin}/api/webhooks/key-points?user_id=${tenantId}`;
 
@@ -607,6 +1398,469 @@ export function IntegrationsClient({ tenantId }: { tenantId: string }) {
             </div>
           </section>}
 
+          {/* Microsoft Graph API Section */}
+          {activeTab === "graph" && <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+            <div className="px-6 py-5 border-b border-[var(--border)]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#0078D4] flex items-center justify-center">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                    <path d="M21.17 3.25q.33 0 .59.25.24.25.24.58 0 .34-.24.59l-7.83 7.83L15 15.58l-1.41-1.41 1.07-1.08-7.83-7.83a.81.81 0 0 1-.25-.59q0-.33.25-.58.26-.25.59-.25.33 0 .58.25l7 7 7-7q.25-.25.58-.25zM3.83 19q0-.41.29-.71.3-.29.71-.29h14.34q.41 0 .71.29.29.3.29.71 0 .41-.29.71-.3.29-.71.29H4.83q-.41 0-.71-.29Q3.83 19.41 3.83 19z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                    Microsoft Graph API
+                  </h2>
+                  <p className="text-sm text-[var(--muted-foreground)]">
+                    Ingest emails via Graph change notifications (webhooks)
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-8">
+              {/* Description */}
+              <div>
+                <p className="text-sm text-[var(--muted-foreground)]">
+                  Microsoft Graph change notifications push real-time updates to your
+                  webhook when new emails arrive in a mailbox. Unlike Power Automate,
+                  this approach uses the Graph API directly and requires an Azure AD app
+                  registration with appropriate permissions. Subscriptions expire after a
+                  maximum of 3 days for mail resources and must be renewed periodically.
+                </p>
+              </div>
+
+              {/* Webhook URL */}
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
+                  Your Notification URL
+                </h3>
+                <p className="text-sm text-[var(--muted-foreground)] mb-3">
+                  This is your tenant-specific endpoint. Use it as the{" "}
+                  <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">notificationUrl</code>{" "}
+                  when creating a Graph subscription. It handles both the validation
+                  handshake and incoming change notifications.
+                </p>
+                <div className="flex items-center p-3 rounded-lg bg-[var(--secondary)] border border-[var(--border)]">
+                  <code className="flex-1 text-sm text-[var(--foreground)] break-all">
+                    {graphWebhookUrl}
+                  </code>
+                  <CopyButton text={graphWebhookUrl} />
+                </div>
+              </div>
+
+              {/* How it works */}
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
+                  How Validation Works
+                </h3>
+                <p className="text-sm text-[var(--muted-foreground)] mb-3">
+                  When you create a subscription, Microsoft sends a GET request to your
+                  notification URL with a{" "}
+                  <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">validationToken</code>{" "}
+                  query parameter. This endpoint automatically echoes the token back as{" "}
+                  <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">text/plain</code>{" "}
+                  to complete the handshake. No manual action is required.
+                </p>
+                <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-[var(--foreground)]">
+                  The validation handshake is handled automatically. Once your subscription is
+                  created, change notifications will be delivered via POST to the same URL.
+                </div>
+              </div>
+
+              {/* Prerequisites */}
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-4">
+                  Prerequisites
+                </h3>
+                <ul className="space-y-3 text-sm text-[var(--muted-foreground)]">
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 mt-0.5 w-5 h-5 rounded-full bg-[var(--secondary)] flex items-center justify-center text-xs font-semibold text-[var(--foreground)]">1</span>
+                    <span>
+                      An <span className="font-medium text-[var(--foreground)]">Azure AD App Registration</span> with{" "}
+                      <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">Mail.Read</code>{" "}
+                      application permission and admin consent granted.
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 mt-0.5 w-5 h-5 rounded-full bg-[var(--secondary)] flex items-center justify-center text-xs font-semibold text-[var(--foreground)]">2</span>
+                    <span>
+                      A <span className="font-medium text-[var(--foreground)]">client secret</span> created
+                      for the app registration (under Certificates &amp; secrets).
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 mt-0.5 w-5 h-5 rounded-full bg-[var(--secondary)] flex items-center justify-center text-xs font-semibold text-[var(--foreground)]">3</span>
+                    <span>
+                      Your webhook endpoint must be publicly accessible over HTTPS (required by
+                      Microsoft Graph).
+                    </span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Setup Steps */}
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-4">
+                  Graph API Subscription Setup
+                </h3>
+
+                <ol className="space-y-6">
+                  {/* Step 1 */}
+                  <li className="flex gap-4">
+                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
+                      1
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-medium text-[var(--foreground)]">
+                        Register an Azure AD Application
+                      </p>
+                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
+                        Go to{" "}
+                        <span className="font-medium text-[var(--foreground)]">Azure Portal</span>{" "}
+                        &rarr; <span className="font-medium text-[var(--foreground)]">Azure Active Directory</span>{" "}
+                        &rarr; <span className="font-medium text-[var(--foreground)]">App registrations</span>{" "}
+                        &rarr; <span className="font-medium text-[var(--foreground)]">New registration</span>.
+                        Give it a name (e.g., &quot;Krisp Email Ingestion&quot;). No redirect URI is needed
+                        for the client credentials flow.
+                      </p>
+                    </div>
+                  </li>
+
+                  {/* Step 2 */}
+                  <li className="flex gap-4">
+                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
+                      2
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-medium text-[var(--foreground)]">
+                        Configure API Permissions &amp; Create Client Secret
+                      </p>
+                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
+                        Under <span className="font-medium text-[var(--foreground)]">API permissions</span>,
+                        add <span className="font-medium text-[var(--foreground)]">Microsoft Graph</span> &rarr;{" "}
+                        <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">Mail.Read</code>{" "}
+                        (Application permission) and grant admin consent.
+                        Then under <span className="font-medium text-[var(--foreground)]">Certificates &amp; secrets</span>,
+                        create a new client secret and copy the value.
+                      </p>
+                    </div>
+                  </li>
+
+                  {/* Step 3: Connect */}
+                  <li className="flex gap-4">
+                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
+                      3
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-medium text-[var(--foreground)]">
+                        Connect Your Azure AD App
+                      </p>
+                      <p className="text-sm text-[var(--muted-foreground)] mt-1 mb-4">
+                        Enter your Azure Tenant ID, Application (Client) ID, and Client Secret below.
+                        These are stored securely and used to automatically obtain access tokens &mdash;
+                        no manual token management required.
+                      </p>
+                      <GraphCredentialsManager onStatusChange={setGraphCredentialsConfigured} />
+                    </div>
+                  </li>
+
+                  {/* Step 4: Create subscription */}
+                  <li className="flex gap-4">
+                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
+                      4
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-medium text-[var(--foreground)]">
+                        Create the Subscription
+                      </p>
+                      <p className="text-sm text-[var(--muted-foreground)] mt-1 mb-4">
+                        Once your credentials are connected, create a subscription with one click.
+                        Access tokens are obtained automatically from Azure AD. The notification URL,
+                        expiration, and client state are configured for you.
+                      </p>
+                      <GraphSubscriptionManager graphWebhookUrl={graphWebhookUrl} credentialsConfigured={graphCredentialsConfigured} />
+                    </div>
+                  </li>
+
+                  {/* Step 5 */}
+                  <li className="flex gap-4">
+                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
+                      5
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-medium text-[var(--foreground)]">
+                        Test the Integration
+                      </p>
+                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
+                        Send a test email to the monitored mailbox. Within seconds, Microsoft Graph
+                        should POST a change notification to your webhook. Check server logs for the{" "}
+                        <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">[Graph]</code> log
+                        entries confirming receipt.
+                      </p>
+                    </div>
+                  </li>
+                </ol>
+              </div>
+
+              {/* Subscription Lifecycle */}
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">
+                  Subscription Lifecycle
+                </h3>
+                <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-[var(--secondary)]">
+                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
+                          Phase
+                        </th>
+                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
+                          What Happens
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      <tr>
+                        <td className="px-4 py-3 font-medium text-[var(--foreground)]">
+                          Create
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          POST to <code className="text-xs">/v1.0/subscriptions</code> &mdash; Microsoft sends
+                          a GET with <code className="text-xs">validationToken</code> to your endpoint
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3 font-medium text-[var(--foreground)]">
+                          Validate
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Your endpoint echoes the token back as <code className="text-xs">text/plain</code> within
+                          10 seconds (handled automatically)
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3 font-medium text-[var(--foreground)]">
+                          Notify
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          On resource change, Microsoft POSTs a notification with <code className="text-xs">clientState</code>{" "}
+                          for verification &mdash; your endpoint returns 202 within 3 seconds
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3 font-medium text-[var(--foreground)]">
+                          Renew
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          PATCH the subscription before expiration (max 3 days for mail) with a new{" "}
+                          <code className="text-xs">expirationDateTime</code>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3 font-medium text-[var(--foreground)]">
+                          Delete
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          DELETE <code className="text-xs">/v1.0/subscriptions/&#123;id&#125;</code> to stop
+                          receiving notifications
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Notification Payload Reference */}
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">
+                  Notification Payload Reference
+                </h3>
+                <p className="text-sm text-[var(--muted-foreground)] mb-3">
+                  Each POST from Microsoft contains a <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">value</code> array
+                  with one or more notification objects:
+                </p>
+                <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-[var(--secondary)]">
+                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
+                          Field
+                        </th>
+                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
+                          Description
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">
+                            changeType
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Type of change: &quot;created&quot;, &quot;updated&quot;, or &quot;deleted&quot;
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">
+                            clientState
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          The secret you set when creating the subscription &mdash; verify this matches
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">
+                            resource
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          The resource path (e.g., <code className="text-xs">me/messages/AAMk...</code>)
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">
+                            resourceData
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Object with <code className="text-xs">id</code>, <code className="text-xs">@odata.type</code> &mdash; contains the message ID
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">
+                            subscriptionId
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          The ID of the subscription that triggered this notification
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">
+                            subscriptionExpirationDateTime
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          When the subscription expires (ISO 8601)
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Response Codes */}
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">
+                  Response Codes
+                </h3>
+                <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-[var(--secondary)]">
+                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
+                          Code
+                        </th>
+                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
+                          Meaning
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-green-500/10 text-green-600 text-xs font-semibold">
+                            200
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Validation handshake completed (GET with validationToken)
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-green-500/10 text-green-600 text-xs font-semibold">
+                            202
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Change notifications accepted and processed
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 text-xs font-semibold">
+                            400
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Invalid payload or missing validationToken
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-600 text-xs font-semibold">
+                            404
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Tenant not found
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-600 text-xs font-semibold">
+                            500
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Internal server error &mdash; Microsoft will retry with exponential backoff
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Important Notes */}
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">
+                  Important Notes
+                </h3>
+                <div className="space-y-3">
+                  <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-[var(--foreground)]">
+                    <span className="font-medium">Subscription Expiry:</span> Mail subscriptions
+                    expire after a maximum of 3 days. Set up automated renewal to avoid missing
+                    notifications. The <code className="font-mono text-xs">graph_subscriptions</code> table
+                    tracks expiration dates for this purpose.
+                  </div>
+                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-[var(--foreground)]">
+                    <span className="font-medium">Notification-only:</span> Graph change notifications
+                    contain only metadata (message ID, resource path) &mdash; not the full email content.
+                    To fetch the full email, make a follow-up call to{" "}
+                    <code className="font-mono text-xs">GET /v1.0/me/messages/&#123;id&#125;</code> using
+                    the tenant&apos;s OAuth token.
+                  </div>
+                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-[var(--foreground)]">
+                    <span className="font-medium">clientState Verification:</span> The endpoint
+                    validates the <code className="font-mono text-xs">clientState</code> in each
+                    notification against the value stored in the database when the subscription was
+                    created. Notifications with mismatched clientState are rejected.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>}
+
           {/* Gmail Section */}
           {activeTab === "gmail" && <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
             <div className="px-6 py-5 border-b border-[var(--border)]">
@@ -663,6 +1917,9 @@ export function IntegrationsClient({ tenantId }: { tenantId: string }) {
                   variable.
                 </div>
               </div>
+
+              {/* Gmail Watch Manager */}
+              <GmailWatchManager />
 
               {/* Setup Option A */}
               <div>

@@ -173,6 +173,31 @@ export const gmailAppsScriptPayloadSchema = z.object({
 
 export type GmailAppsScriptPayloadInput = z.infer<typeof gmailAppsScriptPayloadSchema>;
 
+// ── Microsoft Graph Change Notification ──────────────
+export const graphResourceDataSchema = z.object({
+  "@odata.type": z.string().optional(),
+  "@odata.id": z.string().optional(),
+  "@odata.etag": z.string().optional(),
+  id: z.string().optional(),
+});
+
+export const graphChangeNotificationSchema = z.object({
+  changeType: z.string().min(1),
+  clientState: z.string().optional(),
+  resource: z.string().min(1),
+  resourceData: graphResourceDataSchema.optional(),
+  subscriptionId: z.string().min(1),
+  subscriptionExpirationDateTime: z.string().min(1),
+  tenantId: z.string().optional(),
+});
+
+export const graphNotificationPayloadSchema = z.object({
+  value: z.array(graphChangeNotificationSchema).min(1),
+});
+
+export type GraphChangeNotification = z.infer<typeof graphChangeNotificationSchema>;
+export type GraphNotificationPayload = z.infer<typeof graphNotificationPayloadSchema>;
+
 // ── Action Items ─────────────────────────────────────
 export const createActionItemSchema = z.object({
   title: z.string().min(1, "Title is required").max(500),

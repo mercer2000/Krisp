@@ -234,6 +234,39 @@ export const gmailEmails = pgTable(
   ]
 );
 
+// ── Gmail Watch Subscriptions ────────────────────────
+export const gmailWatchSubscriptions = pgTable(
+  "gmail_watch_subscriptions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    emailAddress: varchar("email_address", { length: 320 }).notNull(),
+    historyId: varchar("history_id", { length: 100 }),
+    expiration: timestamp("expiration", { withTimezone: true }),
+    topicName: varchar("topic_name", { length: 512 }).notNull(),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    tokenExpiry: timestamp("token_expiry", { withTimezone: true }),
+    active: boolean("active").default(true).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_gmail_watch_tenant_email").on(
+      table.tenantId,
+      table.emailAddress
+    ),
+    index("idx_gmail_watch_tenant").on(table.tenantId),
+    index("idx_gmail_watch_expiration").on(table.expiration),
+  ]
+);
+
 // ── Webhook Secrets ──────────────────────────────────
 export const webhookSecrets = pgTable("webhook_secrets", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -251,6 +284,60 @@ export const webhookSecrets = pgTable("webhook_secrets", {
 }, (table) => [
   uniqueIndex("uq_webhook_secrets_user_name").on(table.userId, table.name),
 ]);
+
+// ── Graph Credentials (Azure AD App Registration) ────
+export const graphCredentials = pgTable(
+  "graph_credentials",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    azureTenantId: varchar("azure_tenant_id", { length: 255 }).notNull(),
+    clientId: varchar("client_id", { length: 255 }).notNull(),
+    clientSecret: text("client_secret").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_graph_credentials_tenant").on(table.tenantId),
+  ]
+);
+
+// ── Graph Subscriptions (Microsoft Graph API) ────────
+export const graphSubscriptions = pgTable(
+  "graph_subscriptions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    subscriptionId: varchar("subscription_id", { length: 512 }).notNull(),
+    resource: varchar("resource", { length: 512 }).notNull(),
+    changeType: varchar("change_type", { length: 100 }).notNull(),
+    clientState: varchar("client_state", { length: 255 }).notNull(),
+    expirationDateTime: timestamp("expiration_date_time", {
+      withTimezone: true,
+    }).notNull(),
+    notificationUrl: text("notification_url").notNull(),
+    active: boolean("active").default(true).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_graph_subscription_id").on(table.subscriptionId),
+    index("idx_graph_subscriptions_tenant").on(table.tenantId),
+    index("idx_graph_subscriptions_expiration").on(table.expirationDateTime),
+  ]
+);
 
 // ── Emails (Microsoft 365 Exchange) ──────────────────
 export const emails = pgTable(

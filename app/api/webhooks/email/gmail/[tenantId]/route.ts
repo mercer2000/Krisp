@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { insertGmailEmail } from "@/lib/gmail/emails";
+import { processGmailNotification } from "@/lib/gmail/watch";
 import {
   pubSubPushMessageSchema,
   gmailAppsScriptPayloadSchema,
@@ -148,13 +149,9 @@ export async function POST(
  * Handle a Google Pub/Sub push notification.
  *
  * The push payload contains a base64-encoded `data` field with
- * `{ emailAddress, historyId }`. The actual email must be fetched
- * via the Gmail API using history.list + messages.get.
- *
- * Since Gmail API OAuth tokens are managed per-tenant and the actual
- * fetch requires the Gmail API client, this endpoint decodes the
- * notification and acknowledges it. Full Gmail API integration
- * requires the tenant to complete OAuth setup first.
+ * `{ emailAddress, historyId }`. The actual email is fetched
+ * via the Gmail API using history.list + messages.get when the
+ * tenant has an active watch subscription with OAuth tokens.
  */
 async function handlePubSubPush(
   message: { message: { data: string; messageId: string; publishTime: string }; subscription: string },
@@ -179,27 +176,74 @@ async function handlePubSubPush(
     );
   }
 
-  // Log the notification for now — actual Gmail API fetch requires OAuth tokens
   console.log(
     `[Gmail Pub/Sub] Tenant ${tenantId}: notification for ${decoded.emailAddress}, historyId=${decoded.historyId}`
   );
 
-  // TODO: When Gmail OAuth is configured per-tenant:
-  // 1. Get tenant's OAuth tokens from database
-  // 2. Call Gmail API history.list with the historyId
-  // 3. For each new message, call messages.get
-  // 4. Parse and store each email via insertGmailEmail()
-  // 5. Update tenant's stored historyId
+  // Attempt to fetch and store emails via Gmail API
+  try {
+    const result = await processGmailNotification(
+      tenantId,
+      decoded.historyId
+    );
 
-  // Acknowledge the Pub/Sub push to prevent retries
-  return NextResponse.json(
-    {
-      message: "Pub/Sub notification received",
-      emailAddress: decoded.emailAddress,
-      historyId: decoded.historyId,
-    },
-    { status: 200 }
-  );
+    if (result.emails && result.emails.length > 0) {
+      let stored = 0;
+      for (const emailData of result.emails) {
+        try {
+          await insertGmailEmail(emailData);
+          stored++;
+        } catch (err) {
+          // Skip duplicates silently
+          if (
+            err instanceof Error &&
+            err.message.includes("duplicate key value")
+          ) {
+            continue;
+          }
+          console.error(
+            `[Gmail Pub/Sub] Failed to store email ${emailData.gmail_message_id}:`,
+            err
+          );
+        }
+      }
+
+      return NextResponse.json(
+        {
+          message: "Emails fetched and stored",
+          emailAddress: decoded.emailAddress,
+          processed: result.processed,
+          stored,
+        },
+        { status: 200 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        message: "Notification processed, no new emails",
+        emailAddress: decoded.emailAddress,
+        historyId: decoded.historyId,
+      },
+      { status: 200 }
+    );
+  } catch (err) {
+    // If no active watch subscription, acknowledge anyway to prevent
+    // Pub/Sub retries — the tenant needs to set up OAuth first
+    console.warn(
+      `[Gmail Pub/Sub] Could not process notification for tenant ${tenantId}:`,
+      err instanceof Error ? err.message : err
+    );
+
+    return NextResponse.json(
+      {
+        message: "Notification acknowledged (watch not configured)",
+        emailAddress: decoded.emailAddress,
+        historyId: decoded.historyId,
+      },
+      { status: 200 }
+    );
+  }
 }
 
 /**
