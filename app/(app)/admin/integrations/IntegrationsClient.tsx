@@ -1423,170 +1423,133 @@ export function IntegrationsClient({ tenantId }: { tenantId: string }) {
               <div>
                 <p className="text-sm text-[var(--muted-foreground)]">
                   Microsoft Graph change notifications push real-time updates to your
-                  webhook when new emails arrive in a mailbox. Unlike Power Automate,
-                  this approach uses the Graph API directly and requires an Azure AD app
-                  registration with appropriate permissions. Subscriptions expire after a
-                  maximum of 3 days for mail resources and must be renewed periodically.
+                  webhook when new emails arrive in a mailbox. This uses the Graph API
+                  directly with app-only (client credentials) authentication. Subscriptions
+                  expire after 3 days and must be renewed.
                 </p>
               </div>
 
-              {/* Webhook URL */}
-              <div>
-                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
-                  Your Notification URL
-                </h3>
-                <p className="text-sm text-[var(--muted-foreground)] mb-3">
-                  This is your tenant-specific endpoint. Use it as the{" "}
-                  <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">notificationUrl</code>{" "}
-                  when creating a Graph subscription. It handles both the validation
-                  handshake and incoming change notifications.
-                </p>
-                <div className="flex items-center p-3 rounded-lg bg-[var(--secondary)] border border-[var(--border)]">
-                  <code className="flex-1 text-sm text-[var(--foreground)] break-all">
-                    {graphWebhookUrl}
-                  </code>
-                  <CopyButton text={graphWebhookUrl} />
+              {/* Azure Portal Requirements */}
+              <div className="p-5 rounded-lg border-2 border-blue-500/30 bg-blue-500/5 space-y-4">
+                <div className="flex items-center gap-2">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 16v-4" />
+                    <path d="M12 8h.01" />
+                  </svg>
+                  <h3 className="text-sm font-semibold text-[var(--foreground)]">
+                    Azure Portal Setup Required
+                  </h3>
                 </div>
-              </div>
-
-              {/* How it works */}
-              <div>
-                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
-                  How Validation Works
-                </h3>
-                <p className="text-sm text-[var(--muted-foreground)] mb-3">
-                  When you create a subscription, Microsoft sends a GET request to your
-                  notification URL with a{" "}
-                  <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">validationToken</code>{" "}
-                  query parameter. This endpoint automatically echoes the token back as{" "}
-                  <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">text/plain</code>{" "}
-                  to complete the handshake. No manual action is required.
+                <p className="text-sm text-[var(--muted-foreground)]">
+                  Before connecting, you need to create an app registration in Azure Portal.
+                  Complete these steps first &mdash; you&apos;ll need the three values highlighted below.
                 </p>
-                <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-[var(--foreground)]">
-                  The validation handshake is handled automatically. Once your subscription is
-                  created, change notifications will be delivered via POST to the same URL.
-                </div>
-              </div>
 
-              {/* Prerequisites */}
-              <div>
-                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-4">
-                  Prerequisites
-                </h3>
-                <ul className="space-y-3 text-sm text-[var(--muted-foreground)]">
+                <ol className="space-y-4 text-sm">
                   <li className="flex gap-3">
-                    <span className="flex-shrink-0 mt-0.5 w-5 h-5 rounded-full bg-[var(--secondary)] flex items-center justify-center text-xs font-semibold text-[var(--foreground)]">1</span>
-                    <span>
-                      An <span className="font-medium text-[var(--foreground)]">Azure AD App Registration</span> with{" "}
-                      <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">Mail.Read</code>{" "}
-                      application permission and admin consent granted.
-                    </span>
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-600 flex items-center justify-center text-xs font-bold">1</span>
+                    <div>
+                      <p className="text-[var(--foreground)] font-medium">Create an App Registration</p>
+                      <p className="text-[var(--muted-foreground)] mt-0.5">
+                        Azure Portal &rarr; Microsoft Entra ID &rarr; App registrations &rarr; New registration.
+                        Name it anything (e.g., &quot;Krisp Email Ingestion&quot;). No redirect URI needed.
+                      </p>
+                      <div className="mt-2 p-2.5 rounded-md bg-[var(--secondary)] border border-[var(--border)]">
+                        <p className="text-xs text-[var(--muted-foreground)]">
+                          Copy the <span className="font-semibold text-[var(--foreground)]">Application (client) ID</span> and{" "}
+                          <span className="font-semibold text-[var(--foreground)]">Directory (tenant) ID</span> from the app&apos;s Overview page.
+                        </p>
+                      </div>
+                    </div>
                   </li>
+
                   <li className="flex gap-3">
-                    <span className="flex-shrink-0 mt-0.5 w-5 h-5 rounded-full bg-[var(--secondary)] flex items-center justify-center text-xs font-semibold text-[var(--foreground)]">2</span>
-                    <span>
-                      A <span className="font-medium text-[var(--foreground)]">client secret</span> created
-                      for the app registration (under Certificates &amp; secrets).
-                    </span>
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-600 flex items-center justify-center text-xs font-bold">2</span>
+                    <div>
+                      <p className="text-[var(--foreground)] font-medium">Add API Permissions</p>
+                      <p className="text-[var(--muted-foreground)] mt-0.5">
+                        In your app &rarr; API permissions &rarr; Add a permission &rarr; Microsoft Graph &rarr;{" "}
+                        <span className="font-semibold text-[var(--foreground)]">Application permissions</span> (not Delegated).
+                      </p>
+                      <div className="mt-2 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20">
+                        <p className="text-xs text-amber-700">
+                          Add <code className="px-1 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] font-semibold">Mail.Read</code> then
+                          click <span className="font-semibold">&quot;Grant admin consent&quot;</span> &mdash; the green checkmark button at the top.
+                          Without admin consent, subscriptions will fail with &quot;Access denied.&quot;
+                        </p>
+                      </div>
+                    </div>
                   </li>
+
                   <li className="flex gap-3">
-                    <span className="flex-shrink-0 mt-0.5 w-5 h-5 rounded-full bg-[var(--secondary)] flex items-center justify-center text-xs font-semibold text-[var(--foreground)]">3</span>
-                    <span>
-                      Your webhook endpoint must be publicly accessible over HTTPS (required by
-                      Microsoft Graph).
-                    </span>
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-600 flex items-center justify-center text-xs font-bold">3</span>
+                    <div>
+                      <p className="text-[var(--foreground)] font-medium">Create a Client Secret</p>
+                      <p className="text-[var(--muted-foreground)] mt-0.5">
+                        In your app &rarr; Certificates &amp; secrets &rarr; New client secret. Copy the{" "}
+                        <span className="font-semibold text-[var(--foreground)]">Value</span> immediately (it&apos;s only shown once).
+                      </p>
+                    </div>
                   </li>
-                </ul>
+                </ol>
+
+                <div className="pt-2 border-t border-blue-500/20">
+                  <p className="text-xs text-[var(--muted-foreground)]">
+                    You should now have three values: <span className="font-medium text-[var(--foreground)]">Directory (tenant) ID</span>,{" "}
+                    <span className="font-medium text-[var(--foreground)]">Application (client) ID</span>, and{" "}
+                    <span className="font-medium text-[var(--foreground)]">Client secret value</span>. Enter them below.
+                  </p>
+                </div>
               </div>
 
               {/* Setup Steps */}
               <div>
                 <h3 className="text-sm font-semibold text-[var(--foreground)] mb-4">
-                  Graph API Subscription Setup
+                  Connect &amp; Subscribe
                 </h3>
 
                 <ol className="space-y-6">
-                  {/* Step 1 */}
+
+                  {/* Step 1: Connect */}
                   <li className="flex gap-4">
                     <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
                       1
                     </span>
                     <div className="flex-1">
                       <p className="font-medium text-[var(--foreground)]">
-                        Register an Azure AD Application
+                        Enter Your Credentials
                       </p>
-                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
-                        Go to{" "}
-                        <span className="font-medium text-[var(--foreground)]">Azure Portal</span>{" "}
-                        &rarr; <span className="font-medium text-[var(--foreground)]">Azure Active Directory</span>{" "}
-                        &rarr; <span className="font-medium text-[var(--foreground)]">App registrations</span>{" "}
-                        &rarr; <span className="font-medium text-[var(--foreground)]">New registration</span>.
-                        Give it a name (e.g., &quot;Krisp Email Ingestion&quot;). No redirect URI is needed
-                        for the client credentials flow.
+                      <p className="text-sm text-[var(--muted-foreground)] mt-1 mb-4">
+                        Paste the three values from your Azure app registration. These are stored
+                        securely and used to obtain access tokens automatically.
                       </p>
+                      <GraphCredentialsManager onStatusChange={setGraphCredentialsConfigured} />
                     </div>
                   </li>
 
-                  {/* Step 2 */}
+                  {/* Step 2: Create subscription */}
                   <li className="flex gap-4">
                     <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
                       2
                     </span>
                     <div className="flex-1">
                       <p className="font-medium text-[var(--foreground)]">
-                        Configure API Permissions &amp; Create Client Secret
-                      </p>
-                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
-                        Under <span className="font-medium text-[var(--foreground)]">API permissions</span>,
-                        add <span className="font-medium text-[var(--foreground)]">Microsoft Graph</span> &rarr;{" "}
-                        <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">Mail.Read</code>{" "}
-                        (Application permission) and grant admin consent.
-                        Then under <span className="font-medium text-[var(--foreground)]">Certificates &amp; secrets</span>,
-                        create a new client secret and copy the value.
-                      </p>
-                    </div>
-                  </li>
-
-                  {/* Step 3: Connect */}
-                  <li className="flex gap-4">
-                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
-                      3
-                    </span>
-                    <div className="flex-1">
-                      <p className="font-medium text-[var(--foreground)]">
-                        Connect Your Azure AD App
+                        Create a Mail Subscription
                       </p>
                       <p className="text-sm text-[var(--muted-foreground)] mt-1 mb-4">
-                        Enter your Azure Tenant ID, Application (Client) ID, and Client Secret below.
-                        These are stored securely and used to automatically obtain access tokens &mdash;
-                        no manual token management required.
-                      </p>
-                      <GraphCredentialsManager onStatusChange={setGraphCredentialsConfigured} />
-                    </div>
-                  </li>
-
-                  {/* Step 4: Create subscription */}
-                  <li className="flex gap-4">
-                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
-                      4
-                    </span>
-                    <div className="flex-1">
-                      <p className="font-medium text-[var(--foreground)]">
-                        Create the Subscription
-                      </p>
-                      <p className="text-sm text-[var(--muted-foreground)] mt-1 mb-4">
-                        Once your credentials are connected, create a subscription with one click.
-                        Access tokens are obtained automatically from Azure AD. The notification URL,
-                        expiration, and client state are configured for you.
+                        Enter the Microsoft 365 email address to monitor. A Graph change notification
+                        subscription will be created to push new emails to your webhook in real time.
+                        Subscriptions expire after ~3 days and need to be renewed.
                       </p>
                       <GraphSubscriptionManager graphWebhookUrl={graphWebhookUrl} credentialsConfigured={graphCredentialsConfigured} />
                     </div>
                   </li>
 
-                  {/* Step 5 */}
+                  {/* Step 3 */}
                   <li className="flex gap-4">
                     <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
-                      5
+                      3
                     </span>
                     <div className="flex-1">
                       <p className="font-medium text-[var(--foreground)]">
@@ -1834,27 +1797,79 @@ export function IntegrationsClient({ tenantId }: { tenantId: string }) {
               {/* Important Notes */}
               <div>
                 <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">
+                  Troubleshooting
+                </h3>
+                <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-[var(--secondary)]">
+                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)] whitespace-nowrap">
+                          Error
+                        </th>
+                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
+                          Cause &amp; Fix
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      <tr>
+                        <td className="px-4 py-3 text-[var(--foreground)] font-medium whitespace-nowrap">
+                          Access is denied (403)
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Your app is missing the <code className="text-xs font-semibold">Mail.Read</code> Application
+                          permission, or admin consent hasn&apos;t been granted. Go to API permissions in Azure Portal
+                          and click &quot;Grant admin consent.&quot;
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3 text-[var(--foreground)] font-medium whitespace-nowrap">
+                          Validation request failed
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Microsoft couldn&apos;t reach your webhook URL or it didn&apos;t respond correctly.
+                          Ensure your app is deployed to a publicly accessible HTTPS URL (not localhost).
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3 text-[var(--foreground)] font-medium whitespace-nowrap">
+                          /me request is only valid...
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          The resource path used <code className="text-xs">/me/</code> which requires delegated auth.
+                          Client credentials flow must use <code className="text-xs">users/&#123;email&#125;/mailFolders/inbox/messages</code>.
+                          This is handled automatically when you enter a mailbox email above.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3 text-[var(--foreground)] font-medium whitespace-nowrap">
+                          Token request failed
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          The Azure Tenant ID, Client ID, or Client Secret is incorrect. Double-check the values
+                          in your app registration. Use &quot;Test Connection&quot; to verify.
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">
                   Important Notes
                 </h3>
                 <div className="space-y-3">
                   <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-[var(--foreground)]">
                     <span className="font-medium">Subscription Expiry:</span> Mail subscriptions
-                    expire after a maximum of 3 days. Set up automated renewal to avoid missing
-                    notifications. The <code className="font-mono text-xs">graph_subscriptions</code> table
-                    tracks expiration dates for this purpose.
+                    expire after a maximum of 3 days. Set up automated renewal or create a new
+                    subscription when the current one expires. The active subscriptions list above
+                    shows expiration dates.
                   </div>
                   <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-[var(--foreground)]">
                     <span className="font-medium">Notification-only:</span> Graph change notifications
                     contain only metadata (message ID, resource path) &mdash; not the full email content.
-                    To fetch the full email, make a follow-up call to{" "}
-                    <code className="font-mono text-xs">GET /v1.0/me/messages/&#123;id&#125;</code> using
-                    the tenant&apos;s OAuth token.
-                  </div>
-                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-[var(--foreground)]">
-                    <span className="font-medium">clientState Verification:</span> The endpoint
-                    validates the <code className="font-mono text-xs">clientState</code> in each
-                    notification against the value stored in the database when the subscription was
-                    created. Notifications with mismatched clientState are rejected.
+                    To fetch the full email, a follow-up Graph API call is needed using the app&apos;s credentials.
                   </div>
                 </div>
               </div>
