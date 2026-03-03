@@ -1,0 +1,14 @@
+{
+  "id": "email-scheduled-send",
+  "category": "Email",
+  "title": "Scheduled Email Send",
+  "description": "When composing a reply or new email, allow users to schedule delivery at a future date and time. Scheduled sends are stored in a scheduled_emails table and dispatched by a Vercel cron job at the specified time via Microsoft Graph sendMail or Gmail API. Users can cancel or reschedule before delivery.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [
+    "email-compose"
+  ],
+  "createdAt": "2026-03-02T19:21:47.064Z",
+  "updatedAt": "2026-03-02T19:21:47.064Z"
+}

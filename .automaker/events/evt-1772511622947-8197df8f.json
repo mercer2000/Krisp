@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772511622947-8197df8f",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-03T04:20:22.947Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772510932215-hqktsfco60u",
+  "featureName": "Auto-extract action items from meetings to Kanban",
+  "passes": true
+}

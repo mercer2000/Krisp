@@ -1,0 +1,14 @@
+{
+  "id": "email-templates",
+  "category": "Email",
+  "title": "Email Reply Templates",
+  "description": "Allow users to create and manage reusable email response templates with a title and rich-text body. When composing or replying, a 'Use Template' button opens a picker to insert the template body into the draft. Templates are stored per user and can be organized into categories.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "simple",
+  "dependencies": [
+    "email-compose"
+  ],
+  "createdAt": "2026-03-02T19:21:47.081Z",
+  "updatedAt": "2026-03-02T19:21:47.081Z"
+}

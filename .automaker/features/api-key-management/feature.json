@@ -1,0 +1,15 @@
+{
+  "id": "api-key-management",
+  "category": "Authentication",
+  "title": "Personal API Key Management for MCP & External Access",
+  "description": "Allow users to generate, name, and revoke personal API keys from the Settings page. API keys are hashed (SHA-256) and stored in an api_keys table. Keys are accepted as Bearer tokens on a dedicated /api/external namespace, enabling external scripts and the MCP server to authenticate without session cookies.",
+  "status": "backlog",
+  "priority": 1,
+  "complexity": "moderate",
+  "dependencies": [
+    "user-profile-settings",
+    "open-brain-mcp-server"
+  ],
+  "createdAt": "2026-03-02T19:00:34.474Z",
+  "updatedAt": "2026-03-02T19:00:34.474Z"
+}

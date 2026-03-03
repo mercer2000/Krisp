@@ -1,0 +1,15 @@
+{
+  "id": "custom-dashboard-widgets",
+  "category": "UI",
+  "title": "Customizable Dashboard Widget Grid",
+  "description": "A /dashboard home page with a draggable widget grid where users arrange tiles (Upcoming Events, Overdue Cards, Recent Thoughts, Meeting Count, Email Count, Action Items Due). Widget layout is persisted per user in a user_dashboard_config JSONB column on the users table.",
+  "status": "verified",
+  "priority": 2,
+  "complexity": "complex",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.458Z",
+  "updatedAt": "2026-03-03T05:57:01.345Z",
+  "startedAt": "2026-03-03T05:38:33.892Z",
+  "descriptionHistory": [],
+  "summary": "## Summary: Custom Dashboard Widgets\n\n### Changes Implemented\n- Added `dashboard_config` JSONB column to the `users` table to persist per-user widget layout\n- Created SQL migration (`0012_add-dashboard-config.sql`) and updated the migrations journal\n- Created `/api/dashboard` API route with GET (fetches all widget data + user config in parallel) and PUT (persists widget layout config)\n- Built `/dashboard` page with a draggable widget grid using `@dnd-kit` (already installed)\n- Implemented 6 widget components: Upcoming Events, Overdue Cards, Recent Meetings, Meeting Count (30d), Email Count (30d), Action Items Due\n- Widget layout is persisted per user via the `user_dashboard_config` JSONB column — drag-and-drop reorder saves automatically\n- Added \"Dashboard\" as the first nav item in the SideNav with a custom grid icon\n- Fixed pre-existing build error in `trash/page.tsx` (missing \"decision\" type entry)\n\n### Files Modified\n- `lib/db/schema.ts` — Added `dashboardConfig` JSONB column to `users` table\n- `drizzle/migrations/0012_add-dashboard-config.sql` — New migration file\n- `drizzle/migrations/meta/_journal.json` — Added migration entry\n- `components/ui/SideNav.tsx` — Added Dashboard nav item with DashboardIcon, isActive check\n- `app/(app)/trash/page.tsx` — Fixed pre-existing build error (added missing \"decision\" type)\n\n### Files Created\n- `app/api/dashboard/route.ts` — Dashboard API with GET/PUT endpoints\n- `app/(app)/dashboard/page.tsx` — Dashboard page with draggable widget grid\n\n### Notes for Developer\n- The migration (`0012_add-dashboard-config.sql`) needs to be run against the database: `ALTER TABLE \"users\" ADD COLUMN \"dashboard_config\" jsonb`\n- Widget data queries run in parallel for performance (7 concurrent DB queries)\n- The drag-and-drop uses `@dnd-kit/core` + `@dnd-kit/sortable` (already installed for Kanban)\n- Widget layout persists to the database on every drag-end event\n- Default layout shows all 6 widgets in order; saved layout overrides this on load\n- All styling follows existing CSS variable patterns (`var(--card)`, `var(--border)`, etc.)\n\n### Verification Status\n- TypeScript compilation passes (no new errors)\n- Next.js production build succeeds with `/dashboard` route compiled\n- Playwright verification: 3/3 tests passed confirming route exists, API endpoint works, and page serves valid HTML\n- Temporary Playwright test files were deleted after verification"
+}

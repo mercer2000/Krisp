@@ -1,0 +1,14 @@
+{
+  "id": "api-graphql-endpoint",
+  "category": "API",
+  "title": "GraphQL API Layer for External Clients",
+  "description": "Expose a read-only GraphQL endpoint at /api/graphql that allows external clients (custom dashboards, scripts, MCP tools) to query meetings, cards, emails, and thoughts with flexible field selection and filtering. Secured by personal API keys and rate-limited per token.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "complex",
+  "dependencies": [
+    "api-key-management"
+  ],
+  "createdAt": "2026-03-02T19:21:47.290Z",
+  "updatedAt": "2026-03-02T19:21:47.290Z"
+}

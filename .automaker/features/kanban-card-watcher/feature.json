@@ -1,0 +1,14 @@
+{
+  "id": "kanban-card-watcher",
+  "category": "Kanban",
+  "title": "Card Watchers & Change Notifications",
+  "description": "Allow users to 'watch' a card and receive in-app notifications (and optional email alerts) when the card's status, priority, due date, or description changes. Watcher subscriptions are stored in a card_watchers table with userId and cardId.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [
+    "notifications-center"
+  ],
+  "createdAt": "2026-03-02T19:00:34.397Z",
+  "updatedAt": "2026-03-02T19:00:34.397Z"
+}

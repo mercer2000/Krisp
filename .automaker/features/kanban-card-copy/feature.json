@@ -1,0 +1,12 @@
+{
+  "id": "kanban-card-copy",
+  "category": "Kanban",
+  "title": "Duplicate Card with Deep Copy",
+  "description": "Add a 'Duplicate' action to the card context menu that creates an exact copy of the card including its description, priority, tags, checklist, and label — placed directly below the original in the same column. The duplicate is prefixed with 'Copy of' and is immediately editable.",
+  "status": "backlog",
+  "priority": 1,
+  "complexity": "simple",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:46.983Z",
+  "updatedAt": "2026-03-02T19:21:46.983Z"
+}

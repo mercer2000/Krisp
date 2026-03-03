@@ -1,0 +1,15 @@
+{
+  "id": "open-brain-voice-capture",
+  "category": "Open Brain",
+  "title": "Voice Thought Capture via Browser Microphone",
+  "description": "Add a microphone button to the Open Brain web capture input that records audio via the browser MediaRecorder API, transcribes it using OpenAI Whisper, and submits the transcript as a new thought. Shows a live recording indicator and displays the transcription for review before saving.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [
+    "open-brain-web-capture",
+    "open-brain-db-schema"
+  ],
+  "createdAt": "2026-03-02T19:00:34.554Z",
+  "updatedAt": "2026-03-02T19:00:34.554Z"
+}

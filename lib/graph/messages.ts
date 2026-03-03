@@ -13,6 +13,37 @@ export function extractUserFromResource(resource: string): string | null {
 }
 
 /**
+ * Delete a message from the mailbox via Microsoft Graph API.
+ * Returns true on success (204 No Content), false otherwise.
+ */
+export async function deleteGraphMessage(
+  userMailbox: string,
+  messageId: string,
+  accessToken: string
+): Promise<boolean> {
+  const url = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(userMailbox)}/messages/${encodeURIComponent(messageId)}`;
+
+  try {
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (res.status === 204 || res.status === 200) return true;
+
+    const body = await res.text().catch(() => "");
+    console.warn(
+      `[Graph] Failed to delete message ${messageId}: ${res.status}`,
+      body
+    );
+    return false;
+  } catch (err) {
+    console.warn(`[Graph] Error deleting message ${messageId}:`, err);
+    return false;
+  }
+}
+
+/**
  * Fetch a single message from the Microsoft Graph API and return it
  * in EmailWebhookPayload format.
  */
@@ -31,6 +62,7 @@ export async function fetchGraphMessage(
     "body",
     "receivedDateTime",
     "hasAttachments",
+    "webLink",
   ].join(",");
 
   const url = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(userMailbox)}/messages/${encodeURIComponent(messageId)}?$select=${select}`;
@@ -49,6 +81,13 @@ export async function fetchGraphMessage(
 
     const msg = await res.json();
 
+    console.log(
+      `[Graph] Message ${messageId} webLink value:`,
+      JSON.stringify(msg.webLink),
+      `| keys:`,
+      Object.keys(msg).filter((k) => k.toLowerCase().includes("link") || k.toLowerCase().includes("web"))
+    );
+
     const extractEmail = (r: { emailAddress?: { address?: string } }) =>
       r?.emailAddress?.address || "";
 
@@ -63,6 +102,7 @@ export async function fetchGraphMessage(
       bodyHtml:
         msg.body?.contentType === "html" ? msg.body.content || "" : "",
       receivedDateTime: msg.receivedDateTime || new Date().toISOString(),
+      webLink: msg.webLink || undefined,
     };
   } catch (err) {
     console.warn(`[Graph] Error fetching message ${messageId}:`, err);

@@ -1,0 +1,15 @@
+{
+  "id": "open-brain-graph-view",
+  "category": "Open Brain",
+  "title": "Knowledge Graph Visualization",
+  "description": "Render captured thoughts as an interactive force-directed graph where nodes are thoughts and edges represent semantic similarity (cosine distance below a threshold). Built with a lightweight D3.js renderer. Clicking a node opens the thought detail drawer. Provides an at-a-glance map of how ideas cluster.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "complex",
+  "dependencies": [
+    "open-brain-db-schema",
+    "open-brain-dashboard"
+  ],
+  "createdAt": "2026-03-02T19:00:34.481Z",
+  "updatedAt": "2026-03-02T19:00:34.481Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "email-compose",
+  "category": "Email",
+  "title": "Email Compose & Reply via Microsoft Graph / Gmail API",
+  "description": "Add compose and reply functionality to the email client using the Microsoft Graph sendMail endpoint and Gmail API messages.send. Includes a rich-text editor (using existing @uiw/react-md-editor or a simple textarea), recipient autocomplete from previous senders, and CC/BCC fields.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "complex",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.546Z",
+  "updatedAt": "2026-03-02T18:35:40.546Z"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "open-brain-daily-digest-email",
+  "category": "Open Brain",
+  "title": "Open Brain Daily Digest Email",
+  "description": "A scheduled daily email (delivered via Resend) that surfaces 5 semantically random but contextually relevant thoughts from the Open Brain, formatted as a reflection prompt. Users configure delivery time and opt-in/out from the Settings page. Uses pgvector random sampling weighted by recency.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [
+    "open-brain-db-schema"
+  ],
+  "createdAt": "2026-03-02T19:00:34.499Z",
+  "updatedAt": "2026-03-02T19:00:34.499Z"
+}

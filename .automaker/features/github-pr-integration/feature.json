@@ -1,0 +1,12 @@
+{
+  "id": "github-pr-integration",
+  "category": "Integrations",
+  "title": "GitHub Pull Request Ingestion & Card Linking",
+  "description": "Connect a GitHub personal access token to ingest PRs from configured repositories into a github_prs table. Each PR can be linked to a Kanban card. Card status automatically updates when the linked PR is merged or closed via GitHub webhook events.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "complex",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.514Z",
+  "updatedAt": "2026-03-02T19:00:34.514Z"
+}

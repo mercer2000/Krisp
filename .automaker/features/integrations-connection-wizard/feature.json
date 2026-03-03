@@ -1,0 +1,12 @@
+{
+  "id": "integrations-connection-wizard",
+  "category": "Integrations",
+  "title": "Step-by-Step Integration Connection Wizard",
+  "description": "Replace the raw credentials form in the admin integrations panel with a guided wizard for each integration (Microsoft 365, Gmail, Zoom, Slack). Each wizard walks through the OAuth flow or credential entry in clearly labeled steps with inline validation and troubleshooting hints for common errors.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.445Z",
+  "updatedAt": "2026-03-02T19:21:47.445Z"
+}

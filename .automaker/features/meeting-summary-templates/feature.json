@@ -1,0 +1,12 @@
+{
+  "id": "meeting-summary-templates",
+  "category": "AI",
+  "title": "AI Meeting Summary with Customizable Templates",
+  "description": "Auto-generate structured meeting summaries using Claude with user-selectable templates (standup, retrospective, client call, 1:1, brainstorm). Each template defines the output sections and tone. Summaries are stored per meeting and displayed in a dedicated Summary tab in the detail drawer.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.486Z",
+  "updatedAt": "2026-03-02T18:35:40.486Z"
+}

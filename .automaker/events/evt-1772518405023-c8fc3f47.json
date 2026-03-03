@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772518405023-c8fc3f47",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-03T06:13:25.023Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "open-brain-weekly-review",
+  "featureName": "Open Brain Weekly Review & Synthesis",
+  "passes": true
+}

@@ -1,0 +1,12 @@
+{
+  "id": "kanban-card-templates",
+  "category": "Kanban",
+  "title": "Card Templates for Repeatable Workflows",
+  "description": "Allow users to save any card as a reusable template capturing its title pattern, description, checklist, priority, and tags. When creating a new card, users can pick from the template library to pre-populate fields. Templates are stored per user and can be edited or deleted from a dedicated management panel.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:46.958Z",
+  "updatedAt": "2026-03-02T19:21:46.958Z"
+}

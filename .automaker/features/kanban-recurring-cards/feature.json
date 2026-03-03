@@ -1,0 +1,12 @@
+{
+  "id": "kanban-recurring-cards",
+  "category": "Kanban",
+  "title": "Recurring Card Automation",
+  "description": "Allow cards to be marked as recurring (daily/weekly/monthly/custom interval). A background cron job automatically creates the next card instance when the current one is completed or reaches its due date, pre-populating from a card template. Recurring cards display a recurrence icon badge.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.497Z",
+  "updatedAt": "2026-03-02T18:35:40.498Z"
+}

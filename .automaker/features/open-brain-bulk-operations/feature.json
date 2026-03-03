@@ -1,0 +1,15 @@
+{
+  "id": "open-brain-bulk-operations",
+  "category": "Open Brain",
+  "title": "Bulk Thought Management (Delete, Tag, Archive)",
+  "description": "Add checkbox-based multi-select to the Open Brain thought list, enabling batch delete, batch tag assignment, and batch archive operations. Includes a confirmation modal for destructive actions and optimistic UI updates via React Query.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [
+    "open-brain-db-schema",
+    "open-brain-dashboard"
+  ],
+  "createdAt": "2026-03-02T19:00:34.368Z",
+  "updatedAt": "2026-03-02T19:00:34.368Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "email-thread-grouping",
+  "category": "Email",
+  "title": "Email Thread Grouping & Conversation View",
+  "description": "Group emails by thread ID (using existing threadId column) and display them as expandable conversation threads in the inbox. Thread rows show participant count, latest message preview, and unread indicator. Clicking a thread expands all messages in chronological order in a conversation panel.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.530Z",
+  "updatedAt": "2026-03-02T18:35:40.530Z"
+}

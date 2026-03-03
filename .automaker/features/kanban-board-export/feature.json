@@ -1,0 +1,12 @@
+{
+  "id": "kanban-board-export",
+  "category": "Kanban",
+  "title": "Kanban Board Export to JSON & CSV",
+  "description": "Add an Export button in the board header offering JSON (full board with columns, cards, tags, metadata) and CSV (flat card list with all fields) download formats. The export respects active filters, so users can export filtered subsets. Useful for reporting, backups, or migrating to other tools.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "simple",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.476Z",
+  "updatedAt": "2026-03-02T19:21:47.476Z"
+}

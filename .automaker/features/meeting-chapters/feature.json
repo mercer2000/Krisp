@@ -1,0 +1,12 @@
+{
+  "id": "meeting-chapters",
+  "category": "Meetings",
+  "title": "Transcript Chapter Navigation",
+  "description": "Use Claude to automatically segment long meeting transcripts into named chapters based on topic shifts, storing start/end indices for each chapter. The meeting detail drawer renders a clickable chapter outline in a sidebar, jumping to the relevant transcript section when selected.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.007Z",
+  "updatedAt": "2026-03-02T19:21:47.007Z"
+}

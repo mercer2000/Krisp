@@ -1,0 +1,12 @@
+{
+  "id": "dark-mode-improvements",
+  "category": "UI",
+  "title": "Dark Mode Polish & Color System Tokens",
+  "description": "Audit and fix inconsistent dark mode styling across all pages using Tailwind CSS 4 theme variables. Define a semantic color token system (surface, muted, accent, destructive) applied consistently via CSS variables. Ensure all third-party components (react-md-editor, date picker) render correctly in dark mode.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "simple",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.631Z",
+  "updatedAt": "2026-03-02T18:35:40.631Z"
+}

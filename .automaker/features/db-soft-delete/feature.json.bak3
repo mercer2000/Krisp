@@ -1,0 +1,12 @@
+{
+  "id": "db-soft-delete",
+  "category": "Database",
+  "title": "Soft Delete with Trash & Recovery",
+  "description": "Add a deleted_at timestamp column to cards, emails, thoughts, and meetings to enable soft deletion. Deleted items move to a /trash view where they are retained for 30 days before permanent purge. Users can restore any item with one click or permanently delete it immediately.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.272Z",
+  "updatedAt": "2026-03-02T19:21:47.272Z"
+}

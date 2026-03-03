@@ -1,0 +1,12 @@
+{
+  "id": "open-brain-db-schema",
+  "category": "Database",
+  "title": "Open Brain Thoughts Database Schema & Migration",
+  "description": "Add a Drizzle-managed 'thoughts' table with columns for content, embedding (pgvector 1536), type (decision/insight/person/meeting-debrief/ai-save), extracted metadata (JSONB), source (slack/mcp/web), and timestamps. Create the corresponding Drizzle migration and index on the embedding column for fast ANN search.",
+  "status": "backlog",
+  "priority": 1,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.420Z",
+  "updatedAt": "2026-03-02T18:35:40.420Z"
+}

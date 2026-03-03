@@ -1,0 +1,14 @@
+{
+  "id": "meeting-follow-up-email",
+  "category": "Meeting Intelligence",
+  "title": "AI-Generated Meeting Follow-Up Email Draft",
+  "description": "One-click button in the meeting detail drawer that calls Claude to generate a follow-up email draft summarizing key decisions, action items, and next steps. The draft is editable in a modal before being sent via the configured email provider (Graph or Gmail).",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [
+    "email-compose"
+  ],
+  "createdAt": "2026-03-02T19:00:34.387Z",
+  "updatedAt": "2026-03-02T19:00:34.387Z"
+}

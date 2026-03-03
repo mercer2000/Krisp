@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772426804017-4a261362",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-02T04:46:44.017Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772426033337-jqx5ylorfpj",
+  "featureName": "Improve Kanban boards",
+  "passes": true
+}

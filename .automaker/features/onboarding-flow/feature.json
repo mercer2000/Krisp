@@ -1,0 +1,12 @@
+{
+  "id": "onboarding-flow",
+  "category": "UI",
+  "title": "New User Onboarding Wizard",
+  "description": "Step-by-step onboarding wizard shown on first login that guides users through: creating their first Kanban board, connecting an email integration, configuring the Krisp webhook, setting up Open Brain capture, and installing the MCP server. Tracks completion steps in the user record and shows progress in a persistent onboarding checklist widget.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.627Z",
+  "updatedAt": "2026-03-02T18:35:40.627Z"
+}

@@ -101,7 +101,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    await db.delete(cards).where(eq(cards.id, id));
+    await db
+      .update(cards)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(eq(cards.id, id));
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {

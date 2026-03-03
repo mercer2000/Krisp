@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772433431591-cc02cb7e",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-02T06:37:11.591Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772326547383-quv78pler",
+  "featureName": "Meeting Sentiment & Engagement Analytics",
+  "passes": true
+}

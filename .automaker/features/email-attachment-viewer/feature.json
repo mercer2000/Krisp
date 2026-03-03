@@ -1,0 +1,12 @@
+{
+  "id": "email-attachment-viewer",
+  "category": "Email",
+  "title": "Email Attachment Preview & Download",
+  "description": "Fetch attachment metadata stored in the email payload JSONB and display a list of attachments in the email detail view with file name, size, and type icons. PDF and image attachments render an inline preview. Non-previewable files offer a download button that fetches the binary via the originating API.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.525Z",
+  "updatedAt": "2026-03-02T19:00:34.525Z"
+}

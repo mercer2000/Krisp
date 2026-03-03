@@ -1,0 +1,12 @@
+{
+  "id": "mobile-responsive-layout",
+  "category": "UI",
+  "title": "Mobile-Responsive Layout for Core Pages",
+  "description": "Refactor the AppShell side navigation to a bottom tab bar on mobile viewports, make the Kanban board horizontally scrollable on small screens, and optimize the meeting detail drawer to be full-screen on mobile. Ensures all core workflows are usable on phones and tablets without horizontal overflow.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.635Z",
+  "updatedAt": "2026-03-02T18:35:40.635Z"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "ai-context-capsule",
+  "category": "AI",
+  "title": "AI Context Capsule — Shareable Session Briefing",
+  "description": "Generate a compressed, shareable 'context capsule' — a structured prompt containing the user's current sprint cards, recent meetings, and relevant Open Brain thoughts — that can be pasted directly into any AI chat session. Eliminates manual context-copying when switching between AI tools.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [
+    "open-brain-db-schema"
+  ],
+  "createdAt": "2026-03-02T19:21:47.226Z",
+  "updatedAt": "2026-03-02T19:21:47.226Z"
+}

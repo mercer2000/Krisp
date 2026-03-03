@@ -1,0 +1,12 @@
+{
+  "id": "multi-board-overview",
+  "category": "Kanban",
+  "title": "Multi-Board Overview Dashboard",
+  "description": "A /boards/overview page showing all boards at a glance with card count, overdue card count, and completion percentage per board displayed as summary cards. Includes a cross-board 'My Assigned Cards' section showing all cards across every board that are past due or due within 3 days.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.582Z",
+  "updatedAt": "2026-03-02T18:35:40.582Z"
+}

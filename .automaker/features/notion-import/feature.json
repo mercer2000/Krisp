@@ -1,0 +1,14 @@
+{
+  "id": "notion-import",
+  "category": "Integrations",
+  "title": "Notion Page Import as Kanban Cards or Thoughts",
+  "description": "Connect a Notion integration token and import selected Notion database entries as Kanban cards or Open Brain thoughts. Maps Notion properties (title, status, priority, due date) to corresponding Krisp fields. Runs as a one-time or scheduled sync configurable in the admin panel.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "complex",
+  "dependencies": [
+    "open-brain-db-schema"
+  ],
+  "createdAt": "2026-03-02T19:00:34.509Z",
+  "updatedAt": "2026-03-02T19:00:34.509Z"
+}

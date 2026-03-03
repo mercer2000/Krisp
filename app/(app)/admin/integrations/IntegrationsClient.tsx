@@ -93,6 +93,26 @@ const TABS = [
     color: "#EA4335",
   },
   {
+    id: "zoom" as const,
+    label: "Zoom Chat",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M4 3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h8l4 4v-4h4a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H4z" />
+      </svg>
+    ),
+    color: "#2D8CFF",
+  },
+  {
+    id: "outlook" as const,
+    label: "Outlook.com",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+      </svg>
+    ),
+    color: "#0078D4",
+  },
+  {
     id: "crisp" as const,
     label: "Krisp Meetings",
     icon: (
@@ -1145,6 +1165,506 @@ function GmailWatchManager() {
   );
 }
 
+function ZoomIntegrationManager() {
+  const [status, setStatus] = useState<{
+    connected: boolean;
+    zoomAccountId?: string;
+    tokenExpiry?: string;
+    isExpired?: boolean;
+    createdAt?: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const fetchStatus = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch("/api/zoom/oauth");
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      setStatus(data);
+    } catch {
+      setError("Failed to load Zoom connection status");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStatus();
+  }, [fetchStatus]);
+
+  // Check for OAuth callback result in URL params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("zoom_connected") === "true") {
+      setSuccess("Zoom connected successfully!");
+      setTimeout(() => setSuccess(null), 5000);
+      fetchStatus();
+      // Clean up URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete("zoom_connected");
+      window.history.replaceState({}, "", url.toString());
+    }
+    if (params.get("zoom_error")) {
+      setError(`Zoom connection failed: ${params.get("zoom_error")}`);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("zoom_error");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [fetchStatus]);
+
+  const handleConnect = () => {
+    const clientId = process.env.NEXT_PUBLIC_ZOOM_CLIENT_ID;
+    if (!clientId) {
+      setError("NEXT_PUBLIC_ZOOM_CLIENT_ID is not configured");
+      return;
+    }
+    const redirectUri = `${window.location.origin}/api/zoom/oauth/callback`;
+    const authUrl = `https://zoom.us/oauth/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    window.location.href = authUrl;
+  };
+
+  const handleDisconnect = async () => {
+    setActionLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch("/api/zoom/oauth", { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to disconnect");
+      setSuccess("Zoom disconnected");
+      setTimeout(() => setSuccess(null), 5000);
+      await fetchStatus();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to disconnect Zoom"
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
+        Connection Status
+      </h3>
+      <p className="text-sm text-[var(--muted-foreground)] mb-3">
+        Connect your Zoom account to start capturing chat messages in real-time
+        via Zoom webhooks.
+      </p>
+
+      {error && (
+        <div className="mb-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-600">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="mb-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-sm text-green-600">
+          {success}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="p-4 rounded-lg bg-[var(--secondary)] border border-[var(--border)] text-sm text-[var(--muted-foreground)]">
+          Loading...
+        </div>
+      ) : status?.connected ? (
+        <div className="space-y-4">
+          <div className="p-4 rounded-lg border border-[var(--border)] bg-[var(--secondary)]">
+            <div className="flex items-center gap-2 mb-3">
+              <div
+                className={`w-2.5 h-2.5 rounded-full ${
+                  status.isExpired ? "bg-amber-500" : "bg-green-500"
+                }`}
+              />
+              <span className="text-sm font-medium text-[var(--foreground)]">
+                {status.isExpired
+                  ? "Token Expired (will auto-refresh)"
+                  : "Connected"}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              {status.zoomAccountId && (
+                <div>
+                  <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                    Account ID
+                  </span>
+                  <p className="text-[var(--foreground)] mt-0.5 font-mono text-xs">
+                    {status.zoomAccountId}
+                  </p>
+                </div>
+              )}
+              <div>
+                <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                  Connected Since
+                </span>
+                <p className="text-[var(--foreground)] mt-0.5">
+                  {status.createdAt
+                    ? new Date(status.createdAt).toLocaleString()
+                    : "—"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleDisconnect}
+            disabled={actionLoading}
+            className="px-4 py-2 text-sm font-medium rounded-md border border-red-500/30 text-red-600 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+          >
+            {actionLoading ? "Disconnecting..." : "Disconnect Zoom"}
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="p-4 rounded-lg border border-[var(--border)] bg-[var(--secondary)]">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-gray-400" />
+              <span className="text-sm font-medium text-[var(--muted-foreground)]">
+                Not Connected
+              </span>
+            </div>
+            <p className="text-sm text-[var(--muted-foreground)]">
+              Connect your Zoom account to start ingesting chat messages. You
+              will be redirected to Zoom to authorize the app.
+            </p>
+          </div>
+
+          <button
+            onClick={handleConnect}
+            className="px-4 py-2 text-sm font-medium rounded-md bg-[#2D8CFF] text-white hover:bg-[#2681eb] transition-colors"
+          >
+            Connect Zoom Account
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface BoardOption {
+  id: string;
+  title: string;
+}
+
+function DefaultBoardSelector() {
+  const [boards, setBoards] = useState<BoardOption[]>([]);
+  const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/v1/boards").then((r) => (r.ok ? r.json() : [])),
+      fetch("/api/settings/default-board").then((r) => (r.ok ? r.json() : { defaultBoardId: null })),
+    ])
+      .then(([boardsData, settingsData]) => {
+        setBoards(Array.isArray(boardsData) ? boardsData : []);
+        setSelectedBoardId(settingsData.defaultBoardId ?? null);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSave = async (boardId: string | null) => {
+    setSelectedBoardId(boardId);
+    setSaving(true);
+    setSuccess(null);
+    try {
+      const res = await fetch("/api/settings/default-board", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ boardId }),
+      });
+      if (res.ok) {
+        setSuccess("Default board updated");
+        setTimeout(() => setSuccess(null), 3000);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="animate-pulse">
+        <div className="h-4 bg-[var(--secondary)] rounded w-1/3 mb-2" />
+        <div className="h-10 bg-[var(--secondary)] rounded w-full" />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
+        Default Kanban Board
+      </h3>
+      <p className="text-sm text-[var(--muted-foreground)] mb-3">
+        Action items extracted from meetings will automatically create cards on this board
+        when the assignee matches your account. Select a board to enable auto-assignment.
+      </p>
+      <div className="flex items-center gap-3">
+        <select
+          value={selectedBoardId || ""}
+          onChange={(e) => handleSave(e.target.value || null)}
+          disabled={saving}
+          className="flex-1 max-w-sm px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] disabled:opacity-50"
+        >
+          <option value="">No board (auto-assignment disabled)</option>
+          {boards.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.title}
+            </option>
+          ))}
+        </select>
+        {saving && (
+          <svg className="animate-spin h-4 w-4 text-[var(--muted-foreground)]" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+        )}
+        {success && (
+          <span className="text-xs text-green-600 font-medium">{success}</span>
+        )}
+      </div>
+      {boards.length === 0 && (
+        <p className="text-xs text-[var(--muted-foreground)] mt-2">
+          No Kanban boards found. Create a board first to enable auto-assignment.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function OutlookIntegrationManager() {
+  const [status, setStatus] = useState<{
+    connected: boolean;
+    outlookEmail?: string;
+    tokenExpiry?: string;
+    isExpired?: boolean;
+    lastSyncAt?: string | null;
+    createdAt?: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [syncResult, setSyncResult] = useState<{
+    total: number;
+    inserted: number;
+    skipped: number;
+  } | null>(null);
+
+  const fetchStatus = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch("/api/outlook/oauth");
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      setStatus(data);
+    } catch {
+      setError("Failed to load Outlook connection status");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStatus();
+  }, [fetchStatus]);
+
+  // Check for OAuth callback result in URL params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("outlook_connected") === "true") {
+      setSuccess("Outlook connected successfully!");
+      setTimeout(() => setSuccess(null), 5000);
+      fetchStatus();
+      const url = new URL(window.location.href);
+      url.searchParams.delete("outlook_connected");
+      window.history.replaceState({}, "", url.toString());
+    }
+    if (params.get("outlook_error")) {
+      setError(`Outlook connection failed: ${params.get("outlook_error")}`);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("outlook_error");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [fetchStatus]);
+
+  const handleConnect = () => {
+    window.location.href = "/api/outlook/oauth?action=connect";
+  };
+
+  const handleDisconnect = async () => {
+    setActionLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch("/api/outlook/oauth", { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to disconnect");
+      setSuccess("Outlook disconnected");
+      setTimeout(() => setSuccess(null), 5000);
+      await fetchStatus();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to disconnect Outlook"
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSync = async () => {
+    setSyncing(true);
+    setError(null);
+    setSyncResult(null);
+    try {
+      const res = await fetch("/api/outlook/sync", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Sync failed");
+      setSyncResult({ total: data.total, inserted: data.inserted, skipped: data.skipped });
+      setSuccess(`Sync complete: ${data.inserted} new emails imported`);
+      setTimeout(() => setSuccess(null), 5000);
+      await fetchStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
+        Connection Status
+      </h3>
+      <p className="text-sm text-[var(--muted-foreground)] mb-3">
+        Connect your personal Microsoft account (Outlook.com, Hotmail, Live) to
+        read emails using delegated OAuth permissions.
+      </p>
+
+      {error && (
+        <div className="mb-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-600">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="mb-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-sm text-green-600">
+          {success}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="p-4 rounded-lg bg-[var(--secondary)] border border-[var(--border)] text-sm text-[var(--muted-foreground)]">
+          Loading...
+        </div>
+      ) : status?.connected ? (
+        <div className="space-y-4">
+          <div className="p-4 rounded-lg border border-[var(--border)] bg-[var(--secondary)]">
+            <div className="flex items-center gap-2 mb-3">
+              <div
+                className={`w-2.5 h-2.5 rounded-full ${
+                  status.isExpired ? "bg-amber-500" : "bg-green-500"
+                }`}
+              />
+              <span className="text-sm font-medium text-[var(--foreground)]">
+                {status.isExpired
+                  ? "Token Expired (will auto-refresh)"
+                  : "Connected"}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                  Email
+                </span>
+                <p className="text-[var(--foreground)] mt-0.5">
+                  {status.outlookEmail}
+                </p>
+              </div>
+              <div>
+                <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                  Connected Since
+                </span>
+                <p className="text-[var(--foreground)] mt-0.5">
+                  {status.createdAt
+                    ? new Date(status.createdAt).toLocaleString()
+                    : "—"}
+                </p>
+              </div>
+              <div>
+                <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                  Last Sync
+                </span>
+                <p className="text-[var(--foreground)] mt-0.5">
+                  {status.lastSyncAt
+                    ? new Date(status.lastSyncAt).toLocaleString()
+                    : "Never"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {syncResult && (
+            <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-[var(--foreground)]">
+              Fetched {syncResult.total} messages: {syncResult.inserted} new, {syncResult.skipped} already existed.
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {syncing ? "Syncing..." : "Sync Emails Now"}
+            </button>
+            <button
+              onClick={handleDisconnect}
+              disabled={actionLoading}
+              className="px-4 py-2 text-sm font-medium rounded-md border border-red-500/30 text-red-600 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+            >
+              {actionLoading ? "Disconnecting..." : "Disconnect"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="p-4 rounded-lg border border-[var(--border)] bg-[var(--secondary)]">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-gray-400" />
+              <span className="text-sm font-medium text-[var(--muted-foreground)]">
+                Not Connected
+              </span>
+            </div>
+            <p className="text-sm text-[var(--muted-foreground)]">
+              Connect your Outlook.com account to start importing emails. You
+              will be redirected to Microsoft to authorize the app.
+            </p>
+          </div>
+
+          <button
+            onClick={handleConnect}
+            className="px-4 py-2 text-sm font-medium rounded-md bg-[#0078D4] text-white hover:bg-[#106ebe] transition-colors"
+          >
+            Connect Outlook Account
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function IntegrationsClient({ tenantId }: { tenantId: string }) {
   const [activeTab, setActiveTab] = useState<TabId>("microsoft365");
   const [graphCredentials, setGraphCredentials] = useState<GraphCredential[]>([]);
@@ -1152,6 +1672,7 @@ export function IntegrationsClient({ tenantId }: { tenantId: string }) {
   const webhookUrl = `${origin}/api/webhooks/email/microsoft365/${tenantId}`;
   const graphWebhookUrl = `${origin}/api/webhooks/email/graph/${tenantId}`;
   const gmailWebhookUrl = `${origin}/api/webhooks/email/gmail/${tenantId}`;
+  const zoomWebhookUrl = `${origin}/api/webhooks/zoom`;
   const crispWebhookUrl = `${origin}/api/webhooks/key-points?user_id=${tenantId}`;
 
   return (
@@ -2402,6 +2923,557 @@ export function IntegrationsClient({ tenantId }: { tenantId: string }) {
             </div>
           </section>}
 
+          {/* Zoom Chat Section */}
+          {activeTab === "zoom" && <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+            <div className="px-6 py-5 border-b border-[var(--border)]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#2D8CFF] flex items-center justify-center">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                    <path d="M4 3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h8l4 4v-4h4a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H4z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                    Zoom Chat
+                  </h2>
+                  <p className="text-sm text-[var(--muted-foreground)]">
+                    Capture DMs and channel messages via Zoom webhooks
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-8">
+              {/* Description */}
+              <div>
+                <p className="text-sm text-[var(--muted-foreground)]">
+                  The Zoom Chat integration captures all direct messages and channel messages
+                  in real-time via a Zoom Marketplace OAuth app. Messages are persisted with
+                  full multi-tenant isolation and support for message edits and deletions.
+                </p>
+              </div>
+
+              {/* Prerequisites */}
+              <div className="p-5 rounded-lg border-2 border-blue-500/30 bg-blue-500/5 space-y-4">
+                <div className="flex items-center gap-2">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 16v-4" />
+                    <path d="M12 8h.01" />
+                  </svg>
+                  <h3 className="text-sm font-semibold text-[var(--foreground)]">
+                    Zoom Marketplace Setup Required
+                  </h3>
+                </div>
+                <p className="text-sm text-[var(--muted-foreground)]">
+                  Before connecting, you need to create an OAuth app in the Zoom Marketplace.
+                  Complete these steps first.
+                </p>
+
+                <ol className="space-y-4 text-sm">
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-600 flex items-center justify-center text-xs font-bold">1</span>
+                    <div>
+                      <p className="text-[var(--foreground)] font-medium">Create a Zoom OAuth App</p>
+                      <p className="text-[var(--muted-foreground)] mt-0.5">
+                        Go to the Zoom Marketplace &rarr; Develop &rarr; Build App &rarr;
+                        Select <span className="font-semibold text-[var(--foreground)]">User-managed</span> OAuth app type.
+                      </p>
+                    </div>
+                  </li>
+
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-600 flex items-center justify-center text-xs font-bold">2</span>
+                    <div>
+                      <p className="text-[var(--foreground)] font-medium">Configure OAuth Scopes</p>
+                      <p className="text-[var(--muted-foreground)] mt-0.5">
+                        Add the following scopes:
+                      </p>
+                      <div className="mt-2 space-y-1">
+                        <div className="p-2 rounded-md bg-[var(--secondary)] border border-[var(--border)]">
+                          <code className="text-xs text-[var(--foreground)] font-semibold">chat_message:read</code>
+                          <span className="text-xs text-[var(--muted-foreground)] ml-2">&mdash; Read chat messages</span>
+                        </div>
+                        <div className="p-2 rounded-md bg-[var(--secondary)] border border-[var(--border)]">
+                          <code className="text-xs text-[var(--foreground)] font-semibold">chat_channel:read</code>
+                          <span className="text-xs text-[var(--muted-foreground)] ml-2">&mdash; Read chat channels</span>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-600 flex items-center justify-center text-xs font-bold">3</span>
+                    <div>
+                      <p className="text-[var(--foreground)] font-medium">Configure Event Subscriptions</p>
+                      <p className="text-[var(--muted-foreground)] mt-0.5">
+                        In the app&apos;s Feature &rarr; Event Subscriptions, add a subscription
+                        with the following events and set the Event notification endpoint URL:
+                      </p>
+                      <div className="mt-2 space-y-1">
+                        <div className="p-2 rounded-md bg-[var(--secondary)] border border-[var(--border)]">
+                          <code className="text-xs text-[var(--foreground)] font-semibold">chat_message.sent</code>
+                          <span className="text-xs text-[var(--muted-foreground)] ml-2">&mdash; New message sent</span>
+                        </div>
+                        <div className="p-2 rounded-md bg-[var(--secondary)] border border-[var(--border)]">
+                          <code className="text-xs text-[var(--foreground)] font-semibold">chat_message.updated</code>
+                          <span className="text-xs text-[var(--muted-foreground)] ml-2">&mdash; Message edited</span>
+                        </div>
+                        <div className="p-2 rounded-md bg-[var(--secondary)] border border-[var(--border)]">
+                          <code className="text-xs text-[var(--foreground)] font-semibold">chat_message.deleted</code>
+                          <span className="text-xs text-[var(--muted-foreground)] ml-2">&mdash; Message deleted</span>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-600 flex items-center justify-center text-xs font-bold">4</span>
+                    <div>
+                      <p className="text-[var(--foreground)] font-medium">Set Redirect &amp; Webhook URLs</p>
+                      <p className="text-[var(--muted-foreground)] mt-0.5">
+                        Set the OAuth redirect URL and the event notification endpoint URL in your
+                        Zoom app configuration:
+                      </p>
+                      <div className="mt-2 space-y-2">
+                        <div>
+                          <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                            OAuth Redirect URL
+                          </span>
+                          <div className="mt-1 flex items-center p-2 rounded-md bg-[var(--secondary)] border border-[var(--border)]">
+                            <code className="flex-1 text-sm text-[var(--foreground)] break-all">
+                              {`${typeof window !== "undefined" ? window.location.origin : "https://your-domain.com"}/api/zoom/oauth/callback`}
+                            </code>
+                            <CopyButton text={`${typeof window !== "undefined" ? window.location.origin : "https://your-domain.com"}/api/zoom/oauth/callback`} />
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                            Event Notification Endpoint URL
+                          </span>
+                          <div className="mt-1 flex items-center p-2 rounded-md bg-[var(--secondary)] border border-[var(--border)]">
+                            <code className="flex-1 text-sm text-[var(--foreground)] break-all">
+                              {zoomWebhookUrl}
+                            </code>
+                            <CopyButton text={zoomWebhookUrl} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-600 flex items-center justify-center text-xs font-bold">5</span>
+                    <div>
+                      <p className="text-[var(--foreground)] font-medium">Copy App Credentials</p>
+                      <p className="text-[var(--muted-foreground)] mt-0.5">
+                        Copy the <span className="font-semibold text-[var(--foreground)]">Client ID</span>,{" "}
+                        <span className="font-semibold text-[var(--foreground)]">Client Secret</span>, and{" "}
+                        <span className="font-semibold text-[var(--foreground)]">Secret Token</span> (from webhook settings)
+                        into your server&apos;s environment variables:
+                      </p>
+                      <div className="mt-2 p-2.5 rounded-md bg-[var(--secondary)] border border-[var(--border)]">
+                        <code className="text-xs text-[var(--foreground)]">
+                          ZOOM_CLIENT_ID=your_client_id<br />
+                          ZOOM_CLIENT_SECRET=your_client_secret<br />
+                          ZOOM_WEBHOOK_SECRET_TOKEN=your_secret_token<br />
+                          NEXT_PUBLIC_ZOOM_CLIENT_ID=your_client_id
+                        </code>
+                      </div>
+                    </div>
+                  </li>
+                </ol>
+              </div>
+
+              {/* OAuth Connection */}
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-4">
+                  Connect Your Account
+                </h3>
+                <ZoomIntegrationManager />
+              </div>
+
+              {/* Webhook URL */}
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
+                  Webhook Endpoint
+                </h3>
+                <p className="text-sm text-[var(--muted-foreground)] mb-3">
+                  This is the shared webhook endpoint for Zoom events. Zoom identifies the
+                  tenant via the account_id in the webhook payload (matched to the OAuth connection).
+                </p>
+                <div className="flex items-center p-3 rounded-lg bg-[var(--secondary)] border border-[var(--border)]">
+                  <code className="flex-1 text-sm text-[var(--foreground)] break-all">
+                    {zoomWebhookUrl}
+                  </code>
+                  <CopyButton text={zoomWebhookUrl} />
+                </div>
+              </div>
+
+              {/* Supported Events */}
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">
+                  Supported Events
+                </h3>
+                <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-[var(--secondary)]">
+                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
+                          Event
+                        </th>
+                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
+                          Description
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">
+                            chat_message.sent
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          New DM or channel message is sent &mdash; stored as a new record
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">
+                            chat_message.updated
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Message is edited &mdash; existing record is updated with new content
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">
+                            chat_message.deleted
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Message is deleted &mdash; existing record is soft-deleted
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Response Codes */}
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">
+                  Webhook Response Codes
+                </h3>
+                <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-[var(--secondary)]">
+                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
+                          Code
+                        </th>
+                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
+                          Meaning
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-green-500/10 text-green-600 text-xs font-semibold">
+                            200
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Duplicate message, URL validation, or unhandled event type (safe to ignore)
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-green-500/10 text-green-600 text-xs font-semibold">
+                            201
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Chat message received and stored successfully
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 text-xs font-semibold">
+                            400
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Validation error &mdash; invalid payload structure
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-600 text-xs font-semibold">
+                            403
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Webhook signature verification failed
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3">
+                          <code className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-600 text-xs font-semibold">
+                            500
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Internal server error &mdash; Zoom will retry with exponential backoff
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Important Notes */}
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">
+                  Important Notes
+                </h3>
+                <div className="space-y-3">
+                  <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-[var(--foreground)]">
+                    <span className="font-medium">Token Refresh:</span> Zoom access tokens expire
+                    after 1 hour. The system automatically refreshes tokens using the stored refresh
+                    token when needed.
+                  </div>
+                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-[var(--foreground)]">
+                    <span className="font-medium">Multi-tenant Isolation:</span> Zoom identifies
+                    your account via the <code className="px-1 py-0.5 rounded bg-[var(--secondary)] text-xs">account_id</code> in
+                    webhook payloads. Each webhook event is routed to the correct tenant automatically.
+                  </div>
+                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-[var(--foreground)]">
+                    <span className="font-medium">Message Types:</span> Both direct messages (DMs)
+                    and channel messages are captured and tagged with their type for easy filtering.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>}
+
+          {/* Outlook.com Section */}
+          {activeTab === "outlook" && <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+            <div className="px-6 py-5 border-b border-[var(--border)]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#0078D4] flex items-center justify-center">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                    Outlook.com (Personal)
+                  </h2>
+                  <p className="text-sm text-[var(--muted-foreground)]">
+                    Read emails from personal Microsoft accounts via OAuth
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-8">
+              {/* Description */}
+              <div>
+                <p className="text-sm text-[var(--muted-foreground)]">
+                  This integration connects to personal Microsoft accounts (Outlook.com, Hotmail, Live.com)
+                  using the Microsoft identity platform v2.0 with delegated OAuth permissions. Unlike the
+                  Graph API integration (which uses app-only auth for organizational mailboxes), this uses
+                  the authorization code flow where you sign in and consent to share your mailbox.
+                </p>
+              </div>
+
+              {/* Azure Portal Requirements */}
+              <div className="p-5 rounded-lg border-2 border-blue-500/30 bg-blue-500/5 space-y-4">
+                <div className="flex items-center gap-2">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 16v-4" />
+                    <path d="M12 8h.01" />
+                  </svg>
+                  <h3 className="text-sm font-semibold text-[var(--foreground)]">
+                    Azure App Registration Required
+                  </h3>
+                </div>
+                <p className="text-sm text-[var(--muted-foreground)]">
+                  Before connecting, your server administrator needs to register an app in Azure Portal
+                  that supports personal Microsoft accounts.
+                </p>
+
+                <ol className="space-y-4 text-sm">
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-600 flex items-center justify-center text-xs font-bold">1</span>
+                    <div>
+                      <p className="text-[var(--foreground)] font-medium">Create an App Registration</p>
+                      <p className="text-[var(--muted-foreground)] mt-0.5">
+                        Azure Portal &rarr; Microsoft Entra ID &rarr; App registrations &rarr; New registration.
+                        Under Supported account types, select{" "}
+                        <span className="font-semibold text-[var(--foreground)]">&quot;Accounts in any organizational directory and personal Microsoft accounts&quot;</span>.
+                      </p>
+                    </div>
+                  </li>
+
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-600 flex items-center justify-center text-xs font-bold">2</span>
+                    <div>
+                      <p className="text-[var(--foreground)] font-medium">Configure Redirect URI</p>
+                      <p className="text-[var(--muted-foreground)] mt-0.5">
+                        Add a Web redirect URI:
+                      </p>
+                      <div className="mt-2 flex items-center p-2.5 rounded-md bg-[var(--secondary)] border border-[var(--border)]">
+                        <code className="flex-1 text-xs text-[var(--foreground)] break-all">
+                          {typeof window !== "undefined" ? window.location.origin : "https://your-domain.com"}/api/outlook/oauth/callback
+                        </code>
+                        <CopyButton text={`${typeof window !== "undefined" ? window.location.origin : "https://your-domain.com"}/api/outlook/oauth/callback`} />
+                      </div>
+                    </div>
+                  </li>
+
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-600 flex items-center justify-center text-xs font-bold">3</span>
+                    <div>
+                      <p className="text-[var(--foreground)] font-medium">Add API Permissions</p>
+                      <p className="text-[var(--muted-foreground)] mt-0.5">
+                        Add <span className="font-semibold text-[var(--foreground)]">Delegated</span> permissions (not Application):
+                      </p>
+                      <div className="mt-2 space-y-1">
+                        <div className="p-2 rounded-md bg-[var(--secondary)] border border-[var(--border)]">
+                          <code className="text-xs text-[var(--foreground)] font-semibold">Mail.Read</code>
+                          <span className="text-xs text-[var(--muted-foreground)] ml-2">&mdash; Read user mail</span>
+                        </div>
+                        <div className="p-2 rounded-md bg-[var(--secondary)] border border-[var(--border)]">
+                          <code className="text-xs text-[var(--foreground)] font-semibold">User.Read</code>
+                          <span className="text-xs text-[var(--muted-foreground)] ml-2">&mdash; Read user profile (for email address)</span>
+                        </div>
+                        <div className="p-2 rounded-md bg-[var(--secondary)] border border-[var(--border)]">
+                          <code className="text-xs text-[var(--foreground)] font-semibold">offline_access</code>
+                          <span className="text-xs text-[var(--muted-foreground)] ml-2">&mdash; Maintain access via refresh token</span>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-600 flex items-center justify-center text-xs font-bold">4</span>
+                    <div>
+                      <p className="text-[var(--foreground)] font-medium">Create a Client Secret</p>
+                      <p className="text-[var(--muted-foreground)] mt-0.5">
+                        In Certificates &amp; secrets, create a new client secret and copy the Value.
+                      </p>
+                    </div>
+                  </li>
+
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-600 flex items-center justify-center text-xs font-bold">5</span>
+                    <div>
+                      <p className="text-[var(--foreground)] font-medium">Set Server Environment Variables</p>
+                      <p className="text-[var(--muted-foreground)] mt-0.5">
+                        Add these to your server&apos;s environment:
+                      </p>
+                      <div className="mt-2 p-2.5 rounded-md bg-[var(--secondary)] border border-[var(--border)]">
+                        <code className="text-xs text-[var(--foreground)]">
+                          OUTLOOK_CLIENT_ID=your_application_client_id<br />
+                          OUTLOOK_CLIENT_SECRET=your_client_secret_value
+                        </code>
+                      </div>
+                    </div>
+                  </li>
+                </ol>
+              </div>
+
+              {/* OAuth Connection */}
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-4">
+                  Connect Your Account
+                </h3>
+                <OutlookIntegrationManager />
+              </div>
+
+              {/* How It Works */}
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">
+                  How It Works
+                </h3>
+                <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-[var(--secondary)]">
+                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
+                          Step
+                        </th>
+                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
+                          What Happens
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      <tr>
+                        <td className="px-4 py-3 font-medium text-[var(--foreground)]">
+                          Connect
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          You sign in with your Microsoft account and consent to share your mailbox.
+                          Tokens are stored securely.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3 font-medium text-[var(--foreground)]">
+                          Sync
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Click &quot;Sync Emails Now&quot; to pull recent inbox messages. The system
+                          deduplicates and only imports new emails.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3 font-medium text-[var(--foreground)]">
+                          Auto-refresh
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Access tokens expire after ~1 hour. The system automatically refreshes
+                          using your stored refresh token.
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Important Notes */}
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">
+                  Important Notes
+                </h3>
+                <div className="space-y-3">
+                  <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-[var(--foreground)]">
+                    <span className="font-medium">Pull-based sync:</span> Unlike the Graph API
+                    integration which uses push notifications, this integration requires manual or
+                    scheduled syncs via the &quot;Sync Emails Now&quot; button.
+                  </div>
+                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-[var(--foreground)]">
+                    <span className="font-medium">Personal accounts only:</span> This uses
+                    the <code className="px-1 py-0.5 rounded bg-[var(--secondary)] text-xs">/consumers</code> authority
+                    endpoint. For organizational (work/school) accounts, use the Graph API tab instead.
+                  </div>
+                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-[var(--foreground)]">
+                    <span className="font-medium">Rate limits:</span> Personal Microsoft accounts
+                    have more restrictive rate limits than Microsoft 365 accounts. The sync fetches
+                    up to 50 messages per request.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>}
+
           {/* Crisp Meeting Webhook Section */}
           {activeTab === "crisp" && <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
             <div className="px-6 py-5 border-b border-[var(--border)]">
@@ -2437,9 +3509,13 @@ export function IntegrationsClient({ tenantId }: { tenantId: string }) {
                   The Crisp webhook integration automatically captures meeting key points and
                   transcripts as they are generated. Once configured, Crisp will send a POST
                   request to your webhook URL after each meeting, enabling AI-powered search
-                  across all your meeting content.
+                  across all your meeting content. Action items are automatically extracted
+                  and can be assigned to your Kanban board.
                 </p>
               </div>
+
+              {/* Default Board Selection */}
+              <DefaultBoardSelector />
 
               {/* Webhook URL */}
               <div>

@@ -1,0 +1,12 @@
+{
+  "id": "action-item-recurring",
+  "category": "Action Items",
+  "title": "Recurring Action Items with Auto-Reset",
+  "description": "Allow action items to be marked as recurring (daily/weekly/monthly). A cron job resets completed recurring items back to 'open' at the configured cadence and sends a notification to the assignee. Recurrence config is stored as a JSONB field on the action_items table.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.451Z",
+  "updatedAt": "2026-03-02T19:00:34.451Z"
+}

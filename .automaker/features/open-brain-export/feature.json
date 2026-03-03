@@ -1,0 +1,14 @@
+{
+  "id": "open-brain-export",
+  "category": "Open Brain",
+  "title": "Open Brain Export to Markdown / JSON",
+  "description": "Allow users to export all captured thoughts as a structured JSON file or a flat Markdown file with YAML frontmatter per thought (type, tags, date, source). Export is triggered from the Open Brain settings panel and served as a file download from a server-rendered route.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "simple",
+  "dependencies": [
+    "open-brain-db-schema"
+  ],
+  "createdAt": "2026-03-02T19:00:34.490Z",
+  "updatedAt": "2026-03-02T19:00:34.490Z"
+}

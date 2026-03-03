@@ -1,0 +1,12 @@
+{
+  "id": "meeting-tag-system",
+  "category": "Meetings",
+  "title": "Meeting Tagging & Custom Categorization",
+  "description": "Allow users to apply custom tags to meetings (e.g., 'client', 'quarterly-review', 'technical') with a tag manager UI. Tags are stored in a meeting_tags join table and displayed as colored chips on meeting cards. Meeting list includes filter-by-tag capability.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "simple",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.474Z",
+  "updatedAt": "2026-03-02T18:35:40.474Z"
+}

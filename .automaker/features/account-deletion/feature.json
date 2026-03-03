@@ -1,0 +1,14 @@
+{
+  "id": "account-deletion",
+  "category": "Authentication",
+  "title": "Account Deletion with Cascading Data Removal",
+  "description": "Self-service account deletion flow accessible from the Settings page. Requires password confirmation, shows a summary of what will be deleted, and triggers cascade deletes across all user-scoped tables. Sends a final confirmation email via Resend and revokes active NextAuth sessions.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [
+    "user-profile-settings"
+  ],
+  "createdAt": "2026-03-02T18:35:40.578Z",
+  "updatedAt": "2026-03-02T18:35:40.578Z"
+}

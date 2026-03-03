@@ -11,6 +11,24 @@ import { useUpdateColumn, useDeleteColumn } from "@/lib/hooks/useColumns";
 import type { ColumnWithCards, Card as CardType } from "@/types";
 
 // ---------------------------------------------------------------------------
+// Status-based accent colors for column top border
+// ---------------------------------------------------------------------------
+
+const STATUS_ACCENT: Record<string, string> = {
+  "to do": "bg-blue-500",
+  "todo": "bg-blue-500",
+  "in progress": "bg-yellow-500",
+  "blocked": "bg-red-500",
+  "done": "bg-green-500",
+  "complete": "bg-green-500",
+  "completed": "bg-green-500",
+};
+
+function getAccentClass(title: string): string {
+  return STATUS_ACCENT[title.toLowerCase()] ?? "bg-slate-400";
+}
+
+// ---------------------------------------------------------------------------
 // Column Component
 // ---------------------------------------------------------------------------
 
@@ -18,13 +36,16 @@ interface ColumnProps {
   column: ColumnWithCards;
   boardId: string;
   onCardClick: (card: CardType) => void;
+  onDeleteCard?: (cardId: string) => void;
+  isOver?: boolean;
 }
 
-export function Column({ column, boardId, onCardClick }: ColumnProps) {
+export function Column({ column, boardId, onCardClick, onDeleteCard, isOver }: ColumnProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState(column.title);
   const [isAddingCard, setIsAddingCard] = useState(false);
   const [newCardTitle, setNewCardTitle] = useState("");
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const cardInputRef = useRef<HTMLInputElement>(null);
 
@@ -138,20 +159,91 @@ export function Column({ column, boardId, onCardClick }: ColumnProps) {
     .filter((c) => !c.archived)
     .sort((a, b) => a.position - b.position);
 
+  const accentClass = getAccentClass(column.title);
+
+  // Collapsed state — show minimal icon-width column
+  if (isCollapsed) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="flex w-10 shrink-0 flex-col items-center rounded-xl bg-slate-100 dark:bg-slate-800/50"
+      >
+        {/* Accent top border */}
+        <div className={`h-1 w-full rounded-t-xl ${accentClass}`} />
+
+        <button
+          onClick={() => setIsCollapsed(false)}
+          className="mt-2 p-1 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+          title={`Expand ${column.title}`}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m9 18 6-6-6-6" />
+          </svg>
+        </button>
+
+        {/* Vertical column title */}
+        <span
+          className="mt-2 text-xs font-semibold text-[var(--muted-foreground)]"
+          style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
+        >
+          {column.title}
+        </span>
+
+        {/* Card count */}
+        <span className="mt-2 rounded-full bg-[var(--muted)] px-1.5 py-0.5 text-xs font-medium text-[var(--muted-foreground)]">
+          {activeCards.length}
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex w-72 shrink-0 flex-col rounded-xl bg-slate-100 dark:bg-slate-800/50 ${
+      className={`group flex w-72 min-w-[280px] shrink-0 flex-col rounded-xl bg-slate-100 dark:bg-slate-800/50 transition-all ${
         isDragging ? "opacity-50 ring-2 ring-[var(--primary)]" : ""
-      }`}
+      } ${isOver ? "ring-2 ring-blue-400" : ""}`}
     >
-      {/* Column Header (drag handle) */}
-      <div
-        {...attributes}
-        {...listeners}
-        className="flex cursor-grab items-center gap-2 rounded-t-xl px-3 py-3 active:cursor-grabbing"
-      >
+      {/* Colored accent top border */}
+      <div className={`h-1 w-full rounded-t-xl ${accentClass} ${isOver ? "animate-pulse" : ""}`} />
+
+      {/* Column Header */}
+      <div className="flex items-center gap-1.5 px-3 py-2.5">
+        {/* Drag handle (visible on hover) */}
+        <div
+          {...attributes}
+          {...listeners}
+          className="shrink-0 cursor-grab rounded p-0.5 text-transparent transition-colors group-hover:text-[var(--muted-foreground)] hover:!text-[var(--foreground)] hover:bg-[var(--accent)] active:cursor-grabbing"
+          style={{ cursor: "grab" }}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <circle cx="9" cy="5" r="1.5" />
+            <circle cx="15" cy="5" r="1.5" />
+            <circle cx="9" cy="12" r="1.5" />
+            <circle cx="15" cy="12" r="1.5" />
+            <circle cx="9" cy="19" r="1.5" />
+            <circle cx="15" cy="19" r="1.5" />
+          </svg>
+        </div>
+
         {/* Color indicator */}
         {column.color && (
           <div
@@ -189,6 +281,31 @@ export function Column({ column, boardId, onCardClick }: ColumnProps) {
           {activeCards.length}
         </span>
 
+        {/* Collapse button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsCollapsed(true);
+          }}
+          className="shrink-0 rounded-md p-1 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
+          aria-label={`Collapse column ${column.title}`}
+          title="Collapse column"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+        </button>
+
         {/* Delete button */}
         <button
           onClick={(e) => {
@@ -216,17 +333,8 @@ export function Column({ column, boardId, onCardClick }: ColumnProps) {
         </button>
       </div>
 
-      {/* Cards area */}
-      <div className="flex min-h-[60px] flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
-        <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
-          {activeCards.map((card) => (
-            <Card key={card.id} card={card} onClick={() => onCardClick(card)} />
-          ))}
-        </SortableContext>
-      </div>
-
-      {/* Add card area */}
-      <div className="px-2 pb-2">
+      {/* Add card at TOP (below header) */}
+      <div className="px-2 pb-1">
         {isAddingCard ? (
           <div className="space-y-2">
             <input
@@ -279,6 +387,15 @@ export function Column({ column, boardId, onCardClick }: ColumnProps) {
             Add a card
           </button>
         )}
+      </div>
+
+      {/* Cards area */}
+      <div className="flex min-h-[60px] flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
+        <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
+          {activeCards.map((card) => (
+            <Card key={card.id} card={card} onClick={() => onCardClick(card)} onDelete={onDeleteCard} />
+          ))}
+        </SortableContext>
       </div>
     </div>
   );

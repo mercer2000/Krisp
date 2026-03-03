@@ -1,0 +1,15 @@
+{
+  "id": "open-brain-search-ui",
+  "category": "Open Brain",
+  "title": "Open Brain Semantic Search UI",
+  "description": "Dedicated /open-brain search page with a natural language query input that runs vector similarity search against stored thoughts and returns ranked results with highlighted excerpts, source type badges, and capture timestamps. Includes filter chips for thought type and date range.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [
+    "open-brain-db-schema",
+    "open-brain-capture-pipeline"
+  ],
+  "createdAt": "2026-03-02T18:35:40.443Z",
+  "updatedAt": "2026-03-02T18:35:40.443Z"
+}

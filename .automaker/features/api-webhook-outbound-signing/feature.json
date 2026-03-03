@@ -1,0 +1,14 @@
+{
+  "id": "api-webhook-outbound-signing",
+  "category": "API",
+  "title": "HMAC Signing for Outbound Webhooks",
+  "description": "Sign all outbound webhook payloads (Zapier, Make, custom endpoints) with a user-specific HMAC-SHA256 secret. Include the signature in an X-Krisp-Signature header so receivers can verify payload authenticity. Key rotation is available from the integrations admin panel with zero-downtime dual-key support.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "simple",
+  "dependencies": [
+    "zapier-webhook-trigger"
+  ],
+  "createdAt": "2026-03-02T19:21:47.304Z",
+  "updatedAt": "2026-03-02T19:21:47.305Z"
+}

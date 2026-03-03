@@ -1,0 +1,14 @@
+{
+  "id": "email-digest",
+  "category": "Email",
+  "title": "Daily Email Digest with AI Prioritization",
+  "description": "Scheduled morning job (configurable time) that summarizes the previous day's emails using Claude, ranks them by urgency, and delivers a structured digest email via Resend. The digest groups emails by smart label, highlights action items, and links directly to the Krisp inbox for each thread.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [
+    "email-smart-labels"
+  ],
+  "createdAt": "2026-03-02T18:35:40.542Z",
+  "updatedAt": "2026-03-02T18:35:40.542Z"
+}

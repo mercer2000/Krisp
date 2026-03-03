@@ -1,0 +1,12 @@
+{
+  "id": "teams-integration-messages",
+  "category": "Integrations",
+  "title": "Microsoft Teams Chat Message Ingestion",
+  "description": "Ingest Microsoft Teams chat messages via the Graph API change notifications for the /chats endpoint. Stores messages with channel/chat ID, sender, timestamp, and body in a teams_messages table. Provides a /teams inbox view grouped by team/channel.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "complex",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.504Z",
+  "updatedAt": "2026-03-02T19:00:34.504Z"
+}

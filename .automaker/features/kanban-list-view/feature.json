@@ -1,0 +1,12 @@
+{
+  "id": "kanban-list-view",
+  "category": "Kanban",
+  "title": "Flat List View for Kanban Cards",
+  "description": "Add a List View toggle to the board header that renders all cards as a sortable flat table (columns: title, column, priority, due date, tags) instead of the drag-and-drop board. Users can sort by any column and inline-edit priority and due date without opening the detail drawer.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.001Z",
+  "updatedAt": "2026-03-02T19:21:47.001Z"
+}

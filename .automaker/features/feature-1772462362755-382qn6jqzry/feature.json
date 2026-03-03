@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "http://localhost:3001/inbox for the inbox table, we want to automatically show new incoming email. I want to do this in a lightweight fashion, and we want the UI to be responsive and not show loading or progress indicators or flashing or redrawing. We also need to add some pagination to the page. ",
+  "title": "Add real-time email updates with pagination to inbox",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-02T14:39:22.754Z",
+  "id": "feature-1772462362755-382qn6jqzry",
+  "descriptionHistory": [
+    {
+      "description": "http://localhost:3001/inbox for the inbox table, we want to automatically show new incoming email. I want to do this in a lightweight fashion, and we want the UI to be responsive and not show loading or progress indicators or flashing or redrawing. We also need to add some pagination to the page. ",
+      "timestamp": "2026-03-02T14:39:23.124Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-02T14:53:59.225Z",
+  "justFinishedAt": "2026-03-02T14:53:59.201Z",
+  "summary": "## Summary: Auto-refresh inbox with pagination improvements\n\n### Changes Implemented\n- **Lightweight background polling**: Added 15-second interval polling that silently fetches new emails without any UI disruption. Polling only activates on page 1 with no active search/date filters.\n- **No loading flicker on refresh**: Replaced single `loading` state with `initialLoading` + `hasFetchedOnce` ref pattern. Initial page load shows skeleton loaders, but subsequent background polls and page/filter changes after first load update data silently without showing skeletons or progress indicators.\n- **Improved pagination controls**: Added numbered page buttons with ellipsis for large page counts (e.g., `1 ... 4 5 6 ... 20`) via `getPageNumbers()` helper, in addition to the existing Previous/Next buttons.\n- **Polling lifecycle management**: Polling interval is properly cleaned up on unmount and reconfigured when page/filter state changes. Timer is cleared when navigating away from page 1 or when search/filters are active.\n- **Silent error handling for polls**: Background poll failures are silently ignored (no error banners) to avoid disrupting the user experience, while initial load errors still display.\n\n### Files Modified\n- `app/(app)/inbox/page.tsx` - Rewrote with auto-refresh polling, split loading states, and enhanced pagination\n\n### Notes for Developer\n- Poll interval is set to 15 seconds (`POLL_INTERVAL` constant at top of file) - adjustable if needed\n- Polling only runs when viewing the default inbox view (page 1, no search, no date filters) to avoid unnecessary API calls\n- The `hasFetchedOnce` ref tracks whether we've done the initial load, so subsequent fetches triggered by filter/page changes show data seamlessly instead of flashing skeleton loaders\n- Page number buttons use a compact layout: shows first, last, and 1 neighbor on each side of current page with ellipsis for gaps"
+}

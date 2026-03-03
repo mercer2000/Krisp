@@ -1,0 +1,12 @@
+{
+  "id": "meeting-recording-link-preview",
+  "category": "Meetings",
+  "title": "Meeting Recording Link Preview & Timestamp Deep Links",
+  "description": "Parse the Krisp recording URL stored with each meeting and embed a rich link preview card in the meeting detail view showing the recording thumbnail, duration, and a direct play button. For timestamped transcript segments, generate deep links into the recording at the corresponding timestamp.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.460Z",
+  "updatedAt": "2026-03-02T19:21:47.460Z"
+}

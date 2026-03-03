@@ -1,0 +1,12 @@
+{
+  "id": "api-rate-limiting",
+  "category": "API",
+  "title": "API Rate Limiting & Request Throttling",
+  "description": "Implement per-user rate limiting on all API routes using an in-memory sliding window counter (or Neon-backed counter for serverless consistency). Returns 429 responses with Retry-After headers when limits are exceeded. Configurable limits per route category (webhooks, AI search, email fetch).",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.566Z",
+  "updatedAt": "2026-03-02T18:35:40.566Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "meeting-notes-editor",
+  "category": "Meetings",
+  "title": "Live Meeting Notes Editor",
+  "description": "Add a Markdown notes editor panel within the meeting detail drawer where users can type freeform notes alongside the transcript. Notes are stored in a meeting_notes table linked to the meeting ID with auto-save on keystroke debounce. Notes can be exported with the meeting or linked to Open Brain thoughts.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "simple",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.377Z",
+  "updatedAt": "2026-03-02T19:21:47.377Z"
+}

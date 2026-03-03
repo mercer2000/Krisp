@@ -1,0 +1,12 @@
+{
+  "id": "kanban-board-templates",
+  "category": "Kanban",
+  "title": "Kanban Board Templates Library",
+  "description": "Provide a template library of pre-configured boards (Sprint Planning, Bug Tracker, Content Calendar, OKR Tracker, Personal GTD) that users can select when creating a new board. Templates pre-populate columns and sample cards. Users can also save any existing board as a custom template.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.507Z",
+  "updatedAt": "2026-03-02T18:35:40.507Z"
+}

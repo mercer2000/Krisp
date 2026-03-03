@@ -1,0 +1,12 @@
+{
+  "id": "meeting-glossary",
+  "category": "Meetings",
+  "title": "Auto-Generated Meeting Glossary",
+  "description": "After ingesting a meeting transcript, identify domain-specific terms, acronyms, and proper nouns using Claude and store them in a meeting_glossary table. Glossary terms are highlighted inline in the transcript view with popover definitions. Users can edit or annotate any definition.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.010Z",
+  "updatedAt": "2026-03-02T19:21:47.010Z"
+}

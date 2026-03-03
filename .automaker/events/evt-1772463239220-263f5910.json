@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772463239220-263f5910",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-02T14:53:59.220Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772462362755-382qn6jqzry",
+  "featureName": "Add real-time email updates with pagination to inbox",
+  "passes": true
+}

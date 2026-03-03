@@ -1,0 +1,12 @@
+{
+  "id": "meeting-sentiment-analytics",
+  "category": "AI",
+  "title": "Meeting Sentiment & Engagement Analytics",
+  "description": "Analyze meeting transcripts with Claude to surface sentiment trends (positive/neutral/negative per speaker), talk-time distribution percentages, and engagement indicators (questions asked, interruptions, topic switches). Render results as visual charts in a new Analytics tab on the meeting detail drawer.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "complex",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.492Z",
+  "updatedAt": "2026-03-02T18:35:40.492Z"
+}

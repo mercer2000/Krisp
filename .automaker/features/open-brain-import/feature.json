@@ -1,0 +1,14 @@
+{
+  "id": "open-brain-import",
+  "category": "Open Brain",
+  "title": "Open Brain Bulk Import from Markdown / Text File",
+  "description": "Provide a file upload UI that accepts a .md or .txt file of freeform notes, splits it into individual thoughts by paragraph or horizontal rule delimiter, generates embeddings for each, and batch-inserts them into the thoughts table. Shows an import summary with count and detected types.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [
+    "open-brain-db-schema"
+  ],
+  "createdAt": "2026-03-02T19:00:34.494Z",
+  "updatedAt": "2026-03-02T19:00:34.495Z"
+}

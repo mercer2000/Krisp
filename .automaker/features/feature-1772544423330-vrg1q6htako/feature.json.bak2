@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "For my second brain project, I want to add an AI agent chat interface such that I could chat in and ask questions about all the things that are in my second brain.",
+  "title": "Add AI agent chat interface for second brain queries",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": true,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-03T13:27:03.330Z",
+  "id": "feature-1772544423330-vrg1q6htako",
+  "descriptionHistory": [
+    {
+      "description": "For my second brain project, I want to add an AI agent chat interface such that I could chat in and ask questions about all the things that are in my second brain.",
+      "timestamp": "2026-03-03T13:27:03.668Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-03T13:40:54.475Z",
+  "justFinishedAt": "2026-03-03T13:40:54.452Z",
+  "summary": "## Summary: AI Agent Chat Interface for Second Brain\n\n### Changes Implemented\n- Added `brain_chat_sessions` and `brain_chat_messages` database tables to the Drizzle schema with proper indexes, foreign keys, and cascade deletes\n- Created `brain_chat_role` enum type (`user`, `assistant`) for message roles\n- Built the main chat API endpoint (`POST /api/brain/chat`) that:\n  - Authenticates the user\n  - Creates or reuses chat sessions\n  - Gathers context from the user's meetings, emails, decisions, and action items\n  - Maintains conversation history across messages in a session\n  - Sends structured prompts to the LLM (via OpenRouter/chatCompletion)\n  - Stores both user and assistant messages with source attribution\n- Created session management API routes:\n  - `GET /api/brain/sessions` - List all user chat sessions\n  - `GET /api/brain/sessions/[sessionId]` - Load a session with all messages\n  - `DELETE /api/brain/sessions/[sessionId]` - Delete a session (cascades to messages)\n- Built a full chat UI page at `/brain` featuring:\n  - Collapsible sidebar with chat session history\n  - New chat creation with suggestion chips for empty state\n  - Real-time optimistic message rendering\n  - Auto-growing textarea with Enter-to-send (Shift+Enter for newline)\n  - Loading dots animation while AI responds\n  - Lightweight markdown rendering (headers, bold, inline code, lists)\n  - Source badges showing which data types (meetings, emails, decisions, action items) were used\n  - Session deletion from sidebar with hover-reveal delete button\n- Added \"Brain\" navigation item with brain icon to the SideNav component\n- Created SQL migration file `0016_add-brain-chat.sql` and updated the migration journal\n\n### Files Modified\n- `lib/db/schema.ts` - Added brainChatSessions, brainChatMessages tables and brainChatRoleEnum\n- `components/ui/SideNav.tsx` - Added BrainIcon component and \"Brain\" nav item\n- `drizzle/migrations/meta/_journal.json` - Added migration entry for 0016\n\n### Files Created\n- `app/api/brain/chat/route.ts` - Main chat API endpoint\n- `app/api/brain/sessions/route.ts` - Sessions list API\n- `app/api/brain/sessions/[sessionId]/route.ts` - Session detail/delete API\n- `app/(app)/brain/page.tsx` - Brain Chat UI page\n- `drizzle/migrations/0016_add-brain-chat.sql` - Database migration\n\n### Notes for Developer\n- Run the migration `0016_add-brain-chat.sql` against your database before using the feature\n- The chat uses the existing `chatCompletion` function from `lib/ai/client.ts` (OpenRouter API) - ensure `OPENROUTER_API_KEY` is set\n- Context window: The chat pulls the 15 most recent items from each data source (meetings, emails, decisions, action items) to stay within LLM token limits\n- Conversation history is limited to the 20 most recent messages per session\n- The feature requires an authenticated user session (NextAuth)"
+}

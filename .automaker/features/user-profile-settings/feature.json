@@ -1,0 +1,12 @@
+{
+  "id": "user-profile-settings",
+  "category": "Authentication",
+  "title": "User Profile & Settings Page",
+  "description": "Dedicated /settings page where users can update their display name, email, and avatar URL, change their password, configure notification preferences (email digests, reminder frequency), and manage connected integrations overview. Persists changes via API with Zod validation.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.562Z",
+  "updatedAt": "2026-03-02T18:35:40.562Z"
+}

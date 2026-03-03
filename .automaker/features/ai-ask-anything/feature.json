@@ -1,0 +1,15 @@
+{
+  "id": "ai-ask-anything",
+  "category": "AI",
+  "title": "Ask Anything — Cross-Source AI Q&A",
+  "description": "A dedicated /ask page where users submit natural language questions and Claude retrieves context from all available sources (meetings, emails, Open Brain thoughts, Kanban cards) before generating a synthesized answer with citations. Uses a retrieval-augmented generation (RAG) pattern with pgvector similarity search across all embedding-indexed tables.",
+  "status": "backlog",
+  "priority": 1,
+  "complexity": "complex",
+  "dependencies": [
+    "meeting-vector-embeddings",
+    "open-brain-db-schema"
+  ],
+  "createdAt": "2026-03-02T19:00:34.435Z",
+  "updatedAt": "2026-03-02T19:00:34.435Z"
+}

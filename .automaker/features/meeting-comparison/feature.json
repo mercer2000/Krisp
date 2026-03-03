@@ -1,0 +1,14 @@
+{
+  "id": "meeting-comparison",
+  "category": "Meetings",
+  "title": "Side-by-Side Meeting Comparison",
+  "description": "Allow users to select two meetings and open a split-pane comparison view showing their key points, action items, and participants side by side. Claude generates a brief diff summary highlighting what changed between the two sessions. Useful for tracking progress across recurring meetings.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [
+    "meeting-recurring-detection"
+  ],
+  "createdAt": "2026-03-02T19:21:47.034Z",
+  "updatedAt": "2026-03-02T19:21:47.034Z"
+}

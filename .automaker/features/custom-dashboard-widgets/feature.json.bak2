@@ -1,0 +1,14 @@
+{
+  "id": "custom-dashboard-widgets",
+  "category": "UI",
+  "title": "Customizable Dashboard Widget Grid",
+  "description": "A /dashboard home page with a draggable widget grid where users arrange tiles (Upcoming Events, Overdue Cards, Recent Thoughts, Meeting Count, Email Count, Action Items Due). Widget layout is persisted per user in a user_dashboard_config JSONB column on the users table.",
+  "status": "verified",
+  "priority": 2,
+  "complexity": "complex",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.458Z",
+  "updatedAt": "2026-03-03T05:57:01.324Z",
+  "startedAt": "2026-03-03T05:38:33.892Z",
+  "descriptionHistory": []
+}

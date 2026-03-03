@@ -1,0 +1,12 @@
+{
+  "id": "slack-integration-messages",
+  "category": "Integrations",
+  "title": "Slack Channel Message Ingestion",
+  "description": "Ingest messages from configured Slack channels using the Slack Events API and store them in a slack_messages table with channel, sender, timestamp, and content. Provides a /slack inbox view similar to the Zoom chat view. Enables future semantic search across Slack messages.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "complex",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.422Z",
+  "updatedAt": "2026-03-02T19:00:34.422Z"
+}

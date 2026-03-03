@@ -1,0 +1,12 @@
+{
+  "id": "kanban-board-sharing",
+  "category": "Kanban",
+  "title": "Read-Only Board Sharing via Public Link",
+  "description": "Generate a public share link for any board that renders a read-only snapshot view without requiring authentication. Share links can be set to expire after 24h, 7d, or never. The shareable view shows columns and cards but hides internal notes and attachments, and has a clean minimal design suitable for client sharing.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.520Z",
+  "updatedAt": "2026-03-02T18:35:40.520Z"
+}

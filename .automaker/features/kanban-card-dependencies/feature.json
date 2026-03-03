@@ -1,0 +1,12 @@
+{
+  "id": "kanban-card-dependencies",
+  "category": "Kanban",
+  "title": "Card Dependency & Blocking Relationships",
+  "description": "Add the ability to mark one card as blocking another, creating a dependency graph. Blocked cards display a 'Blocked by: [Card Title]' badge and cannot move to Done until blockers are resolved. A dependency graph visualization shows the full blocking chain for complex projects.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.503Z",
+  "updatedAt": "2026-03-02T18:35:40.503Z"
+}

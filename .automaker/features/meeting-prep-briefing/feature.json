@@ -1,0 +1,15 @@
+{
+  "id": "meeting-prep-briefing",
+  "category": "Meeting Intelligence",
+  "title": "AI Meeting Prep Briefing",
+  "description": "For any upcoming calendar event that matches an existing meeting series, Claude generates a 'prep briefing' summarizing action items from previous sessions, outstanding decisions, and relevant emails from participants. Displayed as a one-click panel from the calendar widget before the meeting starts.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [
+    "calendar-integration-ms365",
+    "meeting-recurring-detection"
+  ],
+  "createdAt": "2026-03-02T19:00:34.520Z",
+  "updatedAt": "2026-03-02T19:00:34.520Z"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "meeting-attendance-analytics",
+  "category": "Meetings",
+  "title": "Meeting Attendance Frequency Analytics",
+  "description": "Aggregate participant data across all ingested meetings to compute per-person attendance counts, most frequent co-attendees, and total meeting hours. Display ranked participant tables on the speaker profiles page and a network graph showing who you meet with most. Filters by date range and meeting tag.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [
+    "meeting-speaker-profiles"
+  ],
+  "createdAt": "2026-03-02T19:21:47.319Z",
+  "updatedAt": "2026-03-02T19:21:47.319Z"
+}

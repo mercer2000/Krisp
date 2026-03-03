@@ -1,0 +1,15 @@
+{
+  "id": "open-brain-dashboard",
+  "category": "Open Brain",
+  "title": "Open Brain Cross-Tool Context Dashboard",
+  "description": "Visualization dashboard showing captured thought volume over time, topic cluster bubble chart, and a daily digest widget that surfaces forgotten ideas relevant to current calendar/project context. Includes a timeline heatmap and top-topic bar chart rendered with lightweight SVG components.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [
+    "open-brain-db-schema",
+    "open-brain-capture-pipeline"
+  ],
+  "createdAt": "2026-03-02T18:35:40.436Z",
+  "updatedAt": "2026-03-02T18:35:40.436Z"
+}

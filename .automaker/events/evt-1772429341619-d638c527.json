@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772429341619-d638c527",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-02T05:29:01.619Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772428172151-inmc4zahya",
+  "featureName": "Lightweight email client",
+  "passes": true
+}

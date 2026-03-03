@@ -1,0 +1,12 @@
+{
+  "id": "calendar-integration-ms365",
+  "category": "Integrations",
+  "title": "Microsoft 365 Calendar Event Ingestion",
+  "description": "Ingest calendar events from Microsoft Graph API (subject, start/end, attendees, location, body) and store them in a calendar_events table. Creates a scheduled sync job and displays upcoming events in a sidebar widget. Enables future cross-referencing with meetings, emails, and tasks.",
+  "status": "backlog",
+  "priority": 1,
+  "complexity": "complex",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.379Z",
+  "updatedAt": "2026-03-02T19:00:34.379Z"
+}

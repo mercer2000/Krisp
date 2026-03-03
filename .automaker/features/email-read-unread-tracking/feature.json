@@ -1,0 +1,12 @@
+{
+  "id": "email-read-unread-tracking",
+  "category": "Email",
+  "title": "Read/Unread State Tracking for Emails",
+  "description": "Add a boolean is_read column to the unified emails table and toggle it when a user opens an email. The inbox view shows unread count badges per integration and allows bulk mark-as-read. Syncs read state back to the originating provider (Graph/Gmail) where the API supports it.",
+  "status": "backlog",
+  "priority": 1,
+  "complexity": "simple",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.412Z",
+  "updatedAt": "2026-03-02T19:00:34.412Z"
+}

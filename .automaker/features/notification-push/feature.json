@@ -1,0 +1,14 @@
+{
+  "id": "notification-push",
+  "category": "Notifications",
+  "title": "Browser Push Notifications via Web Push API",
+  "description": "Add Web Push API support so users receive browser push notifications for high-priority events (overdue cards, new meeting ingested, VIP email) even when the application tab is not active. Users subscribe via a permission prompt in the notification settings page. Requires a service worker and VAPID keys.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "complex",
+  "dependencies": [
+    "notification-preferences"
+  ],
+  "createdAt": "2026-03-02T19:21:47.373Z",
+  "updatedAt": "2026-03-02T19:21:47.373Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "linear-issue-integration",
+  "category": "Integrations",
+  "title": "Linear Issue Ingestion & Kanban Sync",
+  "description": "Connect a Linear API key to pull assigned issues into a read-only linear_issues table (title, status, priority, assignee, cycle, labels). Issues appear as cards in a dedicated Linear column or a mirrored Kanban board. Status changes in Linear are reflected on next sync via polling.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "complex",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.166Z",
+  "updatedAt": "2026-03-02T19:21:47.167Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "graph-subscription-auto-renewal",
+  "category": "API",
+  "title": "Microsoft Graph Subscription Auto-Renewal",
+  "description": "Implement a scheduled job (cron or Vercel cron) that checks Graph subscription expiry dates daily and automatically renews any subscription expiring within 48 hours using the stored Azure AD credentials. Logs renewal results to the webhook event audit log and sends an alert if renewal fails.",
+  "status": "backlog",
+  "priority": 1,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.618Z",
+  "updatedAt": "2026-03-02T18:35:40.618Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "user-workspace-switcher",
+  "category": "Core",
+  "title": "Multi-Workspace Support for Teams",
+  "description": "Allow a user to belong to multiple named workspaces (organizations), each with its own data silo. Adds a workspace_id foreign key to all major tables and a workspace switcher dropdown in the app shell header. Users can be invited to additional workspaces by workspace admins via email invite.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "complex",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.529Z",
+  "updatedAt": "2026-03-02T19:00:34.529Z"
+}

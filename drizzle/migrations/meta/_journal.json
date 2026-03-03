@@ -36,6 +36,97 @@
       "when": 1772419187375,
       "tag": "0004_vengeful_black_crow",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1772424809829,
+      "tag": "0005_add-web-link-to-emails",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1772425800000,
+      "tag": "0006_add-zoom-chat-integration",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1772430300000,
+      "tag": "0007_add-email-embeddings",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1772458400000,
+      "tag": "0008_add-action-item-card-link",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1772492400000,
+      "tag": "0009_add-soft-delete",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1772500000000,
+      "tag": "0010_add-calendar-events",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1772511000000,
+      "tag": "0011_add-extraction-source",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1772520000000,
+      "tag": "0012_add-dashboard-config",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1772530000000,
+      "tag": "0013_add-decisions",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1772540000000,
+      "tag": "0014_add-email-smart-labels",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1772517573000,
+      "tag": "0015_pale_human_fly",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1772550000000,
+      "tag": "0016_add-brain-chat",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1772560000000,
+      "tag": "0017_add-outlook-oauth",
+      "breakpoints": true
     }
   ]
 }

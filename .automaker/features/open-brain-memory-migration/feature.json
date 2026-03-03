@@ -1,0 +1,15 @@
+{
+  "id": "open-brain-memory-migration",
+  "category": "Open Brain",
+  "title": "Memory Migration — Import from Claude & ChatGPT",
+  "description": "Provide a UI and backend pipeline to paste exported Claude memory or ChatGPT memory content, parse individual memory entries, generate embeddings for each, and bulk-insert into the Open Brain thoughts table. Includes a progress tracker and duplicate-detection step to avoid re-importing existing memories.",
+  "status": "backlog",
+  "priority": 1,
+  "complexity": "moderate",
+  "dependencies": [
+    "open-brain-db-schema",
+    "open-brain-capture-pipeline"
+  ],
+  "createdAt": "2026-03-02T18:35:40.423Z",
+  "updatedAt": "2026-03-02T18:35:40.423Z"
+}

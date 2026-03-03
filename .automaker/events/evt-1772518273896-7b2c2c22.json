@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772518273896-7b2c2c22",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-03T06:11:13.896Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "ai-decision-register",
+  "featureName": "AI-Powered Decision Register",
+  "passes": true
+}

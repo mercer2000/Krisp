@@ -1,0 +1,14 @@
+{
+  "id": "open-brain-mcp-server",
+  "category": "Open Brain",
+  "title": "Open Brain MCP Server with Three Retrieval Tools",
+  "description": "Build a Model Context Protocol server exposing semantic_search (find thoughts by meaning via vector similarity), list_recent (browse paginated captures with filters), and stats (view capture frequency patterns and topic distributions). Enables Claude Desktop, Cursor, ChatGPT, and any MCP-compatible client to read and write to the Open Brain.",
+  "status": "backlog",
+  "priority": 1,
+  "complexity": "complex",
+  "dependencies": [
+    "open-brain-capture-pipeline"
+  ],
+  "createdAt": "2026-03-02T18:35:40.416Z",
+  "updatedAt": "2026-03-02T18:35:40.416Z"
+}

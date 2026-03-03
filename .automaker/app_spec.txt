@@ -1,0 +1,403 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project_specification>
+  <project_name>Krisp — Open Brain Productivity Hub</project_name>
+
+  <overview>
+    Krisp is a comprehensive, database-backed productivity and AI knowledge hub that combines Kanban task management, multi-source email aggregation, meeting intelligence (via Krisp webhook transcripts), and an &quot;Open Brain&quot; persistent memory system — all unified under a single Next.js application with a Neon PostgreSQL database.
+
+The project solves the &quot;memory problem&quot; in AI workflows: every time you open a new chat window or switch AI tools, your accumulated context resets to zero. Krisp addresses this by providing (1) a centralized productivity dashboard for managing tasks, emails, and meeting transcripts with semantic search, and (2) an Open Brain architecture — a database-backed, MCP-connected knowledge system where any AI tool (Claude, ChatGPT, Cursor, etc.) can query your accumulated context through a single open protocol.
+
+Key goals:
+- Eliminate context silos across AI tools by providing persistent, semantically searchable memory accessible via MCP
+- Aggregate meetings, emails, and tasks into a single productivity surface with AI-powered search
+- Enable sub-second thought capture (via Slack or any MCP client) with automatic embedding, classification, and metadata extraction
+- Provide compounding knowledge advantage: every captured thought makes every future AI interaction richer
+- Maintain full user ownership of data — no SaaS middlemen, single Postgres database, ~$0.10–$0.30/month operational cost
+- Support the agent web: make all knowledge queryable by meaning (vector embeddings), not just keywords, through standard protocols any autonomous agent can speak
+  </overview>
+
+  <technology_stack>
+    <technology>Next.js 16 with Turbopack</technology>
+    <technology>React 19</technology>
+    <technology>TypeScript (strict mode)</technology>
+    <technology>Neon PostgreSQL (serverless)</technology>
+    <technology>pgvector extension for vector embeddings</technology>
+    <technology>Drizzle ORM (v0.45.1) for schema management</technology>
+    <technology>@neondatabase/serverless neon() driver for raw SQL</technology>
+    <technology>NextAuth 5 (beta) with Credentials provider and JWT sessions</technology>
+    <technology>Anthropic Claude (claude-sonnet-4) for AI-powered meeting search</technology>
+    <technology>OpenAI Embeddings API for semantic email search</technology>
+    <technology>TailwindCSS 4 with PostCSS</technology>
+    <technology>TanStack React Query for client-side data fetching</technology>
+    <technology>@dnd-kit for drag-and-drop Kanban interactions</technology>
+    <technology>@uiw/react-md-editor for Markdown editing</technology>
+    <technology>Lucide React for iconography</technology>
+    <technology>next-themes for dark mode support</technology>
+    <technology>Zod for runtime validation schemas</technology>
+    <technology>bcryptjs for password hashing</technology>
+    <technology>Resend for transactional email delivery</technology>
+    <technology>Microsoft Graph API for Exchange email integration</technology>
+    <technology>Gmail API with Cloud Pub/Sub push notifications</technology>
+    <technology>Zoom OAuth &amp; Chat API for messaging integration</technology>
+    <technology>Krisp webhook API for meeting transcripts and key points</technology>
+    <technology>MCP (Model Context Protocol) for cross-tool AI memory access</technology>
+    <technology>Supabase Edge Functions for thought capture pipeline (Open Brain)</technology>
+    <technology>Slack API for quick thought capture interface</technology>
+    <technology>ESLint 9 for code linting</technology>
+    <technology>drizzle-kit for database migrations</technology>
+  </technology_stack>
+
+  <core_capabilities>
+    <capability>Kanban board management with drag-and-drop columns and cards, priority levels, due dates, color labels, tags, archival, and filtering</capability>
+    <capability>AI-powered semantic meeting search using Anthropic Claude — queries meeting transcripts and returns contextual answers with source citations</capability>
+    <capability>Krisp meeting intelligence — webhook ingestion of meeting metadata, key points, action items, speakers, participants, and full transcripts</capability>
+    <capability>Multi-source email aggregation — Microsoft 365 Exchange via Graph API and Gmail via push notifications, unified in a single inbox</capability>
+    <capability>Semantic email search powered by OpenAI vector embeddings (1536-dimensional pgvector) for meaning-based retrieval</capability>
+    <capability>Action item lifecycle management — extract from meetings, link to Kanban cards, track status (open/in_progress/completed/cancelled), send reminders</capability>
+    <capability>Open Brain persistent memory system — database-backed knowledge store accessible by any MCP-compatible AI client (Claude, ChatGPT, Cursor, etc.)</capability>
+    <capability>Sub-10-second thought capture pipeline — type in Slack, auto-generate vector embedding, extract metadata, store in Postgres, confirm in-thread</capability>
+    <capability>MCP server with three retrieval tools: semantic search (find by meaning), list recent (browse captures), and stats (pattern analysis)</capability>
+    <capability>Memory Migration — extract accumulated context from existing AI platforms (Claude memory, ChatGPT memory) and consolidate into Open Brain</capability>
+    <capability>Weekly Review synthesis — clusters by topic, surfaces unresolved action items, detects cross-day patterns, identifies tracking gaps</capability>
+    <capability>Full authentication system with registration, login, password reset, JWT sessions, and route protection middleware</capability>
+    <capability>Multi-tenant data isolation — all data scoped to userId/tenantId with cascade deletes</capability>
+    <capability>Integration admin panel — manage Azure AD credentials, Zoom OAuth tokens, Graph subscriptions, and webhook secrets</capability>
+    <capability>Dark mode toggle with theme persistence</capability>
+    <capability>Real-time webhook infrastructure for Krisp meetings, Graph email notifications, Gmail push, and Zoom chat events</capability>
+  </core_capabilities>
+
+  <implemented_features>
+    <feature>
+      <name>Kanban Board Management</name>
+      <description>Full CRUD for boards, columns, and cards with drag-and-drop reordering via @dnd-kit. Cards support titles, Markdown descriptions, priority levels (low/medium/high/urgent), due dates, color labels, and tags. Boards have customizable background colors. Users can archive cards, filter by priority or due date status (overdue/due soon/no date), and search cards. Auto-redirects to the user&apos;s default/last-viewed board.</description>
+      <file_locations>
+        <location>C:\Code\Krisp\app\(app)\boards</location>
+        <location>C:\Code\Krisp\components\board\KanbanBoard.tsx</location>
+        <location>C:\Code\Krisp\components\board\Column.tsx</location>
+        <location>C:\Code\Krisp\components\board\Card.tsx</location>
+        <location>C:\Code\Krisp\components\board\CardDetailDrawer.tsx</location>
+        <location>C:\Code\Krisp\components\board\BoardHeader.tsx</location>
+        <location>C:\Code\Krisp\components\card\CardDetailPanel.tsx</location>
+        <location>C:\Code\Krisp\components\card\MarkdownEditor.tsx</location>
+        <location>C:\Code\Krisp\components\card\PrioritySelector.tsx</location>
+        <location>C:\Code\Krisp\components\card\DueDatePicker.tsx</location>
+        <location>C:\Code\Krisp\components\card\TagManager.tsx</location>
+        <location>C:\Code\Krisp\app\api\v1\boards</location>
+        <location>C:\Code\Krisp\lib\hooks\useBoard.ts</location>
+        <location>C:\Code\Krisp\lib\hooks\useCards.ts</location>
+        <location>C:\Code\Krisp\lib\hooks\useColumns.ts</location>
+      </file_locations>
+    </feature>
+    <feature>
+      <name>Krisp Meeting Intelligence</name>
+      <description>Receives webhook payloads from the Krisp recording platform containing meeting metadata (title, duration, URL, start/end dates), speaker and participant lists, key points, action items, and full transcripts. Stores everything as structured JSONB in PostgreSQL. Provides a meeting list view and a detail drawer showing the complete transcript with speaker attribution.</description>
+      <file_locations>
+        <location>C:\Code\Krisp\app\(app)\krisp</location>
+        <location>C:\Code\Krisp\app\api\webhooks\key-points</location>
+        <location>C:\Code\Krisp\app\api\meetings</location>
+        <location>C:\Code\Krisp\lib\krisp\webhookKeyPoints.ts</location>
+        <location>C:\Code\Krisp\lib\krisp\db.ts</location>
+        <location>C:\Code\Krisp\components\meeting\MeetingDetailDrawer.tsx</location>
+        <location>C:\Code\Krisp\types\webhook.ts</location>
+      </file_locations>
+    </feature>
+    <feature>
+      <name>AI-Powered Meeting Search</name>
+      <description>Semantic search across all meeting content using Anthropic Claude (claude-sonnet-4). Users type natural language queries, the system retrieves relevant meetings from the database, feeds the content to Claude with the query, and returns an AI-generated answer with citations to specific meetings. Results display the AI answer alongside matching meeting cards.</description>
+      <file_locations>
+        <location>C:\Code\Krisp\app\api\search</location>
+        <location>C:\Code\Krisp\app\(app)\krisp</location>
+        <location>C:\Code\Krisp\lib\hooks\useSearch.ts</location>
+      </file_locations>
+    </feature>
+    <feature>
+      <name>Microsoft 365 Exchange Email Integration</name>
+      <description>Connects to Microsoft Graph API for real-time email ingestion. Users register Azure AD app credentials (tenant ID, client ID, client secret) through an admin panel. The system creates Graph subscriptions for email change notifications, receives webhook callbacks when new emails arrive, and stores full email metadata including sender, recipients, CC, BCC, subject, plain text body, HTML body, attachments metadata, and web links. Supports multiple Azure AD credentials per user.</description>
+      <file_locations>
+        <location>C:\Code\Krisp\app\api\graph\credentials</location>
+        <location>C:\Code\Krisp\app\api\graph\subscriptions</location>
+        <location>C:\Code\Krisp\app\api\webhooks\email\graph</location>
+        <location>C:\Code\Krisp\lib\graph\credentials.ts</location>
+        <location>C:\Code\Krisp\lib\graph\messages.ts</location>
+        <location>C:\Code\Krisp\lib\graph\subscriptions.ts</location>
+        <location>C:\Code\Krisp\app\(app)\admin\integrations</location>
+      </file_locations>
+    </feature>
+    <feature>
+      <name>Gmail Email Integration</name>
+      <description>Connects to Gmail API using OAuth tokens with Google Cloud Pub/Sub push notifications for real-time email ingestion. Stores Gmail message data including thread IDs, labels, sender, recipients, subject, body (plain and HTML), attachments, and raw payload. Supports watch subscription management for continuous email monitoring.</description>
+      <file_locations>
+        <location>C:\Code\Krisp\app\api\gmail</location>
+        <location>C:\Code\Krisp\app\api\webhooks\email\gmail</location>
+        <location>C:\Code\Krisp\lib\gmail\emails.ts</location>
+        <location>C:\Code\Krisp\lib\gmail\watch.ts</location>
+        <location>C:\Code\Krisp\lib\gmail\db.ts</location>
+      </file_locations>
+    </feature>
+    <feature>
+      <name>Unified Email Inbox with Semantic Search</name>
+      <description>Aggregates emails from Microsoft 365 and Gmail into a single inbox view with pagination and filtering by subject, sender, and date. Implements semantic search powered by OpenAI embeddings stored as 1536-dimensional vectors in pgvector. Embedding generation runs as a background process, enabling meaning-based email retrieval that finds relevant emails even when exact keywords don&apos;t match.</description>
+      <file_locations>
+        <location>C:\Code\Krisp\app\(app)\inbox</location>
+        <location>C:\Code\Krisp\app\api\emails</location>
+        <location>C:\Code\Krisp\lib\email\emails.ts</location>
+        <location>C:\Code\Krisp\lib\email\embeddings.ts</location>
+        <location>C:\Code\Krisp\types\email.ts</location>
+      </file_locations>
+    </feature>
+    <feature>
+      <name>Action Item Management</name>
+      <description>Full lifecycle management of action items: create manually or extract automatically from Krisp meeting transcripts using AI. Each action item has title, description, assignee, status (open/in_progress/completed/cancelled), priority, due date, and completion tracking. Action items can be linked to both meetings (by meetingId) and Kanban cards (by cardId). Supports reminder notifications via Resend email service.</description>
+      <file_locations>
+        <location>C:\Code\Krisp\app\api\action-items</location>
+        <location>C:\Code\Krisp\lib\actions\extractActionItems.ts</location>
+        <location>C:\Code\Krisp\lib\email\resend.ts</location>
+      </file_locations>
+    </feature>
+    <feature>
+      <name>Authentication &amp; Authorization System</name>
+      <description>Full authentication flow using NextAuth 5 with Credentials provider and JWT session strategy. Includes user registration with email/username validation, login, and complete forgot/reset password flow using hashed tokens with expiration. Route protection via Next.js middleware redirects unauthenticated users. All API routes enforce authentication via getRequiredUser() helper.</description>
+      <file_locations>
+        <location>C:\Code\Krisp\auth.ts</location>
+        <location>C:\Code\Krisp\middleware.ts</location>
+        <location>C:\Code\Krisp\app\(auth)\login</location>
+        <location>C:\Code\Krisp\app\(auth)\register</location>
+        <location>C:\Code\Krisp\app\(auth)\forgot-password</location>
+        <location>C:\Code\Krisp\app\(auth)\reset-password</location>
+        <location>C:\Code\Krisp\app\api\v1\auth</location>
+        <location>C:\Code\Krisp\lib\auth\getRequiredUser.ts</location>
+      </file_locations>
+    </feature>
+    <feature>
+      <name>Zoom Chat Integration</name>
+      <description>Connects to Zoom via OAuth for token management and receives webhook events for chat messages. Stores Zoom chat messages with channel type (DM/channel), sender info, message content, edit/delete status, and timestamps. Supports automatic token refresh.</description>
+      <file_locations>
+        <location>C:\Code\Krisp\app\api\zoom</location>
+        <location>C:\Code\Krisp\app\api\webhooks\zoom</location>
+        <location>C:\Code\Krisp\lib\zoom\oauth.ts</location>
+        <location>C:\Code\Krisp\lib\zoom\messages.ts</location>
+        <location>C:\Code\Krisp\lib\zoom\db.ts</location>
+        <location>C:\Code\Krisp\types\zoom.ts</location>
+      </file_locations>
+    </feature>
+    <feature>
+      <name>Integration Administration Panel</name>
+      <description>Admin interface for managing external service connections. Users can create, list, test, and delete Azure AD credentials for Microsoft Graph. Displays credentials with masked secrets. Shows integration status and connectivity test results. Manages Zoom OAuth token lifecycle.</description>
+      <file_locations>
+        <location>C:\Code\Krisp\app\(app)\admin\integrations</location>
+      </file_locations>
+    </feature>
+    <feature>
+      <name>Database Schema &amp; Migrations</name>
+      <description>Comprehensive Drizzle ORM schema with 15+ tables, proper foreign key relationships, cascade deletes, unique constraints, and pgvector support. Eight sequential migrations covering the full schema evolution from initial Kanban tables through email, Zoom, embeddings, and action item linking.</description>
+      <file_locations>
+        <location>C:\Code\Krisp\lib\db\schema.ts</location>
+        <location>C:\Code\Krisp\lib\db\index.ts</location>
+        <location>C:\Code\Krisp\drizzle.config.ts</location>
+        <location>C:\Code\Krisp\drizzle\migrations</location>
+      </file_locations>
+    </feature>
+    <feature>
+      <name>UI Component System</name>
+      <description>Reusable UI component library including AppShell layout with responsive side navigation, Modal and Drawer components for detail views, Toast notification system for user feedback, ThemeToggle for dark/light mode switching via next-themes, and SearchBar component for in-context search.</description>
+      <file_locations>
+        <location>C:\Code\Krisp\components\ui\AppShell.tsx</location>
+        <location>C:\Code\Krisp\components\ui\SideNav.tsx</location>
+        <location>C:\Code\Krisp\components\ui\Modal.tsx</location>
+        <location>C:\Code\Krisp\components\ui\Drawer.tsx</location>
+        <location>C:\Code\Krisp\components\ui\Toast.tsx</location>
+        <location>C:\Code\Krisp\components\ui\ThemeToggle.tsx</location>
+      </file_locations>
+    </feature>
+    <feature>
+      <name>Microsoft 365 Calendar Event Ingestion</name>
+      <description>Ingest calendar events from Microsoft Graph API (subject, start/end, attendees, location, body) and store them in a calendar_events table. Creates a scheduled sync job and displays upcoming events in a sidebar widget. Enables future cross-referencing with meetings, emails, and tasks.</description>
+    </feature>
+    <feature>
+      <name>Soft Delete with Trash &amp; Recovery</name>
+      <description>Add a deleted_at timestamp column to cards, emails, thoughts, and meetings to enable soft deletion. Deleted items move to a /trash view where they are retained for 30 days before permanent purge. Users can restore any item with one click or permanently delete it immediately.</description>
+    </feature>
+    <feature>
+      <name>Customizable Dashboard Widget Grid</name>
+      <description>A /dashboard home page with a draggable widget grid where users arrange tiles (Upcoming Events, Overdue Cards, Recent Thoughts, Meeting Count, Email Count, Action Items Due). Widget layout is persisted per user in a user_dashboard_config JSONB column on the users table.</description>
+    </feature>
+    <feature>
+      <name>AI-Powered Decision Register</name>
+      <description>Automatically detect decision statements across meetings, emails, and Open Brain captures using Claude pattern matching. Detected decisions are stored in a decisions table with rationale, date, context source, and participants. A dedicated /decisions page lets users browse, search, and annotate decisions over time.</description>
+    </feature>
+    <feature>
+      <name>AI-Powered Email Smart Labeling</name>
+      <description>Automatically classify incoming emails into smart labels (Action Required, FYI, Newsletter, Invoice, Meeting Request, Support Ticket) using Claude. Labels are stored in the database and displayed as colored chips in the inbox. Users can create custom labels and define classification rules.</description>
+    </feature>
+    <feature>
+      <name>Open Brain Weekly Review &amp; Synthesis</name>
+      <description>Automated weekly job that clusters captured thoughts by topic using embedding similarity, surfaces unresolved action items, detects cross-day patterns, and generates a structured synthesis report. Delivers the report via email (Resend) and stores it in the database for in-app viewing in a dedicated Weekly Reviews section.</description>
+    </feature>
+    <feature>
+      <name>Email Action Item Extraction</name>
+      <description>Scan email bodies with Claude to detect requests, deadlines, and commitments addressed to the user. Extracted action items appear in a sidebar suggestion panel within the email detail view, with one-click buttons to create Kanban cards or Open Brain captures directly from the extracted item.</description>
+    </feature>
+    <feature>
+      <name>Implement Microsoft 365 Exchange Email Ingestion</name>
+      <description>Add Microsoft 365 Exchange Email Ingestion via Power Automate
+
+Implement end-to-end support for processing incoming emails from Microsoft 365 Exchange using Power Automate webhooks, including backend ingestion, multi-tenant data storage, and an admin-facing setup guide.
+
+Requirements:
+
+Webhook Endpoint
+- Create a new POST webhook endpoint (e.g., /webhooks/email/microsoft365) that receives email payloads triggered by Power Automate when a new email arrives in Exchange
+- Authenticate incoming requests (e.g., via a shared secret or API key header) to prevent unauthorized submissions
+- Parse and validate the incoming payload, extracting key fields: sender address, recipient(s), subject, body (plain text and HTML), timestamp, attachments metadata, and any relevant message IDs
+- Return appropriate HTTP responses (200 on success, 400 on validation failure, 401 on auth failure) so Power Automate can detect and retry on errors
+
+Database
+- Design and create a new emails table to store ingested email records with columns for: tenant ID, message ID (for deduplication), sender, recipients, subject, body content, received timestamp, raw payload, and created/updated timestamps
+- Add a unique constraint on tenant ID + message ID to prevent duplicate ingestion
+- Ensure all queries are scoped by tenant ID to enforce multi-tenant data isolation
+
+Multi-Tenant Support
+- Resolve the tenant from the incoming webhook request (e.g., via a tenant-specific API key, a URL path parameter such as /webhooks/email/microsoft365/:tenantId, or a JWT claim)
+- Ensure no cross-tenant data leakage at the query, storage, and response layer
+
+Admin Integrations Page
+- Create a new admin page at /admin/integrations
+- Include a clearly titled &quot;Microsoft 365 / Exchange Email&quot; section with step-by-step instructions for setting up a Power Automate flow, covering:
+  - Trigger: &quot;When a new email arrives (V3)&quot; in Exchange
+  - Action: HTTP POST to the tenant&apos;s unique webhook URL
+  - Required headers (Content-Type, auth key)
+  - A mapping guide showing which Power Automate dynamic fields (e.g., From, Subject, Body) map to which webhook payload fields
+  - How to retrieve the tenant&apos;s API key or webhook URL from within the admin UI
+- Display the tenant-specific webhook URL prominently so it can be copied directly into Power Automate
+
+Edge Cases to Consider
+- Handle duplicate deliveries gracefully using message ID deduplication
+- Accommodate emails with missing or null optional fields (e.g., no subject, no plain-text body)
+- Handle large email bodies without exceeding payload or database column size limits
+- Validate that the tenant exists and is active before persisting any data
+- Log ingestion failures with enough context for debugging without storing sensitive content
+
+Prerequisites
+- Existing multi-tenant architecture and tenant resolution mechanism in place
+- Admin authentication and role-based access controlling the /admin/integrations route</description>
+    </feature>
+  </implemented_features>
+
+  <additional_requirements>
+    <requirement>Neon PostgreSQL database with pgvector extension enabled for vector embedding storage</requirement>
+    <requirement>Single DATABASE_URL environment variable for all database access (no separate KRISP_DATABASE_URL)</requirement>
+    <requirement>ANTHROPIC_API_KEY for Claude-powered meeting search</requirement>
+    <requirement>OpenAI API key for email embedding generation (semantic search)</requirement>
+    <requirement>RESEND_API_KEY and RESEND_EMAIL for transactional email delivery (password resets, action item reminders)</requirement>
+    <requirement>AUTH_SECRET and NEXTAUTH_URL for NextAuth 5 configuration</requirement>
+    <requirement>Azure AD app registration (tenant ID, client ID, client secret) for Microsoft Graph email integration</requirement>
+    <requirement>Google Cloud project with Pub/Sub topic and Gmail API enabled for Gmail integration</requirement>
+    <requirement>Zoom OAuth app credentials for chat integration</requirement>
+    <requirement>Krisp account with webhook configuration pointing to the application&apos;s webhook endpoint</requirement>
+    <requirement>Supabase project with Edge Functions for Open Brain thought capture pipeline</requirement>
+    <requirement>Slack workspace with bot integration for Open Brain quick capture interface</requirement>
+    <requirement>MCP-compatible server deployment for cross-tool AI memory access</requirement>
+    <requirement>Node.js 20+ runtime environment</requirement>
+    <requirement>drizzle-kit does not read .env.local — pass DATABASE_URL inline or use .env file for migrations</requirement>
+    <requirement>.next cache can contain stale type references after restructuring — delete .next directory when encountering type errors</requirement>
+    <requirement>npm on Windows/MSYS can fail with EBUSY on file locks — retry or use workarounds</requirement>
+  </additional_requirements>
+
+  <development_guidelines>
+    <guideline>Use Drizzle ORM query builder for all Kanban and structured table operations (lib/db/index.ts)</guideline>
+    <guideline>Use raw SQL via neon() serverless driver for Krisp webhook queries requiring maximum performance (lib/krisp/db.ts)</guideline>
+    <guideline>All API routes must call getRequiredUser() to enforce authentication before processing</guideline>
+    <guideline>Scope all database queries to userId or tenantId for multi-tenant data isolation</guideline>
+    <guideline>Use Zod schemas for runtime validation on all API inputs (lib/validators/schemas.ts)</guideline>
+    <guideline>Follow Next.js App Router conventions with route groups: (app) for protected routes, (auth) for public auth routes</guideline>
+    <guideline>Mark client-side components with &apos;use client&apos; directive; keep server components as default</guideline>
+    <guideline>Use TanStack React Query via custom hooks (lib/hooks/) for all client-side data fetching and caching</guideline>
+    <guideline>Apply TypeScript strict mode with no implicit any — all types defined in types/ directory</guideline>
+    <guideline>Store JSONB columns for flexible/evolving data structures (speakers, participants, rawPayload, attachments)</guideline>
+    <guideline>Use pgvector(1536) for all embedding columns to enable semantic search</guideline>
+    <guideline>Run database migrations with: DATABASE_URL=&lt;url&gt; npx drizzle-kit push or drizzle-kit migrate</guideline>
+    <guideline>Prefer specific file staging over &apos;git add -A&apos; to avoid committing .env or credential files</guideline>
+    <guideline>Delete .next directory when encountering stale TypeScript type errors after schema changes</guideline>
+    <guideline>All webhook endpoints must validate payload authenticity before processing</guideline>
+    <guideline>Use cascade deletes on foreign keys referencing users table for clean data removal</guideline>
+    <guideline>Keep environment-specific configuration in .env.local (not committed) with .env.example as template</guideline>
+  </development_guidelines>
+
+  <implementation_roadmap>
+    <phase>
+      <name>Core Kanban System</name>
+      <status>completed</status>
+      <description>Full Kanban board management with drag-and-drop, cards, columns, priorities, due dates, tags, color labels, filtering, archival, and board customization. Includes all CRUD API routes and responsive UI components.</description>
+    </phase>
+    <phase>
+      <name>Authentication &amp; Authorization</name>
+      <status>completed</status>
+      <description>NextAuth 5 integration with Credentials provider, JWT sessions, user registration, login, forgot/reset password flow, route protection middleware, and per-route auth enforcement via getRequiredUser().</description>
+    </phase>
+    <phase>
+      <name>Krisp Meeting Intelligence</name>
+      <status>completed</status>
+      <description>Webhook ingestion of Krisp meeting data (metadata, key points, transcripts, speakers, participants). Meeting list and detail views. AI-powered semantic search using Anthropic Claude (claude-sonnet-4).</description>
+    </phase>
+    <phase>
+      <name>Email Integration — Microsoft 365</name>
+      <status>completed</status>
+      <description>Microsoft Graph API integration with Azure AD credential management, real-time email notifications via Graph subscriptions, full email storage with metadata, and admin panel for credential lifecycle.</description>
+    </phase>
+    <phase>
+      <name>Email Integration — Gmail</name>
+      <status>completed</status>
+      <description>Gmail API integration with OAuth tokens, Google Cloud Pub/Sub push notifications, watch subscription management, and Gmail message storage with labels and threading.</description>
+    </phase>
+    <phase>
+      <name>Unified Email Inbox &amp; Semantic Search</name>
+      <status>completed</status>
+      <description>Aggregated inbox view with pagination and filters. OpenAI embedding generation for emails. Semantic search powered by pgvector(1536) for meaning-based email retrieval.</description>
+    </phase>
+    <phase>
+      <name>Action Item Management</name>
+      <status>completed</status>
+      <description>Action items with full lifecycle tracking, AI extraction from meeting transcripts, Kanban card linking, status management, priority levels, due dates, and email reminders via Resend.</description>
+    </phase>
+    <phase>
+      <name>Zoom Chat Integration</name>
+      <status>completed</status>
+      <description>Zoom OAuth token management, webhook event handling for chat messages (DM and channel), message storage with edit/delete tracking, and automatic token refresh.</description>
+    </phase>
+    <phase>
+      <name>Database Schema &amp; Migrations</name>
+      <status>completed</status>
+      <description>15+ table schema with Drizzle ORM, eight sequential migrations, pgvector support, proper foreign keys with cascade deletes, JSONB columns for flexible data, and multi-tenant isolation.</description>
+    </phase>
+    <phase>
+      <name>Open Brain — Capture Pipeline</name>
+      <status>pending</status>
+      <description>Slack-based thought capture interface with Supabase Edge Function backend. Automatically generates vector embeddings, extracts metadata (people, topics, type, action items), stores in Postgres with pgvector, and replies in-thread with capture confirmation. Sub-10-second round trip.</description>
+    </phase>
+    <phase>
+      <name>Open Brain — MCP Server</name>
+      <status>pending</status>
+      <description>MCP (Model Context Protocol) server exposing three tools: semantic_search (find thoughts by meaning), list_recent (browse recent captures), and stats (view capture patterns). Enables any MCP-compatible AI client (Claude Desktop, ChatGPT, Cursor, VS Code Copilot) to read from and write to the Open Brain.</description>
+    </phase>
+    <phase>
+      <name>Open Brain — Memory Migration</name>
+      <status>pending</status>
+      <description>Prompts and tooling to extract accumulated context from existing AI platforms (Claude memory, ChatGPT memory) and consolidate into the Open Brain database. Run once per platform to bootstrap the knowledge base with existing context.</description>
+    </phase>
+    <phase>
+      <name>Open Brain — Weekly Review &amp; Synthesis</name>
+      <status>pending</status>
+      <description>Automated weekly synthesis across all captured thoughts. Clusters by topic, scans for unresolved action items, detects cross-day patterns, finds connections between disparate captures, and identifies gaps in tracking. Designed for 5-minute Friday review that compounds in value over time.</description>
+    </phase>
+    <phase>
+      <name>Open Brain — Quick Capture Templates</name>
+      <status>pending</status>
+      <description>Five optimized sentence starters for clean metadata extraction: decision captures, person notes, insight captures, meeting debriefs, and AI saves. Each triggers correct classification in the processing pipeline. Designed to build the capture habit in the first week.</description>
+    </phase>
+    <phase>
+      <name>Open Brain — Cross-Tool Context Dashboard</name>
+      <status>pending</status>
+      <description>Visualization dashboard showing thinking patterns over time, daily digest surfacing forgotten ideas based on current work, and agent cross-referencing captured thoughts with calendar, email, and project management data. Custom metadata schemas for domain-specific captures (sales calls, research notes, coaching sessions).</description>
+    </phase>
+  </implementation_roadmap>
+</project_specification>

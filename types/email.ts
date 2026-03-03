@@ -19,6 +19,7 @@ export interface EmailWebhookPayload {
   bodyHtml?: string;
   receivedDateTime: string;
   attachments?: EmailAttachmentMetadata[];
+  webLink?: string;
 }
 
 // Database row type
@@ -35,6 +36,7 @@ export interface EmailRow {
   body_html: string | null;
   received_at: Date;
   attachments_metadata: EmailAttachmentMetadata[];
+  web_link: string | null;
   raw_payload: EmailWebhookPayload;
   created_at: Date;
   updated_at: Date;
@@ -54,4 +56,68 @@ export interface EmailInsert {
   received_at: Date;
   attachments_metadata?: EmailAttachmentMetadata[];
   raw_payload: EmailWebhookPayload;
+}
+
+// Smart label attached to an email
+export interface EmailLabelChip {
+  id: string;
+  name: string;
+  color: string;
+  confidence: number | null;
+}
+
+// Inbox list item (lightweight, excludes body content)
+export interface EmailListItem {
+  id: number;
+  sender: string;
+  subject: string | null;
+  received_at: string;
+  recipients: string[];
+  has_attachments: boolean;
+  preview: string | null;
+  web_link: string | null;
+  labels?: EmailLabelChip[];
+}
+
+// Inbox list response
+export interface EmailListResponse {
+  data: EmailListItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+// Semantic search result item
+export interface EmailSearchItem extends EmailListItem {
+  similarity: number;
+}
+
+// Semantic search response
+export interface EmailSearchResponse {
+  query: string;
+  data: EmailSearchItem[];
+  embedding_status: {
+    total: number;
+    embedded: number;
+    pending: number;
+  };
+}
+
+// Full email for detail view (excludes raw_payload)
+export interface EmailDetail {
+  id: number;
+  tenant_id: string;
+  message_id: string;
+  sender: string;
+  recipients: string[];
+  cc: string[];
+  bcc: string[];
+  subject: string | null;
+  body_plain_text: string | null;
+  body_html: string | null;
+  received_at: string;
+  attachments_metadata: EmailAttachmentMetadata[];
+  web_link: string | null;
+  created_at: string;
+  updated_at: string;
 }

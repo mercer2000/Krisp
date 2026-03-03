@@ -1,0 +1,14 @@
+{
+  "id": "ai-decision-register",
+  "category": "AI",
+  "title": "AI-Powered Decision Register",
+  "description": "Automatically detect decision statements across meetings, emails, and Open Brain captures using Claude pattern matching. Detected decisions are stored in a decisions table with rationale, date, context source, and participants. A dedicated /decisions page lets users browse, search, and annotate decisions over time.",
+  "status": "verified",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.235Z",
+  "updatedAt": "2026-03-03T06:11:13.878Z",
+  "startedAt": "2026-03-03T05:38:17.751Z",
+  "descriptionHistory": []
+}

@@ -1,0 +1,15 @@
+{
+  "id": "open-brain-api-capture",
+  "category": "Open Brain",
+  "title": "REST API Endpoint for Programmatic Thought Capture",
+  "description": "Expose a POST /api/v1/thoughts endpoint authenticated by personal API keys that accepts a thought body, optional type, and optional tags. The endpoint generates the embedding, extracts metadata, and stores the thought — enabling capture from any script, CLI tool, browser extension, or external automation without going through the Slack bot.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "simple",
+  "dependencies": [
+    "open-brain-db-schema",
+    "api-key-management"
+  ],
+  "createdAt": "2026-03-02T19:21:47.469Z",
+  "updatedAt": "2026-03-02T19:21:47.469Z"
+}

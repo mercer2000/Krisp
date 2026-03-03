@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "http://localhost:3001/inbox for the inbox table, we want to automatically show new incoming email. I want to do this in a lightweight fashion, and we want the UI to be responsive and not show loading or progress indicators or flashing or redrawing. We also need to add some pagination to the page. ",
+  "title": "Add real-time email updates with pagination to inbox",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-02T14:39:22.754Z",
+  "id": "feature-1772462362755-382qn6jqzry",
+  "descriptionHistory": [
+    {
+      "description": "http://localhost:3001/inbox for the inbox table, we want to automatically show new incoming email. I want to do this in a lightweight fashion, and we want the UI to be responsive and not show loading or progress indicators or flashing or redrawing. We also need to add some pagination to the page. ",
+      "timestamp": "2026-03-02T14:39:23.124Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-02T14:53:59.201Z",
+  "justFinishedAt": "2026-03-02T14:53:59.201Z"
+}

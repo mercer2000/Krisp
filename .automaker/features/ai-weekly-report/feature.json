@@ -1,0 +1,14 @@
+{
+  "id": "ai-weekly-report",
+  "category": "AI",
+  "title": "AI Weekly Productivity Report",
+  "description": "Every Friday, Claude generates a personalized weekly report synthesizing completed tasks, attended meetings, email volume, and captured thoughts. The report highlights wins, identifies bottlenecks, and suggests focus areas for next week. Delivered via in-app notification and optional Resend email.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [
+    "workspace-analytics"
+  ],
+  "createdAt": "2026-03-02T19:00:34.536Z",
+  "updatedAt": "2026-03-02T19:00:34.536Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "api-error-monitoring",
+  "category": "API",
+  "title": "Structured Error Logging & Monitoring",
+  "description": "Implement structured error logging across all API routes using a consistent error format (route, method, userId, errorCode, message, stack) written to a Neon-backed error_logs table. Provide an admin panel error log viewer with filtering by route, severity, and date range, plus optional Resend alert for critical errors.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.639Z",
+  "updatedAt": "2026-03-02T18:35:40.639Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "db-query-caching",
+  "category": "Database",
+  "title": "Request-Level Query Caching with Next.js Cache",
+  "description": "Wrap expensive database queries (meeting list, email list, board fetch) with Next.js unstable_cache or React cache() for request-level deduplication and configurable TTL-based caching. Add cache invalidation tags triggered on mutations so lists refresh immediately after create/update/delete operations.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.609Z",
+  "updatedAt": "2026-03-02T18:35:40.609Z"
+}

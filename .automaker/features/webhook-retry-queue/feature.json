@@ -1,0 +1,14 @@
+{
+  "id": "webhook-retry-queue",
+  "category": "API",
+  "title": "Webhook Delivery Retry Queue",
+  "description": "When an outbound webhook to a third-party service fails (e.g., Graph subscription renewal, Krisp endpoint), enqueue a retry with exponential backoff using a webhook_retry_queue table. A background worker processes the queue, updates retry counts, and marks permanently failed entries after 5 attempts.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [
+    "webhook-event-log"
+  ],
+  "createdAt": "2026-03-02T19:00:34.478Z",
+  "updatedAt": "2026-03-02T19:00:34.478Z"
+}

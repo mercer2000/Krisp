@@ -1,0 +1,12 @@
+{
+  "id": "meeting-calendar-sync",
+  "category": "Meetings",
+  "title": "Meeting Calendar Event Correlation",
+  "description": "Cross-reference Krisp meeting timestamps with Microsoft 365 calendar events (via Graph API) to automatically link meetings to their calendar invite, populate attendee lists from the invite, and surface the meeting agenda alongside the transcript in the detail drawer.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "complex",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.460Z",
+  "updatedAt": "2026-03-02T18:35:40.460Z"
+}

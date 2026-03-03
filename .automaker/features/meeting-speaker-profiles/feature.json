@@ -1,0 +1,12 @@
+{
+  "id": "meeting-speaker-profiles",
+  "category": "Meetings",
+  "title": "Meeting Speaker Profile Directory",
+  "description": "Automatically aggregate speaker appearances across all meetings to build per-person profiles showing meetings attended, talk-time percentage, topics discussed, and action items assigned. Displayed as a People directory page with search, linking each person's card to all meetings they appear in.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.455Z",
+  "updatedAt": "2026-03-02T18:35:40.455Z"
+}

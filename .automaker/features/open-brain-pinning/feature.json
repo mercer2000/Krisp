@@ -1,0 +1,14 @@
+{
+  "id": "open-brain-pinning",
+  "category": "Open Brain",
+  "title": "Thought Pinning & Starred Collection",
+  "description": "Add a pin/star toggle on each captured thought to surface it persistently in a dedicated Pinned section at the top of the Open Brain dashboard. Pinned status is stored as a boolean column on the thoughts table and persists across sessions.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "simple",
+  "dependencies": [
+    "open-brain-db-schema"
+  ],
+  "createdAt": "2026-03-02T19:00:34.375Z",
+  "updatedAt": "2026-03-02T19:00:34.375Z"
+}

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Drawer } from "@/components/ui/Drawer";
-import type { ActionItem } from "@/types";
+import type { ActionItem, Board } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -205,21 +205,46 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"transcript" | "key-points" | "action-items">("transcript");
+  const [hasAutoSwitchedTab, setHasAutoSwitchedTab] = useState(false);
 
   // Action items state
   const [meetingActionItems, setMeetingActionItems] = useState<ActionItem[]>([]);
+  const [actionItemsLoading, setActionItemsLoading] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
+
+  // Board selection state
+  const [boardsList, setBoardsList] = useState<Board[]>([]);
+  const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
+  const [defaultBoardId, setDefaultBoardId] = useState<string | null>(null);
+
+  // Load boards list and default board setting
+  useEffect(() => {
+    fetch("/api/v1/boards")
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data: Board[]) => setBoardsList(data))
+      .catch(() => setBoardsList([]));
+
+    fetch("/api/settings/default-board")
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => {
+        setDefaultBoardId(data.defaultBoardId);
+        setSelectedBoardId(data.defaultBoardId);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!meetingId) {
       setMeeting(null);
       setMeetingActionItems([]);
+      setActiveTab("transcript");
       return;
     }
 
     setLoading(true);
     setError(null);
+    setActiveTab("transcript");
 
     fetch(`/api/meetings/${meetingId}`)
       .then((res) => {
@@ -231,13 +256,24 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
       .finally(() => setLoading(false));
 
     // Fetch action items for this meeting
+    setActionItemsLoading(true);
+    setHasAutoSwitchedTab(false);
     fetch(`/api/action-items?meetingId=${meetingId}`)
       .then((res) => res.ok ? res.json() : Promise.reject())
-      .then((data) => setMeetingActionItems(data.actionItems ?? []))
-      .catch(() => setMeetingActionItems([]));
+      .then((data) => {
+        const items: ActionItem[] = data.actionItems ?? [];
+        setMeetingActionItems(items);
+        // Auto-switch to action items tab if there are auto-extracted items
+        if (items.length > 0 && items.some(i => i.extractionSource === "auto_webhook")) {
+          setActiveTab("action-items");
+          setHasAutoSwitchedTab(true);
+        }
+      })
+      .catch(() => setMeetingActionItems([]))
+      .finally(() => setActionItemsLoading(false));
   }, [meetingId]);
 
-  const handleExtract = async () => {
+  const handleExtract = async (force = false) => {
     if (!meetingId) return;
     setExtracting(true);
     setExtractError(null);
@@ -246,7 +282,11 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
       const res = await fetch("/api/action-items/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ meetingId }),
+        body: JSON.stringify({
+          meetingId,
+          boardId: selectedBoardId || undefined,
+          force,
+        }),
       });
 
       if (!res.ok) {
@@ -255,12 +295,26 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
       }
 
       const data = await res.json();
-      setMeetingActionItems((prev) => [...prev, ...(data.actionItems ?? [])]);
+      setMeetingActionItems(data.actionItems ?? []);
       setActiveTab("action-items");
     } catch (err) {
       setExtractError(err instanceof Error ? err.message : "Failed to extract action items");
     } finally {
       setExtracting(false);
+    }
+  };
+
+  const handleSetDefaultBoard = async (boardId: string | null) => {
+    setSelectedBoardId(boardId);
+    setDefaultBoardId(boardId);
+    try {
+      await fetch("/api/settings/default-board", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ boardId }),
+      });
+    } catch {
+      // silently fail — the local state is still updated
     }
   };
 
@@ -333,29 +387,99 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
               </div>
             )}
 
-            {/* Extract Action Items button */}
-            <button
-              onClick={handleExtract}
-              disabled={extracting}
-              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50 transition-opacity"
-            >
-              {extracting ? (
-                <>
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            {/* Auto-extraction badge */}
+            {meetingActionItems.length > 0 && meetingActionItems.some(i => i.extractionSource === "auto_webhook") && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20">
+                <svg className="w-4 h-4 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm text-green-700">
+                  {meetingActionItems.filter(i => i.extractionSource === "auto_webhook").length} action item{meetingActionItems.filter(i => i.extractionSource === "auto_webhook").length !== 1 ? "s" : ""} auto-extracted
+                  {meetingActionItems.some(i => i.cardId) && (
+                    <> &middot; {meetingActionItems.filter(i => i.cardId).length} added to Kanban</>
+                  )}
+                </span>
+              </div>
+            )}
+
+            {/* Extract Action Items section */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => handleExtract(meetingActionItems.length > 0)}
+                disabled={extracting}
+                className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-opacity disabled:opacity-50 ${
+                  meetingActionItems.length > 0
+                    ? "border border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] hover:bg-[var(--accent)]"
+                    : "bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90"
+                }`}
+              >
+                {extracting ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Extracting...
+                  </>
+                ) : meetingActionItems.length > 0 ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Re-extract Action Items
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                    Extract Action Items
+                  </>
+                )}
+              </button>
+
+              {/* Board selector */}
+              {boardsList.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <svg className="w-4 h-4 text-[var(--muted-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7" />
                   </svg>
-                  Extracting...
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                  </svg>
-                  Extract Action Items
-                </>
+                  <select
+                    value={selectedBoardId || ""}
+                    onChange={(e) => setSelectedBoardId(e.target.value || null)}
+                    className="text-sm px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)]"
+                  >
+                    <option value="">No board</option>
+                    {boardsList.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.title}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedBoardId && selectedBoardId !== defaultBoardId && (
+                    <button
+                      onClick={() => handleSetDefaultBoard(selectedBoardId)}
+                      className="text-xs text-[var(--primary)] hover:underline whitespace-nowrap"
+                      title="Set as default board for action items"
+                    >
+                      Set default
+                    </button>
+                  )}
+                  {selectedBoardId && selectedBoardId === defaultBoardId && (
+                    <span className="text-xs text-[var(--muted-foreground)] whitespace-nowrap">
+                      (default)
+                    </span>
+                  )}
+                </div>
               )}
-            </button>
+
+              {/* No board configured prompt */}
+              {boardsList.length > 0 && !selectedBoardId && meetingActionItems.length > 0 && !meetingActionItems.some(i => i.cardId) && (
+                <span className="text-xs text-amber-600">
+                  Select a board to create Kanban cards
+                </span>
+              )}
+            </div>
             {extractError && (
               <p className="text-sm text-[var(--destructive)]">{extractError}</p>
             )}
@@ -453,7 +577,16 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
             </div>
           ) : (
             <div className="space-y-2">
-              {meetingActionItems.length > 0 ? (
+              {actionItemsLoading ? (
+                <div className="space-y-3 animate-pulse py-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="p-3 rounded-lg bg-[var(--secondary)]/50 space-y-2">
+                      <div className="h-4 bg-[var(--secondary)] rounded w-3/4" />
+                      <div className="h-3 bg-[var(--secondary)] rounded w-1/2" />
+                    </div>
+                  ))}
+                </div>
+              ) : meetingActionItems.length > 0 ? (
                 meetingActionItems.map((item) => (
                   <div
                     key={item.id}
@@ -472,20 +605,37 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
                         {item.description}
                       </p>
                     )}
-                    <div className="flex gap-3 text-xs text-[var(--muted-foreground)]">
+                    <div className="flex gap-3 text-xs text-[var(--muted-foreground)] flex-wrap">
                       {item.assignee && <span>Assigned: {item.assignee}</span>}
                       {item.dueDate && <span>Due: {item.dueDate}</span>}
                       {item.priority && <span>Priority: {item.priority}</span>}
+                      {item.extractionSource === "auto_webhook" && (
+                        <span className="text-green-600">Auto-extracted</span>
+                      )}
+                      {item.cardId && (
+                        <span className="inline-flex items-center gap-1 text-[var(--primary)]">
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7" />
+                          </svg>
+                          On Kanban
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="text-center py-6">
-                  <p className="text-sm text-[var(--muted-foreground)] italic mb-3">
-                    No action items extracted yet
+                  <svg className="w-10 h-10 mx-auto text-[var(--muted-foreground)]/40 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  <p className="text-sm text-[var(--muted-foreground)] mb-1">
+                    No action items found
+                  </p>
+                  <p className="text-xs text-[var(--muted-foreground)] mb-3">
+                    Action items are extracted automatically when meetings arrive. You can also extract them manually.
                   </p>
                   <button
-                    onClick={handleExtract}
+                    onClick={() => handleExtract(false)}
                     disabled={extracting}
                     className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50 transition-opacity"
                   >

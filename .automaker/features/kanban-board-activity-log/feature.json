@@ -1,0 +1,12 @@
+{
+  "id": "kanban-board-activity-log",
+  "category": "Kanban",
+  "title": "Board Activity Log & Change History",
+  "description": "Record every board mutation (card created, moved, archived, priority changed) in a board_activity table with actor, timestamp, entity type, and old/new values. Display a scrollable activity feed in a board-level side panel. Entries are filterable by action type or date range.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:46.970Z",
+  "updatedAt": "2026-03-02T19:21:46.970Z"
+}

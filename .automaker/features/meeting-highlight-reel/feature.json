@@ -1,0 +1,12 @@
+{
+  "id": "meeting-highlight-reel",
+  "category": "Meeting Intelligence",
+  "title": "Meeting Highlight Reel — AI-Curated Transcript Clips",
+  "description": "Claude processes the full transcript of a meeting and extracts 3–7 'highlight' segments: key decisions, pivotal moments, or memorable quotes. These clips are stored in a meeting_highlights table and displayed as a scannable summary inside the meeting detail drawer above the full transcript.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.558Z",
+  "updatedAt": "2026-03-02T19:00:34.558Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "action-item-bulk-import",
+  "category": "Action Items",
+  "title": "Bulk Action Item Import from CSV",
+  "description": "Provide a CSV upload interface in the action items view that parses title, assignee, due date, priority, and status columns and batch-inserts records into the action_items table. Includes a preview step with validation errors highlighted before final import.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.448Z",
+  "updatedAt": "2026-03-02T19:00:34.448Z"
+}

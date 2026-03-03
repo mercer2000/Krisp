@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772518313469-2c3123b4",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-03T06:11:53.469Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "email-smart-labels",
+  "featureName": "AI-Powered Email Smart Labeling",
+  "passes": true
+}

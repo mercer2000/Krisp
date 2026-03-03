@@ -2,6 +2,272 @@
   "version": 1,
   "events": [
     {
+      "id": "evt-1772549462598-df85b815",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-03T14:51:02.598Z",
+      "featureName": "Add Microsoft Outlook integration",
+      "featureId": "feature-1772547367316-pvxrugwfnfk"
+    },
+    {
+      "id": "evt-1772548648918-102ec319",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-03T14:37:28.918Z",
+      "featureName": "Add Microsoft Outlook integration",
+      "featureId": "feature-1772547367316-pvxrugwfnfk"
+    },
+    {
+      "id": "evt-1772548260402-5afdb993",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-03T14:31:00.402Z",
+      "featureName": "Add AI agent chat interface for second brain queries",
+      "featureId": "feature-1772544423330-vrg1q6htako"
+    },
+    {
+      "id": "evt-1772547367864-c841f8d5",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-03T14:16:07.864Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772547367316-pvxrugwfnfk"
+    },
+    {
+      "id": "evt-1772545254474-1d74d9bb",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-03T13:40:54.474Z",
+      "featureName": "Add AI agent chat interface for second brain queries",
+      "featureId": "feature-1772544423330-vrg1q6htako"
+    },
+    {
+      "id": "evt-1772544423676-3d0d3bdd",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-03T13:27:03.676Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772544423330-vrg1q6htako"
+    },
+    {
+      "id": "evt-1772543697066-c5d0b01f",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-03T13:14:57.066Z",
+      "featureName": "Customizable Dashboard Widget Grid",
+      "featureId": "custom-dashboard-widgets"
+    },
+    {
+      "id": "evt-1772543610964-3b66669a",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-03T13:13:30.965Z",
+      "featureName": "Implement Microsoft 365 Exchange Email Ingestion",
+      "featureId": "feature-1772314624042-1fe1l70hmuh"
+    },
+    {
+      "id": "evt-1772518458922-ddd37be0",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-03T06:14:18.922Z",
+      "featureName": "Email Action Item Extraction",
+      "featureId": "email-action-extraction"
+    },
+    {
+      "id": "evt-1772518405023-c8fc3f47",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-03T06:13:25.023Z",
+      "featureName": "Open Brain Weekly Review & Synthesis",
+      "featureId": "open-brain-weekly-review"
+    },
+    {
+      "id": "evt-1772518313469-2c3123b4",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-03T06:11:53.469Z",
+      "featureName": "AI-Powered Email Smart Labeling",
+      "featureId": "email-smart-labels"
+    },
+    {
+      "id": "evt-1772518273896-7b2c2c22",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-03T06:11:13.896Z",
+      "featureName": "AI-Powered Decision Register",
+      "featureId": "ai-decision-register"
+    },
+    {
+      "id": "evt-1772517421344-2c6d6208",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-03T05:57:01.344Z",
+      "featureName": "Customizable Dashboard Widget Grid",
+      "featureId": "custom-dashboard-widgets"
+    },
+    {
+      "id": "evt-1772512191457-313831d6",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-03T04:29:51.457Z",
+      "featureName": "Auto-extract action items from meetings to Kanban",
+      "featureId": "feature-1772510932215-hqktsfco60u"
+    },
+    {
+      "id": "evt-1772511622947-8197df8f",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-03T04:20:22.947Z",
+      "featureName": "Auto-extract action items from meetings to Kanban",
+      "featureId": "feature-1772510932215-hqktsfco60u"
+    },
+    {
+      "id": "evt-1772510932684-85025fe0",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-03T04:08:52.684Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772510932215-hqktsfco60u"
+    },
+    {
+      "id": "evt-1772494580911-304dec31",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T23:36:20.911Z",
+      "featureName": "Soft Delete with Trash & Recovery",
+      "featureId": "db-soft-delete"
+    },
+    {
+      "id": "evt-1772493932880-643b43e9",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T23:25:32.880Z",
+      "featureName": "Microsoft 365 Calendar Event Ingestion",
+      "featureId": "calendar-integration-ms365"
+    },
+    {
+      "id": "evt-1772492302367-f69bc261",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T22:58:22.368Z",
+      "featureName": "Add delete button to cards for quick removal",
+      "featureId": "feature-1772491932411-6izz5cotiu"
+    },
+    {
+      "id": "evt-1772491932754-0297edfc",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-02T22:52:12.754Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772491932411-6izz5cotiu"
+    },
+    {
+      "id": "evt-1772463239220-263f5910",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T14:53:59.220Z",
+      "featureName": "Add real-time email updates with pagination to inbox",
+      "featureId": "feature-1772462362755-382qn6jqzry"
+    },
+    {
+      "id": "evt-1772462363128-64626ffd",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-02T14:39:23.128Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772462362755-382qn6jqzry"
+    },
+    {
+      "id": "evt-1772459819005-6ad9ef09",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T13:56:59.005Z",
+      "featureName": "Add quick return to last viewed Kanban board",
+      "featureId": "feature-1772459316662-8jfwvwe0z9i"
+    },
+    {
+      "id": "evt-1772459317103-606ca983",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-02T13:48:37.103Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772459316662-8jfwvwe0z9i"
+    },
+    {
+      "id": "evt-1772459155617-9b7ae3eb",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T13:45:55.617Z",
+      "featureName": "Automate Action Item Extraction and Kanban Integration",
+      "featureId": "feature-1772458326353-qorq6munbk"
+    },
+    {
+      "id": "evt-1772458326723-0afa43ee",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-02T13:32:06.724Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772458326353-qorq6munbk"
+    },
+    {
+      "id": "evt-1772433431591-cc02cb7e",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T06:37:11.591Z",
+      "featureName": "Meeting Sentiment & Engagement Analytics",
+      "featureId": "feature-1772326547383-quv78pler"
+    },
+    {
+      "id": "evt-1772431532323-902be1c2",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T06:05:32.323Z",
+      "featureName": "Implement semantic email search with OpenAI embeddings",
+      "featureId": "feature-1772430206239-lpeevpxscc8"
+    },
+    {
+      "id": "evt-1772430206660-32ca15ce",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-02T05:43:26.660Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772430206239-lpeevpxscc8"
+    },
+    {
+      "id": "evt-1772429454025-a6e8202e",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T05:30:54.025Z",
+      "featureName": "Lightweight email client",
+      "featureId": "feature-1772428172151-inmc4zahya"
+    },
+    {
+      "id": "evt-1772429341619-d638c527",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T05:29:01.619Z",
+      "featureName": "Lightweight email client",
+      "featureId": "feature-1772428172151-inmc4zahya"
+    },
+    {
+      "id": "evt-1772429070525-1b1c166e",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T05:24:30.525Z",
+      "featureName": "Lightweight email client",
+      "featureId": "feature-1772428172151-inmc4zahya"
+    },
+    {
+      "id": "evt-1772428172526-e18f8be5",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-02T05:09:32.526Z",
+      "featureName": "Lightweight email client",
+      "featureId": "feature-1772428172151-inmc4zahya"
+    },
+    {
+      "id": "evt-1772427137562-f1ee2609",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T04:52:17.562Z",
+      "featureName": "Implement Zoom Chat integration with multi-tenant support",
+      "featureId": "feature-1772425478861-bhnqtrn6opt"
+    },
+    {
+      "id": "evt-1772426804017-4a261362",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T04:46:44.017Z",
+      "featureName": "Improve Kanban boards",
+      "featureId": "feature-1772426033337-jqx5ylorfpj"
+    },
+    {
+      "id": "evt-1772426033705-d43a00e7",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-02T04:33:53.705Z",
+      "featureName": "Improve Kanban boards",
+      "featureId": "feature-1772426033337-jqx5ylorfpj"
+    },
+    {
+      "id": "evt-1772425479212-16d8eddd",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-02T04:24:39.212Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772425478861-bhnqtrn6opt"
+    },
+    {
+      "id": "evt-1772424989150-9a79b0ab",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-02T04:16:29.150Z",
+      "featureName": "Create default Kanban board for action items",
+      "featureId": "feature-1772406328272-x8jr1l28u3j"
+    },
+    {
       "id": "evt-1772419684827-2f7fbb20",
       "trigger": "feature_success",
       "timestamp": "2026-03-02T02:48:04.827Z",

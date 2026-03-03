@@ -1,0 +1,15 @@
+{
+  "id": "universal-search",
+  "category": "UI",
+  "title": "Universal Semantic Search Across All Data Sources",
+  "description": "Single search bar that queries across meetings, emails, Kanban cards, and Open Brain thoughts simultaneously using vector similarity search. Results are grouped by source type with relevance scores and rendered in a unified results page with tabs for filtering by source.",
+  "status": "backlog",
+  "priority": 1,
+  "complexity": "complex",
+  "dependencies": [
+    "meeting-vector-embeddings",
+    "open-brain-db-schema"
+  ],
+  "createdAt": "2026-03-02T18:35:40.558Z",
+  "updatedAt": "2026-03-02T18:35:40.558Z"
+}

@@ -220,6 +220,81 @@ export const updateActionItemSchema = z.object({
 export type CreateActionItemInput = z.infer<typeof createActionItemSchema>;
 export type UpdateActionItemInput = z.infer<typeof updateActionItemSchema>;
 
+// ── Decisions ────────────────────────────────────────
+export const createDecisionSchema = z.object({
+  statement: z.string().min(1, "Decision statement is required"),
+  context: z.string().optional(),
+  rationale: z.string().optional(),
+  participants: z.array(z.string()).optional(),
+  category: z.enum(["technical", "process", "budget", "strategic", "other"]).optional(),
+  priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
+  meetingId: z.number().int().optional(),
+  emailId: z.number().int().optional(),
+  decisionDate: z.string().optional(),
+});
+
+export const updateDecisionSchema = z.object({
+  statement: z.string().min(1).optional(),
+  context: z.string().nullable().optional(),
+  rationale: z.string().nullable().optional(),
+  participants: z.array(z.string()).optional(),
+  category: z.enum(["technical", "process", "budget", "strategic", "other"]).optional(),
+  status: z.enum(["active", "reconsidered", "archived"]).optional(),
+  priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
+  annotation: z.string().nullable().optional(),
+  decisionDate: z.string().nullable().optional(),
+});
+
+export type CreateDecisionInput = z.infer<typeof createDecisionSchema>;
+export type UpdateDecisionInput = z.infer<typeof updateDecisionSchema>;
+
+// ── Zoom Chat Webhook ───────────────────────────────
+export const zoomChatWebhookObjectSchema = z.object({
+  id: z.string().min(1),
+  type: z.string().min(1),
+  date_time: z.string().min(1),
+  session_id: z.string().optional(),
+  contact_id: z.string().optional(),
+  contact_email: z.string().optional(),
+  channel_id: z.string().optional(),
+  channel_name: z.string().optional(),
+  message: z.string().optional(),
+  timestamp: z.number().optional(),
+  operator: z.string().min(1),
+  operator_id: z.string().min(1),
+  operator_member_id: z.string().optional(),
+});
+
+export const zoomChatWebhookPayloadSchema = z.object({
+  event: z.string().min(1),
+  event_ts: z.number(),
+  payload: z.object({
+    account_id: z.string().min(1),
+    object: zoomChatWebhookObjectSchema,
+  }),
+});
+
+export type ZoomChatWebhookPayloadInput = z.infer<typeof zoomChatWebhookPayloadSchema>;
+
+// ── Inbox Email List ────────────────────────────────
+export const emailListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  q: z.string().max(200).optional(),
+  after: z.string().datetime({ offset: true }).optional(),
+  before: z.string().datetime({ offset: true }).optional(),
+});
+
+export type EmailListQueryInput = z.infer<typeof emailListQuerySchema>;
+
+// ── Semantic Email Search ──────────────────────────
+export const emailSearchQuerySchema = z.object({
+  q: z.string().min(1, "Search query is required").max(500),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+export type EmailSearchQueryInput = z.infer<typeof emailSearchQuerySchema>;
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;

@@ -77,7 +77,7 @@ export async function getWebhookKeyPointsByMeetingId(
 ): Promise<WebhookKeyPointsRow[]> {
   const rows = await sql`
     SELECT * FROM webhook_key_points
-    WHERE meeting_id = ${meetingId} AND user_id = ${userId}
+    WHERE meeting_id = ${meetingId} AND user_id = ${userId} AND deleted_at IS NULL
     ORDER BY received_at DESC
   `;
   return rows as WebhookKeyPointsRow[];
@@ -92,7 +92,7 @@ export async function getRecentWebhookKeyPoints(
 ): Promise<WebhookKeyPointsRow[]> {
   const rows = await sql`
     SELECT * FROM webhook_key_points
-    WHERE user_id = ${userId}
+    WHERE user_id = ${userId} AND deleted_at IS NULL
     ORDER BY received_at DESC
     LIMIT ${limit}
   `;
@@ -127,6 +127,7 @@ export async function searchMeetings(
     FROM webhook_key_points
     WHERE
       user_id = ${userId}
+      AND deleted_at IS NULL
       AND to_tsvector('english', COALESCE(meeting_title, '') || ' ' || COALESCE(raw_content, '') || ' ' || COALESCE(content::text, ''))
       @@ plainto_tsquery('english', ${searchText})
     ORDER BY rank DESC, received_at DESC
@@ -151,7 +152,7 @@ export async function getAllMeetingsSummary(
       speakers,
       LEFT(raw_content, 500) as content_preview
     FROM webhook_key_points
-    WHERE user_id = ${userId}
+    WHERE user_id = ${userId} AND deleted_at IS NULL
     ORDER BY meeting_start_date DESC
     LIMIT ${limit}
   `;
@@ -166,9 +167,56 @@ export async function getMeetingById(
   userId: string
 ): Promise<WebhookKeyPointsRow | null> {
   const rows = await sql`
-    SELECT * FROM webhook_key_points WHERE id = ${id} AND user_id = ${userId}
+    SELECT * FROM webhook_key_points WHERE id = ${id} AND user_id = ${userId} AND deleted_at IS NULL
   `;
   return (rows[0] as WebhookKeyPointsRow) || null;
+}
+
+/**
+ * Soft-delete a meeting by ID (scoped to user)
+ */
+export async function softDeleteMeeting(
+  id: number,
+  userId: string
+): Promise<boolean> {
+  const rows = await sql`
+    UPDATE webhook_key_points
+    SET deleted_at = NOW(), updated_at = NOW()
+    WHERE id = ${id} AND user_id = ${userId} AND deleted_at IS NULL
+    RETURNING id
+  `;
+  return rows.length > 0;
+}
+
+/**
+ * Restore a soft-deleted meeting
+ */
+export async function restoreMeeting(
+  id: number,
+  userId: string
+): Promise<boolean> {
+  const rows = await sql`
+    UPDATE webhook_key_points
+    SET deleted_at = NULL, updated_at = NOW()
+    WHERE id = ${id} AND user_id = ${userId} AND deleted_at IS NOT NULL
+    RETURNING id
+  `;
+  return rows.length > 0;
+}
+
+/**
+ * Permanently delete a meeting (hard delete for trash purge)
+ */
+export async function permanentlyDeleteMeeting(
+  id: number,
+  userId: string
+): Promise<boolean> {
+  const rows = await sql`
+    DELETE FROM webhook_key_points
+    WHERE id = ${id} AND user_id = ${userId} AND deleted_at IS NOT NULL
+    RETURNING id
+  `;
+  return rows.length > 0;
 }
 
 /**
@@ -186,6 +234,7 @@ export async function searchMeetingsSimple(
     FROM webhook_key_points
     WHERE
       user_id = ${userId}
+      AND deleted_at IS NULL
       AND (
         meeting_title ILIKE ${searchPattern}
         OR raw_content ILIKE ${searchPattern}

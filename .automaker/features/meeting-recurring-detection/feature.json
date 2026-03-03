@@ -1,0 +1,12 @@
+{
+  "id": "meeting-recurring-detection",
+  "category": "Meeting Intelligence",
+  "title": "Recurring Meeting Detection & Series Grouping",
+  "description": "Detect recurring meetings by matching title similarity and participant overlap across the meetings table, and group them into series. Displays a Meeting Series view showing all instances chronologically with aggregate stats (average duration, most frequent action item owners).",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "complex",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.389Z",
+  "updatedAt": "2026-03-02T19:00:34.389Z"
+}

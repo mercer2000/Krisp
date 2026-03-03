@@ -1,0 +1,14 @@
+{
+  "id": "email-action-extraction",
+  "category": "Email",
+  "title": "Email Action Item Extraction",
+  "description": "Scan email bodies with Claude to detect requests, deadlines, and commitments addressed to the user. Extracted action items appear in a sidebar suggestion panel within the email detail view, with one-click buttons to create Kanban cards or Open Brain captures directly from the extracted item.",
+  "status": "verified",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.537Z",
+  "updatedAt": "2026-03-03T06:14:18.900Z",
+  "startedAt": "2026-03-03T05:38:47.324Z",
+  "descriptionHistory": []
+}

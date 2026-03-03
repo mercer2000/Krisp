@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772548648918-102ec319",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-03T14:37:28.918Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772547367316-pvxrugwfnfk",
+  "featureName": "Add Microsoft Outlook integration",
+  "passes": true
+}

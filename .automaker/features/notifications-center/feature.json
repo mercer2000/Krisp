@@ -1,0 +1,12 @@
+{
+  "id": "notifications-center",
+  "category": "UI",
+  "title": "In-App Notification Center",
+  "description": "Centralized notification bell in the app shell header that aggregates alerts for overdue Kanban cards, new emails, meeting action item reminders, and Open Brain weekly reviews. Notifications are stored in a dedicated table with read/unread state and link to the relevant resource. Displays unread count badge.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.550Z",
+  "updatedAt": "2026-03-02T18:35:40.550Z"
+}

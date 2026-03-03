@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772494580911-304dec31",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-02T23:36:20.911Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "db-soft-delete",
+  "featureName": "Soft Delete with Trash & Recovery",
+  "passes": true
+}

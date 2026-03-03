@@ -1,0 +1,12 @@
+{
+  "id": "search-saved-queries",
+  "category": "Search",
+  "title": "Saved AI Search Queries & Results Replay",
+  "description": "Let users bookmark any AI meeting search query as a saved search with a name and optional schedule (run weekly). Scheduled saved searches are re-executed by a cron job and new results are emailed via Resend if they differ from the previous run. Saved queries are managed from a /search/saved page.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.313Z",
+  "updatedAt": "2026-03-02T19:21:47.313Z"
+}

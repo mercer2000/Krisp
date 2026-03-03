@@ -1,0 +1,12 @@
+{
+  "id": "webhook-event-log",
+  "category": "API",
+  "title": "Webhook Event Audit Log",
+  "description": "Record every inbound webhook event (Krisp, Graph, Gmail, Zoom) in a webhook_events audit table with source, payload hash, processing status, error message, and timestamp. Admin panel shows a paginated event log with retry capability for failed events and payload inspector drawer.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.571Z",
+  "updatedAt": "2026-03-02T18:35:40.571Z"
+}

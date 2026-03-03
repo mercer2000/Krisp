@@ -1,0 +1,15 @@
+{
+  "id": "open-brain-thought-detail",
+  "category": "Open Brain",
+  "title": "Open Brain Thought Detail & Edit Drawer",
+  "description": "Side drawer that opens when clicking any thought in the Open Brain dashboard or search results, showing full content, extracted metadata, source context, embedding cluster neighbors (related thoughts), and an edit form to correct or enrich the content. Re-generates embeddings on save.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [
+    "open-brain-search-ui",
+    "open-brain-dashboard"
+  ],
+  "createdAt": "2026-03-02T18:35:40.447Z",
+  "updatedAt": "2026-03-02T18:35:40.447Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "meeting-export",
+  "category": "Meetings",
+  "title": "Meeting Export — PDF & Markdown",
+  "description": "Add export buttons to the meeting detail drawer that generate a formatted PDF (via browser print API) or Markdown document containing the meeting summary, key points, action items, and full transcript with speaker labels. Markdown export copies to clipboard; PDF opens print dialog.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "simple",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.466Z",
+  "updatedAt": "2026-03-02T18:35:40.467Z"
+}

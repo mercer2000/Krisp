@@ -1,0 +1,14 @@
+{
+  "id": "email-rules-engine",
+  "category": "Email",
+  "title": "User-Defined Email Routing Rules",
+  "description": "Allow users to define simple if-then rules (e.g., 'if sender contains @client.com → label as Client, move to Kanban board X'). Rules are stored in an email_rules table and evaluated on each incoming email webhook. Provides a rules management UI in the admin panel.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "complex",
+  "dependencies": [
+    "email-smart-labels"
+  ],
+  "createdAt": "2026-03-02T19:00:34.415Z",
+  "updatedAt": "2026-03-02T19:00:34.415Z"
+}

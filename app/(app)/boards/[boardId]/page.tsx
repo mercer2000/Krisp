@@ -1,8 +1,8 @@
 "use client";
 
-import { use } from "react";
+import { use, useState, useEffect } from "react";
 import { useBoard } from "@/lib/hooks/useBoard";
-import { BoardHeader } from "@/components/board/BoardHeader";
+import { BoardHeader, type BoardFilters, type BoardView } from "@/components/board/BoardHeader";
 import { KanbanBoard } from "@/components/board/KanbanBoard";
 
 // ---------------------------------------------------------------------------
@@ -12,6 +12,8 @@ import { KanbanBoard } from "@/components/board/KanbanBoard";
 function SkeletonColumn() {
   return (
     <div className="flex w-72 shrink-0 flex-col gap-3 rounded-xl bg-slate-100 p-3 dark:bg-slate-800/50">
+      {/* Accent bar */}
+      <div className="h-1 w-full rounded-t-xl bg-slate-300 dark:bg-slate-600 animate-pulse" />
       {/* Header skeleton */}
       <div className="flex items-center gap-2">
         <div className="h-4 w-24 animate-pulse rounded bg-[var(--muted)]" />
@@ -39,6 +41,12 @@ function SkeletonColumn() {
 // Board Page
 // ---------------------------------------------------------------------------
 
+const DEFAULT_FILTERS: BoardFilters = {
+  priority: "all",
+  dueDate: "all",
+  view: "kanban",
+};
+
 interface BoardPageProps {
   params: Promise<{ boardId: string }>;
 }
@@ -46,6 +54,35 @@ interface BoardPageProps {
 export default function BoardPage({ params }: BoardPageProps) {
   const { boardId } = use(params);
   const { data: board, isLoading, error } = useBoard(boardId);
+
+  // Persist view preference to localStorage
+  const [filters, setFilters] = useState<BoardFilters>(DEFAULT_FILTERS);
+
+  // Remember this board as the last viewed board
+  useEffect(() => {
+    try {
+      localStorage.setItem("last-board-id", boardId);
+    } catch {}
+  }, [boardId]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("board-view-pref");
+      if (stored) {
+        const view = stored as BoardView;
+        if (view === "kanban" || view === "list") {
+          setFilters((f) => ({ ...f, view }));
+        }
+      }
+    } catch {}
+  }, []);
+
+  const handleFiltersChange = (next: BoardFilters) => {
+    setFilters(next);
+    try {
+      localStorage.setItem("board-view-pref", next.view);
+    } catch {}
+  };
 
   // Loading state
   if (isLoading) {
@@ -110,8 +147,12 @@ export default function BoardPage({ params }: BoardPageProps) {
 
   return (
     <div className="flex h-full flex-col bg-[var(--background)]">
-      <BoardHeader board={board} />
-      <KanbanBoard board={board} />
+      <BoardHeader
+        board={board}
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+      />
+      <KanbanBoard board={board} filters={filters} />
     </div>
   );
 }

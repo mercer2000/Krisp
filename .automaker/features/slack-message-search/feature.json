@@ -1,0 +1,14 @@
+{
+  "id": "slack-message-search",
+  "category": "Integrations",
+  "title": "Semantic Search Across Slack Messages",
+  "description": "Generate OpenAI vector embeddings for stored Slack messages and expose a semantic search interface at /slack/search. Returns relevant messages ranked by cosine similarity with source channel and timestamp context.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [
+    "slack-integration-messages"
+  ],
+  "createdAt": "2026-03-02T19:00:34.427Z",
+  "updatedAt": "2026-03-02T19:00:34.427Z"
+}

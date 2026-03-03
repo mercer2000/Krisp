@@ -1,0 +1,15 @@
+{
+  "id": "open-brain-smart-duplicates",
+  "category": "Open Brain",
+  "title": "Duplicate Thought Detection & Merge",
+  "description": "After each thought is captured, run a cosine similarity check against recent thoughts using pgvector. If a near-duplicate is found (similarity > 0.92), surface a prompt offering to merge the new capture into the existing thought or keep both. Prevents knowledge fragmentation over time.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [
+    "open-brain-db-schema",
+    "open-brain-web-capture"
+  ],
+  "createdAt": "2026-03-02T19:21:46.950Z",
+  "updatedAt": "2026-03-02T19:21:46.950Z"
+}

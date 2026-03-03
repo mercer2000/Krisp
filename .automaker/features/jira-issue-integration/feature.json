@@ -1,0 +1,12 @@
+{
+  "id": "jira-issue-integration",
+  "category": "Integrations",
+  "title": "Jira Issue Ingestion & Bidirectional Sync",
+  "description": "Connect Jira Cloud via OAuth to ingest assigned issues into the productivity hub. Issues are stored with status, priority, sprint, and story points. Optionally create a linked Kanban card when a Jira issue is assigned, and push status updates back to Jira when the card is moved to 'Done'.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "complex",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.172Z",
+  "updatedAt": "2026-03-02T19:21:47.172Z"
+}

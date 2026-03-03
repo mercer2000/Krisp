@@ -1,0 +1,12 @@
+{
+  "id": "open-brain-capture-pipeline",
+  "category": "Open Brain",
+  "title": "Open Brain Slack Thought Capture Pipeline",
+  "description": "Implement Slack bot integration that accepts natural language thought captures, automatically generates OpenAI vector embeddings, extracts structured metadata (people, topics, type, action items), and stores in Postgres with pgvector. Replies in-thread with a capture confirmation card summarizing what was saved within 10 seconds.",
+  "status": "backlog",
+  "priority": 1,
+  "complexity": "complex",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.412Z",
+  "updatedAt": "2026-03-02T18:35:40.412Z"
+}

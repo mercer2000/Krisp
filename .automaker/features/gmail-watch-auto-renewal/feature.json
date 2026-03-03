@@ -1,0 +1,12 @@
+{
+  "id": "gmail-watch-auto-renewal",
+  "category": "API",
+  "title": "Gmail Watch Subscription Auto-Renewal",
+  "description": "Gmail watch subscriptions expire every 7 days. Add a Vercel cron job that renews all active Gmail watches before expiry using stored OAuth tokens. Handles token refresh automatically and logs renewal status. Sends a Resend alert email if renewal fails due to revoked permissions.",
+  "status": "backlog",
+  "priority": 1,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.623Z",
+  "updatedAt": "2026-03-02T18:35:40.623Z"
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useBoards, useCreateBoard, useDeleteBoard } from "@/lib/hooks/useBoard";
 import type { Board } from "@/types";
@@ -261,10 +261,26 @@ function getTimeAgo(date: Date): string {
 export default function BoardsPage() {
   const router = useRouter();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [redirectChecked, setRedirectChecked] = useState(false);
 
   const { data: boards, isLoading, error } = useBoards();
   const createBoard = useCreateBoard();
   const deleteBoard = useDeleteBoard();
+
+  // Auto-redirect to the last viewed board if it still exists
+  // Skip redirect if ?list=1 is present (user explicitly wants the board list)
+  useEffect(() => {
+    if (redirectChecked || isLoading || !boards) return;
+    setRedirectChecked(true);
+    const showList = new URLSearchParams(window.location.search).get("list") === "1";
+    if (showList) return;
+    try {
+      const lastBoardId = localStorage.getItem("last-board-id");
+      if (lastBoardId && boards.some((b) => b.id === lastBoardId)) {
+        router.replace(`/boards/${lastBoardId}`);
+      }
+    } catch {}
+  }, [boards, isLoading, redirectChecked, router]);
 
   const handleCreate = (data: {
     title: string;
@@ -316,7 +332,14 @@ export default function BoardsPage() {
                 key={board.id}
                 board={board}
                 onClick={() => router.push(`/boards/${board.id}`)}
-                onDelete={() => deleteBoard.mutate(board.id)}
+                onDelete={() => {
+                  try {
+                    if (localStorage.getItem("last-board-id") === board.id) {
+                      localStorage.removeItem("last-board-id");
+                    }
+                  } catch {}
+                  deleteBoard.mutate(board.id);
+                }}
               />
             ))}
 

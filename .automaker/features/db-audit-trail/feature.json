@@ -1,0 +1,12 @@
+{
+  "id": "db-audit-trail",
+  "category": "Database",
+  "title": "Immutable Audit Trail for Sensitive Operations",
+  "description": "Create an audit_log table that records all write operations on sensitive entities (user data changes, credential creation/deletion, webhook secret rotation) with actor ID, IP address, action, target entity, and timestamp. Audit logs are append-only and visible to the user in a Security Log section under Settings.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.278Z",
+  "updatedAt": "2026-03-02T19:21:47.278Z"
+}

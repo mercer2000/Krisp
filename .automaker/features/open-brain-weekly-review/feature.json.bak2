@@ -1,0 +1,17 @@
+{
+  "id": "open-brain-weekly-review",
+  "category": "Open Brain",
+  "title": "Open Brain Weekly Review & Synthesis",
+  "description": "Automated weekly job that clusters captured thoughts by topic using embedding similarity, surfaces unresolved action items, detects cross-day patterns, and generates a structured synthesis report. Delivers the report via email (Resend) and stores it in the database for in-app viewing in a dedicated Weekly Reviews section.",
+  "status": "in_progress",
+  "priority": 2,
+  "complexity": "complex",
+  "dependencies": [
+    "open-brain-capture-pipeline",
+    "open-brain-db-schema"
+  ],
+  "createdAt": "2026-03-02T18:35:40.431Z",
+  "updatedAt": "2026-03-02T18:35:40.431Z",
+  "startedAt": "2026-03-03T05:52:49.840Z",
+  "descriptionHistory": []
+}

@@ -1,0 +1,12 @@
+{
+  "id": "email-link-tracker",
+  "category": "Email",
+  "title": "Email Link Extraction & Click Tracker",
+  "description": "Parse all URLs from stored email bodies at ingestion time and store them in an email_links table. Display extracted links in a dedicated Links panel in the email detail view. Users can bookmark important links directly to the Open Brain as captured thoughts.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "simple",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.149Z",
+  "updatedAt": "2026-03-02T19:21:47.149Z"
+}

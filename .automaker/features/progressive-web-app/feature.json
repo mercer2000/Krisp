@@ -1,0 +1,12 @@
+{
+  "id": "progressive-web-app",
+  "category": "Core",
+  "title": "Progressive Web App (PWA) Manifest & Offline Shell",
+  "description": "Add a web app manifest, service worker (via next-pwa), and app icons so the application can be installed on mobile and desktop as a PWA. Caches the app shell and static assets for offline loading. Push notification support for in-app alerts when the browser tab is not active.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.547Z",
+  "updatedAt": "2026-03-02T19:00:34.547Z"
+}

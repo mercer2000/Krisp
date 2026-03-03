@@ -1,0 +1,15 @@
+{
+  "id": "open-brain-related-thoughts",
+  "category": "Open Brain",
+  "title": "Related Thoughts Recommendations in Detail Drawer",
+  "description": "When a user opens a thought in the detail drawer, automatically query pgvector for the 5 most semantically similar thoughts and display them as 'Related' cards at the bottom of the drawer. Uses a single nearest-neighbor query against the thoughts embedding column.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "simple",
+  "dependencies": [
+    "open-brain-thought-detail",
+    "open-brain-db-schema"
+  ],
+  "createdAt": "2026-03-02T19:00:34.485Z",
+  "updatedAt": "2026-03-02T19:00:34.485Z"
+}

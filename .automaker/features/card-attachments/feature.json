@@ -1,0 +1,12 @@
+{
+  "id": "card-attachments",
+  "category": "Kanban",
+  "title": "Card File Attachments via Neon Storage or Blob URL",
+  "description": "Allow users to attach files to Kanban cards by uploading directly from the card detail panel. Files are stored via Vercel Blob or a configured S3-compatible endpoint, with metadata (name, size, URL, uploadedAt) stored in a card_attachments table. Attachments render as downloadable chips in the card detail view.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.588Z",
+  "updatedAt": "2026-03-02T18:35:40.588Z"
+}

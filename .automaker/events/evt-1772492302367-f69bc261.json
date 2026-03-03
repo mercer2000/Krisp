@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772492302367-f69bc261",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-02T22:58:22.368Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772491932411-6izz5cotiu",
+  "featureName": "Add delete button to cards for quick removal",
+  "passes": true
+}

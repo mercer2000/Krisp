@@ -1,0 +1,12 @@
+{
+  "id": "email-snooze",
+  "category": "Email",
+  "title": "Email Snooze & Reminder Scheduling",
+  "description": "Allow users to snooze an email until a specified date/time, temporarily removing it from the inbox view. A background cron job resurfaces snoozed emails at the scheduled time and sends an in-app notification. Snooze records are stored in an email_snooze table.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.408Z",
+  "updatedAt": "2026-03-02T19:00:34.408Z"
+}

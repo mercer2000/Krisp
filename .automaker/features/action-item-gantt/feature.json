@@ -1,0 +1,12 @@
+{
+  "id": "action-item-gantt",
+  "category": "Action Items",
+  "title": "Action Item Gantt / Timeline View",
+  "description": "Render all action items with due dates as horizontal bars on a timeline (Gantt chart) sorted by due date. Color-codes bars by priority and status. Allows click-to-edit directly from the timeline. Built with a lightweight SVG renderer, no third-party Gantt library required.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "complex",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.454Z",
+  "updatedAt": "2026-03-02T19:00:34.454Z"
+}

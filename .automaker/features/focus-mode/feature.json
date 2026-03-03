@@ -1,0 +1,12 @@
+{
+  "id": "focus-mode",
+  "category": "UI",
+  "title": "Focus Mode — Distraction-Free Task View",
+  "description": "A full-screen focus mode that surfaces a single prioritized task from the Kanban board, hides all navigation, and displays a Pomodoro-style countdown timer. After each work session the user is prompted to log progress notes. Accessible via keyboard shortcut and the global command palette.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.431Z",
+  "updatedAt": "2026-03-02T19:00:34.431Z"
+}

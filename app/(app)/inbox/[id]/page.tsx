@@ -1,0 +1,465 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import DOMPurify from "isomorphic-dompurify";
+import { Modal } from "@/components/ui/Modal";
+import { useToast } from "@/components/ui/Toast";
+import { EmailActionSidebar } from "@/components/email/EmailActionSidebar";
+import type { EmailDetail, EmailAttachmentMetadata, EmailLabelChip } from "@/types/email";
+
+interface LabelDef {
+  id: string;
+  name: string;
+  color: string;
+  is_system: boolean;
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function mimeIcon(contentType: string): string {
+  if (contentType.startsWith("image/")) return "img";
+  if (contentType === "application/pdf") return "pdf";
+  if (contentType.includes("spreadsheet") || contentType.includes("excel")) return "xls";
+  if (contentType.includes("document") || contentType.includes("word")) return "doc";
+  if (contentType.includes("presentation") || contentType.includes("powerpoint")) return "ppt";
+  if (contentType.includes("zip") || contentType.includes("compressed")) return "zip";
+  return "file";
+}
+
+function AttachmentBadge({ attachment }: { attachment: EmailAttachmentMetadata }) {
+  const icon = mimeIcon(attachment.contentType);
+  return (
+    <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--secondary)] text-sm">
+      <span className="font-mono text-xs uppercase text-[var(--muted-foreground)] bg-[var(--accent)] px-1.5 py-0.5 rounded">
+        {icon}
+      </span>
+      <span className="text-[var(--foreground)] truncate max-w-[200px]" title={attachment.name}>
+        {attachment.name}
+      </span>
+      <span className="text-[var(--muted-foreground)] text-xs">
+        ({formatSize(attachment.size)})
+      </span>
+    </div>
+  );
+}
+
+export default function EmailDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [email, setEmail] = useState<EmailDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [emailLabels, setEmailLabels] = useState<(EmailLabelChip & { assigned_by?: string })[]>([]);
+  const [allLabels, setAllLabels] = useState<LabelDef[]>([]);
+  const [showLabelDropdown, setShowLabelDropdown] = useState(false);
+  const [classifyingOne, setClassifyingOne] = useState(false);
+
+  // Fetch labels for this email and all available labels
+  useEffect(() => {
+    if (!params.id) return;
+    fetch(`/api/emails/${params.id}/labels`)
+      .then((r) => r.json())
+      .then((d) => { if (d.data) setEmailLabels(d.data); })
+      .catch(() => {});
+    fetch("/api/emails/labels")
+      .then((r) => r.json())
+      .then((d) => { if (d.data) setAllLabels(d.data); })
+      .catch(() => {});
+  }, [params.id]);
+
+  const handleAddLabel = async (labelId: string) => {
+    try {
+      const res = await fetch(`/api/emails/${params.id}/labels`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ labelId }),
+      });
+      if (!res.ok) throw new Error("Failed to add label");
+      const { data } = await res.json();
+      setEmailLabels(data);
+      setShowLabelDropdown(false);
+    } catch {
+      toast({ title: "Failed to add label", variant: "destructive" });
+    }
+  };
+
+  const handleRemoveLabel = async (labelId: string) => {
+    try {
+      const res = await fetch(`/api/emails/${params.id}/labels?labelId=${labelId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to remove label");
+      setEmailLabels((prev) => prev.filter((l) => l.id !== labelId));
+    } catch {
+      toast({ title: "Failed to remove label", variant: "destructive" });
+    }
+  };
+
+  const handleClassifyOne = async () => {
+    setClassifyingOne(true);
+    try {
+      const res = await fetch("/api/emails/classify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailId: Number(params.id) }),
+      });
+      if (!res.ok) throw new Error("Failed to classify");
+      toast({ title: "Email classified", variant: "success" });
+      // Refresh labels
+      const labelsRes = await fetch(`/api/emails/${params.id}/labels`);
+      const labelsData = await labelsRes.json();
+      if (labelsData.data) setEmailLabels(labelsData.data);
+    } catch {
+      toast({ title: "Classification failed", variant: "destructive" });
+    } finally {
+      setClassifyingOne(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    setShowDeleteModal(false);
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/emails/${params.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to delete");
+      }
+      toast({ title: "Email deleted", variant: "success" });
+      router.push("/inbox");
+    } catch (err) {
+      toast({
+        title: "Delete failed",
+        description: err instanceof Error ? err.message : "Failed to delete email",
+        variant: "destructive",
+      });
+      setDeleting(false);
+    }
+  };
+
+  useEffect(() => {
+    async function fetchEmail() {
+      try {
+        const res = await fetch(`/api/emails/${params.id}`);
+        if (res.status === 404) {
+          setError("Email not found.");
+          return;
+        }
+        if (!res.ok) throw new Error("Failed to fetch email");
+        const data: EmailDetail = await res.json();
+        setEmail(data);
+      } catch {
+        setError("Failed to load email. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchEmail();
+  }, [params.id]);
+
+  if (loading) {
+    return (
+      <div className="flex h-full flex-col bg-[var(--background)]">
+        <header className="border-b border-[var(--border)] px-6 py-4">
+          <div className="h-5 bg-[var(--secondary)] rounded w-32 animate-pulse" />
+        </header>
+        <div className="flex-1 p-6 space-y-4 animate-pulse">
+          <div className="h-8 bg-[var(--secondary)] rounded w-3/4" />
+          <div className="h-4 bg-[var(--secondary)] rounded w-1/2" />
+          <div className="h-4 bg-[var(--secondary)] rounded w-1/3" />
+          <div className="h-4 bg-[var(--secondary)] rounded w-1/4" />
+          <div className="h-px bg-[var(--border)] my-6" />
+          <div className="space-y-2">
+            <div className="h-4 bg-[var(--secondary)] rounded w-full" />
+            <div className="h-4 bg-[var(--secondary)] rounded w-5/6" />
+            <div className="h-4 bg-[var(--secondary)] rounded w-4/6" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !email) {
+    return (
+      <div className="flex h-full flex-col bg-[var(--background)]">
+        <header className="border-b border-[var(--border)] px-6 py-4">
+          <Link
+            href="/inbox"
+            className="inline-flex items-center gap-2 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+            Back to Inbox
+          </Link>
+        </header>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-xl font-medium text-[var(--foreground)] mb-2">
+              {error || "Email not found"}
+            </h2>
+            <Link href="/inbox" className="text-sm text-[var(--primary)] hover:underline">
+              Return to Inbox
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const sanitizedHtml = email.body_html
+    ? DOMPurify.sanitize(email.body_html, {
+        FORBID_TAGS: ["script", "style"],
+        FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover", "onfocus", "onblur"],
+        ALLOW_DATA_ATTR: false,
+      })
+    : null;
+
+  const attachments: EmailAttachmentMetadata[] = Array.isArray(email.attachments_metadata)
+    ? email.attachments_metadata
+    : [];
+
+  return (
+    <div className="flex h-full flex-col bg-[var(--background)]">
+      {/* Back nav */}
+      <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md px-6 py-3 flex items-center justify-between">
+        <Link
+          href="/inbox"
+          className="inline-flex items-center gap-2 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+          Back to Inbox
+        </Link>
+        <div className="flex items-center gap-2">
+          {email.web_link && (
+            <a
+              href={email.web_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 3h6v6" />
+                <path d="M10 14 21 3" />
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              </svg>
+              Open in Outlook
+            </a>
+          )}
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            disabled={deleting}
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--destructive)] hover:bg-[var(--destructive)]/10 transition-colors disabled:opacity-40"
+            title="Delete email"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 6h18" />
+              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+            </svg>
+            {deleting ? "Deleting..." : "Delete"}
+          </button>
+        </div>
+      </header>
+
+      {/* Message content + sidebar */}
+      <div className="flex-1 flex overflow-hidden">
+        <main className="flex-1 overflow-auto">
+          <div className="max-w-4xl mx-auto px-6 py-6">
+            {/* Headers */}
+            <div className="space-y-3 mb-6">
+              <h1 className="text-2xl font-bold text-[var(--foreground)]">
+                {email.subject || "(No subject)"}
+              </h1>
+
+              <div className="space-y-1.5 text-sm">
+                <div className="flex gap-2">
+                  <span className="text-[var(--muted-foreground)] w-12 flex-shrink-0">From</span>
+                  <span className="text-[var(--foreground)]">{email.sender}</span>
+                </div>
+
+                {email.recipients.length > 0 && (
+                  <div className="flex gap-2">
+                    <span className="text-[var(--muted-foreground)] w-12 flex-shrink-0">To</span>
+                    <span className="text-[var(--foreground)]">
+                      {email.recipients.join(", ")}
+                    </span>
+                  </div>
+                )}
+
+                {email.cc.length > 0 && (
+                  <div className="flex gap-2">
+                    <span className="text-[var(--muted-foreground)] w-12 flex-shrink-0">CC</span>
+                    <span className="text-[var(--foreground)]">
+                      {email.cc.join(", ")}
+                    </span>
+                  </div>
+                )}
+
+                {email.bcc.length > 0 && (
+                  <div className="flex gap-2">
+                    <span className="text-[var(--muted-foreground)] w-12 flex-shrink-0">BCC</span>
+                    <span className="text-[var(--foreground)]">
+                      {email.bcc.join(", ")}
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <span className="text-[var(--muted-foreground)] w-12 flex-shrink-0">Date</span>
+                  <span className="text-[var(--foreground)]">
+                    {formatDate(email.received_at)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Smart Labels */}
+              <div className="flex items-center gap-2 flex-wrap mt-3" data-testid="email-detail-labels">
+                {emailLabels.map((label) => (
+                  <span
+                    key={label.id}
+                    className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium group/label"
+                    style={{
+                      backgroundColor: label.color + "22",
+                      color: label.color,
+                      border: `1px solid ${label.color}44`,
+                    }}
+                    title={label.confidence != null ? `${label.name} (${label.confidence}% confidence)` : label.name}
+                  >
+                    {label.name}
+                    <button
+                      onClick={() => handleRemoveLabel(label.id)}
+                      className="opacity-0 group-hover/label:opacity-100 ml-0.5 transition-opacity"
+                      title="Remove label"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 6 6 18" />
+                        <path d="m6 6 12 12" />
+                      </svg>
+                    </button>
+                  </span>
+                ))}
+
+                {/* Add label button */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowLabelDropdown(!showLabelDropdown)}
+                    className="text-xs px-2 py-1 rounded-full border border-dashed border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
+                  >
+                    + Label
+                  </button>
+                  {showLabelDropdown && (
+                    <div className="absolute top-full left-0 mt-1 z-50 min-w-[180px] bg-[var(--card)] border border-[var(--border)] rounded-lg shadow-lg py-1">
+                      {allLabels
+                        .filter((l) => !emailLabels.some((el) => el.id === l.id))
+                        .map((label) => (
+                          <button
+                            key={label.id}
+                            onClick={() => handleAddLabel(label.id)}
+                            className="w-full text-left px-3 py-1.5 text-sm text-[var(--foreground)] hover:bg-[var(--accent)] flex items-center gap-2"
+                          >
+                            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: label.color }} />
+                            {label.name}
+                          </button>
+                        ))}
+                      {allLabels.filter((l) => !emailLabels.some((el) => el.id === l.id)).length === 0 && (
+                        <p className="px-3 py-1.5 text-xs text-[var(--muted-foreground)]">All labels assigned</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Classify with AI button */}
+                <button
+                  onClick={handleClassifyOne}
+                  disabled={classifyingOne}
+                  className="text-xs px-2 py-1 rounded-full border border-dashed border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors disabled:opacity-40"
+                  title="Auto-classify this email with AI"
+                >
+                  {classifyingOne ? "Classifying..." : "AI Classify"}
+                </button>
+              </div>
+            </div>
+
+            {/* Attachments */}
+            {attachments.length > 0 && (
+              <div className="border-t border-b border-[var(--border)] py-4 mb-6">
+                <div className="flex flex-wrap gap-2">
+                  {attachments.map((att, i) => (
+                    <AttachmentBadge key={i} attachment={att} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Body */}
+            <div className="border-t border-[var(--border)] pt-6">
+              {sanitizedHtml ? (
+                <div
+                  className="prose prose-sm max-w-none text-[var(--foreground)] [&_a]:text-[var(--primary)] [&_img]:max-w-full"
+                  dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+                />
+              ) : email.body_plain_text ? (
+                <pre className="whitespace-pre-wrap text-sm text-[var(--foreground)] font-sans leading-relaxed">
+                  {email.body_plain_text}
+                </pre>
+              ) : (
+                <p className="text-[var(--muted-foreground)] italic">
+                  No message body
+                </p>
+              )}
+            </div>
+          </div>
+        </main>
+
+        {/* Action items sidebar */}
+        <EmailActionSidebar emailId={email.id} />
+      </div>
+
+      {/* Delete confirmation modal */}
+      <Modal
+        open={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="Delete email"
+      >
+        <p className="text-sm text-[var(--muted-foreground)] mb-6">
+          This email will be permanently removed from your inbox and your mailbox. This action cannot be undone.
+        </p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={() => setShowDeleteModal(false)}
+            className="px-4 py-2 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={confirmDelete}
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--destructive)] text-white hover:opacity-90 transition-opacity"
+          >
+            Delete
+          </button>
+        </div>
+      </Modal>
+    </div>
+  );
+}

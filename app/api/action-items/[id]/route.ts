@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { actionItems } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { updateActionItemSchema } from "@/lib/validators/schemas";
 
 export async function GET(
@@ -20,7 +20,7 @@ export async function GET(
     const [item] = await db
       .select()
       .from(actionItems)
-      .where(and(eq(actionItems.id, id), eq(actionItems.userId, userId)));
+      .where(and(eq(actionItems.id, id), eq(actionItems.userId, userId), isNull(actionItems.deletedAt)));
 
     if (!item) {
       return NextResponse.json(
@@ -104,12 +104,13 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const [deleted] = await db
-      .delete(actionItems)
+    const [softDeleted] = await db
+      .update(actionItems)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
       .where(and(eq(actionItems.id, id), eq(actionItems.userId, userId)))
       .returning({ id: actionItems.id });
 
-    if (!deleted) {
+    if (!softDeleted) {
       return NextResponse.json(
         { error: "Action item not found" },
         { status: 404 }

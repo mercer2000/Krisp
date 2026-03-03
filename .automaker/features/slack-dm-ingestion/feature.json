@@ -1,0 +1,14 @@
+{
+  "id": "slack-dm-ingestion",
+  "category": "Integrations",
+  "title": "Slack Direct Message Ingestion",
+  "description": "Extend the existing Slack integration to also capture direct messages addressed to the bot or explicitly shared via the bot's DM channel. DMs are stored in a separate slack_dms table with sender, content, timestamp, and thread context. Useful for capturing decisions made informally over Slack DMs.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [
+    "slack-integration-messages"
+  ],
+  "createdAt": "2026-03-02T19:21:47.158Z",
+  "updatedAt": "2026-03-02T19:21:47.158Z"
+}

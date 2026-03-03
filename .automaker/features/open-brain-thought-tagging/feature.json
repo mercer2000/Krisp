@@ -1,0 +1,14 @@
+{
+  "id": "open-brain-thought-tagging",
+  "category": "Open Brain",
+  "title": "Thought Tagging & Manual Classification",
+  "description": "Allow users to manually add, edit, and remove tags on captured thoughts in the Open Brain system. Tags are stored in a dedicated thought_tags table and can be used to filter and organize the thought list view. Supports both user-defined tags and auto-suggested tags based on AI classification.",
+  "status": "backlog",
+  "priority": 1,
+  "complexity": "moderate",
+  "dependencies": [
+    "open-brain-db-schema"
+  ],
+  "createdAt": "2026-03-02T19:00:34.363Z",
+  "updatedAt": "2026-03-02T19:00:34.363Z"
+}

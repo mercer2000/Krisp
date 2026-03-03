@@ -1,0 +1,12 @@
+{
+  "id": "email-smart-labels",
+  "category": "Email",
+  "title": "AI-Powered Email Smart Labeling",
+  "description": "Automatically classify incoming emails into smart labels (Action Required, FYI, Newsletter, Invoice, Meeting Request, Support Ticket) using Claude. Labels are stored in the database and displayed as colored chips in the inbox. Users can create custom labels and define classification rules.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.524Z",
+  "updatedAt": "2026-03-02T18:35:40.524Z"
+}

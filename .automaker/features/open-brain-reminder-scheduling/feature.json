@@ -1,0 +1,14 @@
+{
+  "id": "open-brain-reminder-scheduling",
+  "category": "Open Brain",
+  "title": "Thought Reminder & Resurfacing Scheduler",
+  "description": "Let users schedule a future resurfacing reminder on any thought (e.g., 'remind me in 3 days'). At the scheduled time, Resend delivers a contextual email with the thought content and a link to open it. Supports one-time and spaced-repetition reminder modes for learning reinforcement.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [
+    "open-brain-db-schema"
+  ],
+  "createdAt": "2026-03-02T19:21:46.945Z",
+  "updatedAt": "2026-03-02T19:21:46.945Z"
+}

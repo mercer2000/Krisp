@@ -1,0 +1,14 @@
+{
+  "id": "open-brain-quick-capture-templates",
+  "category": "Open Brain",
+  "title": "Open Brain Quick Capture Templates & Sentence Starters",
+  "description": "Implement five optimized capture templates (Decided:, Talked to:, Realized:, Debriefed:, Saved from AI:) that trigger automatic type classification and metadata extraction in the pipeline. Templates surface in the Slack bot as slash command suggestions and in the web UI as prefilled input starters.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "simple",
+  "dependencies": [
+    "open-brain-capture-pipeline"
+  ],
+  "createdAt": "2026-03-02T18:35:40.427Z",
+  "updatedAt": "2026-03-02T18:35:40.427Z"
+}

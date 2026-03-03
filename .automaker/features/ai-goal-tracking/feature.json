@@ -1,0 +1,12 @@
+{
+  "id": "ai-goal-tracking",
+  "category": "AI",
+  "title": "Goal Setting & AI Progress Tracking",
+  "description": "Allow users to define quarterly or monthly goals with measurable outcomes and link them to Kanban boards or card labels. Claude periodically analyzes completed tasks and meeting outcomes against each goal and generates a progress score with a narrative explanation. Goals are displayed on a dedicated /goals page.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "complex",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.210Z",
+  "updatedAt": "2026-03-02T19:21:47.210Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "meeting-smart-agenda",
+  "category": "Meetings",
+  "title": "AI-Generated Agenda for Next Meeting",
+  "description": "Based on unresolved action items and key points from the most recent meeting in a series, Claude drafts a suggested agenda for the next session. The agenda is displayed on the meeting detail page and can be copied to clipboard or emailed to participants via Resend.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.054Z",
+  "updatedAt": "2026-03-02T19:21:47.054Z"
+}

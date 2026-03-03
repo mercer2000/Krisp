@@ -1,0 +1,12 @@
+{
+  "id": "zoom-message-search",
+  "category": "Zoom",
+  "title": "Zoom Chat Message Semantic Search",
+  "description": "Generate OpenAI embeddings for stored Zoom chat messages and provide a semantic search interface at /zoom/search. Users can query by meaning to find relevant DM or channel conversations. Results show message context, channel/participant info, and a link to open the original Zoom thread.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.601Z",
+  "updatedAt": "2026-03-02T18:35:40.601Z"
+}

@@ -23,9 +23,48 @@ import {
 import { Column } from "./Column";
 import { Card as CardComponent } from "./Card";
 import { AddColumnButton } from "./AddColumnButton";
+import { CardDetailDrawer } from "./CardDetailDrawer";
 import { useReorderColumns } from "@/lib/hooks/useColumns";
-import { useMoveCard, useReorderCards } from "@/lib/hooks/useCards";
+import { useDeleteCard, useMoveCard, useReorderCards } from "@/lib/hooks/useCards";
 import type { BoardWithColumns, Card as CardType, ColumnWithCards } from "@/types";
+import type { BoardFilters } from "./BoardHeader";
+
+// ---------------------------------------------------------------------------
+// Filter helpers
+// ---------------------------------------------------------------------------
+
+function isOverdue(dueDate: string): boolean {
+  const due = new Date(dueDate);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return due < now;
+}
+
+function isDueSoon(dueDate: string): boolean {
+  const due = new Date(dueDate);
+  const now = new Date();
+  const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  return diffDays >= 0 && diffDays <= 7;
+}
+
+function applyFilters(columns: ColumnWithCards[], filters: BoardFilters): ColumnWithCards[] {
+  return columns.map((col) => ({
+    ...col,
+    cards: col.cards.filter((card) => {
+      if (card.archived) return false;
+
+      // Priority filter
+      if (filters.priority !== "all" && card.priority !== filters.priority) return false;
+
+      // Due date filter
+      if (filters.dueDate === "overdue" && (!card.dueDate || !isOverdue(card.dueDate))) return false;
+      if (filters.dueDate === "due_soon" && (!card.dueDate || !isDueSoon(card.dueDate))) return false;
+      if (filters.dueDate === "no_date" && card.dueDate) return false;
+
+      return true;
+    }),
+  }));
+}
 
 // ---------------------------------------------------------------------------
 // KanbanBoard
@@ -33,6 +72,7 @@ import type { BoardWithColumns, Card as CardType, ColumnWithCards } from "@/type
 
 interface KanbanBoardProps {
   board: BoardWithColumns;
+  filters: BoardFilters;
 }
 
 // Use pointer position for collision detection (follows the cursor exactly),
@@ -43,15 +83,13 @@ const collisionDetection: CollisionDetection = (args) => {
   return closestCenter(args);
 };
 
-export function KanbanBoard({ board }: KanbanBoardProps) {
+export function KanbanBoard({ board, filters }: KanbanBoardProps) {
   const [activeCard, setActiveCard] = useState<CardType | null>(null);
-  const [dragSourceColumnId, setDragSourceColumnId] = useState<string | null>(
-    null
-  );
+  const [dragSourceColumnId, setDragSourceColumnId] = useState<string | null>(null);
+  const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
+  const [selectedCard, setSelectedCard] = useState<CardType | null>(null);
 
   // Local columns state for real-time cross-column drag feedback.
-  // During a drag, cards are moved between columns in this state so that
-  // SortableContext containers update and the card renders in the new column.
   const [localColumns, setLocalColumns] = useState<ColumnWithCards[]>(() =>
     [...board.columns].sort((a, b) => a.position - b.position)
   );
@@ -68,6 +106,7 @@ export function KanbanBoard({ board }: KanbanBoardProps) {
   const reorderColumns = useReorderColumns(board.id);
   const moveCard = useMoveCard(board.id);
   const reorderCards = useReorderCards(board.id);
+  const deleteCard = useDeleteCard(board.id);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -79,6 +118,12 @@ export function KanbanBoard({ board }: KanbanBoardProps) {
   const columnIds = useMemo(
     () => localColumns.map((col) => col.id),
     [localColumns]
+  );
+
+  // Apply filters to display columns
+  const displayColumns = useMemo(
+    () => applyFilters(localColumns, filters),
+    [localColumns, filters]
   );
 
   const findColumnByCardId = useCallback(
@@ -94,6 +139,24 @@ export function KanbanBoard({ board }: KanbanBoardProps) {
     (id: string): boolean => localColumns.some((col) => col.id === id),
     [localColumns]
   );
+
+  // -- Keyboard shortcut: "N" to add card --
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Don't trigger when typing in inputs
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT") return;
+      if (target.isContentEditable) return;
+
+      if (e.key === "n" || e.key === "N") {
+        // Focus the first column's add-card button
+        const addBtn = document.querySelector('[data-add-card-column]') as HTMLButtonElement;
+        if (addBtn) addBtn.click();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
 
   // -- Drag Start --
   const handleDragStart = (event: DragStartEvent) => {
@@ -117,9 +180,7 @@ export function KanbanBoard({ board }: KanbanBoardProps) {
     const overId = over.id as string;
     if (activeId === overId) return;
 
-    // Determine target column ID from the over item.
-    // This is safe outside the updater — the over item (not the active card)
-    // doesn't move between columns, so stale localColumns won't mis-identify it.
+    // Track which column is being hovered for highlight
     let targetColumnId: string | undefined;
     if (isColumnId(overId)) {
       targetColumnId = overId;
@@ -129,18 +190,14 @@ export function KanbanBoard({ board }: KanbanBoardProps) {
     }
     if (!targetColumnId) return;
 
-    // Move card from source to target column.
-    // CRITICAL: find the source column from `prev` (latest state), NOT from the
-    // render closure. handleDragOver fires rapidly and the closure's
-    // `localColumns` can be stale — the card may have already been moved by a
-    // previous queued state update.
+    setDragOverColumnId(targetColumnId);
+
     setLocalColumns((prev) => {
       const srcCol = prev.find((col) =>
         col.cards.some((c) => c.id === activeId)
       );
       if (!srcCol) return prev;
 
-      // Already in the target column — no-op
       if (srcCol.id === targetColumnId) return prev;
 
       const dstCol = prev.find((c) => c.id === targetColumnId);
@@ -148,13 +205,11 @@ export function KanbanBoard({ board }: KanbanBoardProps) {
 
       const movedCard = srcCol.cards.find((c) => c.id === activeId)!;
 
-      // Remove from source, reassign positions
       const srcCards = srcCol.cards
         .filter((c) => c.id !== activeId)
         .sort((a, b) => a.position - b.position)
         .map((c, i) => ({ ...c, position: i * 1024 }));
 
-      // Insert into target at the right position
       const dstActiveCards = [...dstCol.cards]
         .filter((c) => !c.archived)
         .sort((a, b) => a.position - b.position);
@@ -187,6 +242,8 @@ export function KanbanBoard({ board }: KanbanBoardProps) {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
+    setDragOverColumnId(null);
+
     if (!over) {
       setActiveCard(null);
       setDragSourceColumnId(null);
@@ -214,7 +271,7 @@ export function KanbanBoard({ board }: KanbanBoardProps) {
       return;
     }
 
-    // Card drag — find which column the card is in now (after dragOver moves)
+    // Card drag
     const currentColumn = findColumnByCardId(activeId);
     if (!currentColumn) {
       setActiveCard(null);
@@ -241,7 +298,7 @@ export function KanbanBoard({ board }: KanbanBoardProps) {
         }
       }
     } else {
-      // Cross-column move — card already in target column from dragOver
+      // Cross-column move
       const sortedCards = [...currentColumn.cards]
         .filter((c) => !c.archived)
         .sort((a, b) => a.position - b.position);
@@ -261,47 +318,66 @@ export function KanbanBoard({ board }: KanbanBoardProps) {
   const handleDragCancel = () => {
     setActiveCard(null);
     setDragSourceColumnId(null);
+    setDragOverColumnId(null);
   };
 
-  // -- Card click handler --
-  const handleCardClick = useCallback((_card: CardType) => {
-    // Card detail panel will be implemented separately
+  // -- Card click handler → open drawer --
+  const handleCardClick = useCallback((card: CardType) => {
+    setSelectedCard(card);
   }, []);
 
+  const handleDeleteCard = useCallback((cardId: string) => {
+    deleteCard.mutate(cardId);
+  }, [deleteCard]);
+
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={collisionDetection}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-      onDragCancel={handleDragCancel}
-    >
-      <div className="flex flex-1 gap-4 overflow-x-auto p-4">
-        <SortableContext
-          items={columnIds}
-          strategy={horizontalListSortingStrategy}
-        >
-          {localColumns.map((column) => (
-            <Column
-              key={column.id}
-              column={column}
-              boardId={board.id}
-              onCardClick={handleCardClick}
-            />
-          ))}
-        </SortableContext>
+    <>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={collisionDetection}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
+        <div className="flex flex-1 gap-4 overflow-x-auto p-4">
+          <SortableContext
+            items={columnIds}
+            strategy={horizontalListSortingStrategy}
+          >
+            {displayColumns.map((column) => (
+              <Column
+                key={column.id}
+                column={column}
+                boardId={board.id}
+                onCardClick={handleCardClick}
+                onDeleteCard={handleDeleteCard}
+                isOver={dragOverColumnId === column.id}
+              />
+            ))}
+          </SortableContext>
 
-        <AddColumnButton boardId={board.id} />
-      </div>
+          <AddColumnButton boardId={board.id} />
+        </div>
 
-      <DragOverlay>
-        {activeCard ? (
-          <div className="w-72 rotate-2 scale-105 opacity-90">
-            <CardComponent card={activeCard} onClick={() => {}} />
-          </div>
-        ) : null}
-      </DragOverlay>
-    </DndContext>
+        <DragOverlay>
+          {activeCard ? (
+            <div className="w-72 rotate-2 scale-105">
+              {/* Ghost card with semi-transparent, dashed border */}
+              <div className="rounded-lg border-2 border-dashed border-blue-400 bg-blue-50/80 dark:bg-blue-900/30 shadow-lg">
+                <CardComponent card={activeCard} onClick={() => {}} />
+              </div>
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+
+      {/* Card detail slide-over drawer */}
+      <CardDetailDrawer
+        card={selectedCard}
+        boardId={board.id}
+        onClose={() => setSelectedCard(null)}
+      />
+    </>
   );
 }

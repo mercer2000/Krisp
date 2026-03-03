@@ -1,0 +1,15 @@
+{
+  "id": "open-brain-chat-assistant",
+  "category": "Open Brain",
+  "title": "Conversational Open Brain Chat Interface",
+  "description": "A chat UI at /open-brain/chat where users can ask Claude questions that are answered using their captured thoughts as the primary knowledge base. Each response cites the specific thoughts it drew from. The conversation is stored as a session in the database and can be continued across browser sessions.",
+  "status": "backlog",
+  "priority": 1,
+  "complexity": "complex",
+  "dependencies": [
+    "open-brain-db-schema",
+    "open-brain-search-ui"
+  ],
+  "createdAt": "2026-03-02T19:21:47.429Z",
+  "updatedAt": "2026-03-02T19:21:47.429Z"
+}

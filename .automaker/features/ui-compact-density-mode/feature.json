@@ -1,0 +1,12 @@
+{
+  "id": "ui-compact-density-mode",
+  "category": "UI",
+  "title": "Compact / Comfortable Display Density Toggle",
+  "description": "Add a display density setting (Compact / Comfortable / Spacious) that adjusts padding, font size, and row height across all list and table views. The setting persists per user and applies consistently to the inbox, meeting list, card list, and Open Brain views.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "simple",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.268Z",
+  "updatedAt": "2026-03-02T19:21:47.268Z"
+}

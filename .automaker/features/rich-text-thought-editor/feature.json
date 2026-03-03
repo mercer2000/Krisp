@@ -1,0 +1,14 @@
+{
+  "id": "rich-text-thought-editor",
+  "category": "Open Brain",
+  "title": "Rich Text Editor for Open Brain Thought Editing",
+  "description": "Replace the plain textarea in the thought detail drawer with a full Markdown-capable rich text editor (@uiw/react-md-editor, already in the stack). Supports headers, bullet lists, code blocks, and inline links. Auto-saves on blur and re-generates the embedding when content changes significantly.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [
+    "open-brain-thought-detail"
+  ],
+  "createdAt": "2026-03-02T19:00:34.540Z",
+  "updatedAt": "2026-03-02T19:00:34.540Z"
+}

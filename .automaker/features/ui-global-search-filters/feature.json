@@ -1,0 +1,14 @@
+{
+  "id": "ui-global-search-filters",
+  "category": "UI",
+  "title": "Advanced Search Filters & Saved Searches",
+  "description": "Extend the universal search bar with structured filters: date range, data source (meetings/emails/cards/thoughts), tag, and author. Users can save any filter combination as a named search accessible from the sidebar. Saved searches execute with one click and support keyboard navigation.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [
+    "universal-search"
+  ],
+  "createdAt": "2026-03-02T19:21:47.263Z",
+  "updatedAt": "2026-03-02T19:21:47.263Z"
+}

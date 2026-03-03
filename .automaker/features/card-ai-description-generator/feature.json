@@ -1,0 +1,12 @@
+{
+  "id": "card-ai-description-generator",
+  "category": "Kanban",
+  "title": "AI Card Description Generator",
+  "description": "A 'Generate with AI' button in the card detail panel that calls Claude with the card title, column name, and board context to draft a structured card description including acceptance criteria and definition of done. The generated draft appears in the Markdown editor and is editable before saving.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "simple",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.407Z",
+  "updatedAt": "2026-03-02T19:21:47.407Z"
+}

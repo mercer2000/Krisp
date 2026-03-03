@@ -1,0 +1,15 @@
+{
+  "id": "open-brain-web-capture",
+  "category": "Open Brain",
+  "title": "Open Brain Web Quick-Capture Input",
+  "description": "Add a persistent quick-capture text input to the application shell that allows users to type thoughts directly in the web UI without switching to Slack. Submits to the same capture pipeline, shows inline confirmation toast, and supports the five sentence-starter templates via autocomplete dropdown.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "simple",
+  "dependencies": [
+    "open-brain-capture-pipeline",
+    "open-brain-quick-capture-templates"
+  ],
+  "createdAt": "2026-03-02T18:35:40.439Z",
+  "updatedAt": "2026-03-02T18:35:40.439Z"
+}

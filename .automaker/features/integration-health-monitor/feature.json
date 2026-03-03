@@ -1,0 +1,12 @@
+{
+  "id": "integration-health-monitor",
+  "category": "API",
+  "title": "Integration Health Monitoring Dashboard",
+  "description": "Admin panel section showing real-time health status of all integrations (Graph subscription expiry, Gmail watch expiry, Zoom token status, Krisp webhook last received). Color-coded status indicators with auto-refresh every 60 seconds. One-click renewal buttons for expiring subscriptions/tokens.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.613Z",
+  "updatedAt": "2026-03-02T18:35:40.613Z"
+}

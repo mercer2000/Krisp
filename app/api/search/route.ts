@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { chatCompletion } from "@/lib/ai/client";
 import { auth } from "@/auth";
 import {
   searchMeetings,
@@ -8,10 +8,6 @@ import {
   getMeetingById,
 } from "@/lib/krisp/webhookKeyPoints";
 import type { WebhookKeyPointsRow } from "@/types/webhook";
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
 
 interface SearchResult {
   meetings: WebhookKeyPointsRow[];
@@ -167,24 +163,14 @@ export async function GET(request: NextRequest) {
  */
 async function extractSearchTerms(query: string): Promise<string> {
   try {
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 100,
-      messages: [
-        {
-          role: "user",
-          content: `You are a search query optimizer. Extract the key search terms from this question about meeting transcripts.
+    const prompt = `You are a search query optimizer. Extract the key search terms from this question about meeting transcripts.
 Return only the essential keywords that would be useful for searching meeting transcripts.
 Do not include common words like "meeting", "transcript", "find", "search", etc.
 Return just the search terms, nothing else.
 
-Question: ${query}`,
-        },
-      ],
-    });
+Question: ${query}`;
 
-    const textBlock = response.content.find((block) => block.type === "text");
-    return textBlock?.text?.trim() || query;
+    return (await chatCompletion(prompt, { maxTokens: 100 })) || query;
   } catch (error) {
     console.error("Error extracting search terms:", error);
     // Fallback to original query if LLM fails
@@ -215,13 +201,7 @@ Transcript excerpt: ${m.raw_content?.slice(0, 1000) || "No transcript available"
 ---`;
     }).join("\n");
 
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 500,
-      messages: [
-        {
-          role: "user",
-          content: `You are a helpful assistant that answers questions about meeting transcripts.
+    const prompt = `You are a helpful assistant that answers questions about meeting transcripts.
 You have access to meeting data including titles, dates, speakers, key points, and transcripts.
 Provide concise, helpful answers based on the meeting data provided.
 If you can't find the answer in the provided data, say so clearly.
@@ -230,13 +210,9 @@ When referencing meetings, mention the meeting title and date.
 Based on the following meeting data, answer this question: "${query}"
 
 Meeting Data:
-${meetingContext}`,
-        },
-      ],
-    });
+${meetingContext}`;
 
-    const textBlock = response.content.find((block) => block.type === "text");
-    return textBlock?.text?.trim() || "I couldn't generate an answer.";
+    return (await chatCompletion(prompt, { maxTokens: 500 })) || "I couldn't generate an answer.";
   } catch (error) {
     console.error("Error generating answer:", error);
     return `Found ${meetings.length} relevant meeting(s). Unable to generate AI summary at this time.`;

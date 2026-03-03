@@ -1,0 +1,12 @@
+{
+  "id": "ui-sidebar-customization",
+  "category": "UI",
+  "title": "Sidebar Navigation Customization",
+  "description": "Allow users to pin, unpin, and reorder sidebar navigation items, and collapse sections they don't use. Navigation preferences are saved per user in the database and restored on login. Supports adding quick-access links to specific boards or saved searches directly in the sidebar.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.253Z",
+  "updatedAt": "2026-03-02T19:21:47.253Z"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "email-follow-up-tracker",
+  "category": "Email",
+  "title": "Email Follow-Up Tracker",
+  "description": "Let users mark any email as 'awaiting reply' with an optional follow-up date. A background check identifies emails in this state that have received no threaded response by the due date and surfaces them in a Follow-Up widget on the dashboard. Users can dismiss, snooze, or mark as resolved.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [
+    "email-thread-grouping"
+  ],
+  "createdAt": "2026-03-02T19:21:47.070Z",
+  "updatedAt": "2026-03-02T19:21:47.070Z"
+}

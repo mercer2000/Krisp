@@ -1,0 +1,12 @@
+{
+  "id": "meeting-cost-estimator",
+  "category": "Meetings",
+  "title": "Meeting Cost Estimator",
+  "description": "Calculate the estimated cost of each meeting by multiplying the duration by participant count and an optional hourly rate configured in settings. Display the cost badge on meeting cards and aggregate weekly/monthly meeting cost on the analytics dashboard. Helps surface low-value meetings that should be eliminated.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "simple",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.331Z",
+  "updatedAt": "2026-03-02T19:21:47.332Z"
+}

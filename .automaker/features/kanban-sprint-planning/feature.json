@@ -1,0 +1,12 @@
+{
+  "id": "kanban-sprint-planning",
+  "category": "Kanban",
+  "title": "Sprint Planning Mode with Date-Bounded Sprints",
+  "description": "Add Sprint management to Kanban boards: create named sprints with start and end dates, assign cards to a sprint, and view a Sprint Backlog filtered view. At sprint end a summary report shows completed vs carried-over cards. Sprint data is stored in a sprints table linked to boards.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "complex",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.532Z",
+  "updatedAt": "2026-03-02T19:00:34.532Z"
+}

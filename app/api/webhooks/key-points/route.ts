@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { users, webhookSecrets } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { timingSafeEqual } from "crypto";
+import { extractActionItemsForMeeting } from "@/lib/actions/extractActionItems";
 
 const SUPPORTED_EVENTS: WebhookEventType[] = [
   "key_points_generated",
@@ -139,6 +140,31 @@ export async function POST(request: NextRequest) {
 
     // Insert the webhook data with user association
     const result = await insertWebhookKeyPoints(payload, userId);
+
+    // Auto-extract action items in the background (non-blocking)
+    // Uses the user's default board for Kanban card creation
+    const [userRow] = await db
+      .select({ defaultBoardId: users.defaultBoardId })
+      .from(users)
+      .where(eq(users.id, userId));
+
+    if (!userRow?.defaultBoardId) {
+      console.warn(
+        `User ${userId} has no default board configured — action items will be saved without Kanban cards`
+      );
+    }
+
+    extractActionItemsForMeeting(
+      result.id,
+      userId,
+      userRow?.defaultBoardId || undefined,
+      "auto_webhook"
+    ).catch((err) =>
+      console.error(
+        `Auto-extraction failed for meeting ${result.id}:`,
+        err
+      )
+    );
 
     return NextResponse.json(
       {

@@ -1,0 +1,14 @@
+{
+  "category": "ui",
+  "description": "Analyze transcripts to surface sentiment trends, talk-time distribution per participant, and engagement scores over time. Display trends in a dashboard per team or project.\n\n**Rationale:** Managers and team leads benefit from aggregate insights beyond individual meeting summaries — identifying patterns like one-sided discussions or consistently negative sentiment.",
+  "title": "Meeting Sentiment & Engagement Analytics",
+  "status": "backlog",
+  "id": "feature-1772326547383-quv78pler",
+  "descriptionHistory": [
+    {
+      "description": "Analyze transcripts to surface sentiment trends, talk-time distribution per participant, and engagement scores over time. Display trends in a dashboard per team or project.\n\n**Rationale:** Managers and team leads benefit from aggregate insights beyond individual meeting summaries — identifying patterns like one-sided discussions or consistently negative sentiment.",
+      "timestamp": "2026-03-01T00:55:47.385Z",
+      "source": "initial"
+    }
+  ]
+}

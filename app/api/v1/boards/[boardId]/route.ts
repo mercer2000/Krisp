@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { boards, columns, cards, cardTags } from "@/lib/db/schema";
 import { getRequiredUser } from "@/lib/auth/getRequiredUser";
 import { updateBoardSchema } from "@/lib/validators/schemas";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, isNull } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -20,7 +20,7 @@ export async function GET(
           orderBy: [asc(columns.position)],
           with: {
             cards: {
-              where: eq(cards.archived, false),
+              where: and(eq(cards.archived, false), isNull(cards.deletedAt)),
               orderBy: [asc(cards.position)],
               with: {
                 tags: true,

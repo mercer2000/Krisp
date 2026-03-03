@@ -1,0 +1,14 @@
+{
+  "id": "data-export",
+  "category": "Core",
+  "title": "Full Data Export (GDPR / Portability)",
+  "description": "Allow users to export all their data as a structured JSON archive: meetings, emails, Kanban boards, action items, Zoom messages, and Open Brain thoughts. Export is generated server-side, zipped, and delivered via a download link (valid 1 hour). Triggered from the Settings page.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [
+    "user-profile-settings"
+  ],
+  "createdAt": "2026-03-02T18:35:40.574Z",
+  "updatedAt": "2026-03-02T18:35:40.574Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "kanban-column-wip-limits",
+  "category": "Kanban",
+  "title": "Column WIP Limits with Visual Overflow Warnings",
+  "description": "Allow board administrators to set a Work-in-Progress (WIP) limit per column. When the card count in a column exceeds the limit, the column header turns red and shows an overflow count badge. WIP limits are stored as an integer field on the columns table.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "simple",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.402Z",
+  "updatedAt": "2026-03-02T19:00:34.402Z"
+}

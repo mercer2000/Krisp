@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { actionItems, webhookKeyPoints } from "@/lib/db/schema";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, isNull } from "drizzle-orm";
 import { createActionItemSchema } from "@/lib/validators/schemas";
 
 export async function GET(request: NextRequest) {
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const meetingId = searchParams.get("meetingId");
 
-    const conditions = [eq(actionItems.userId, userId)];
+    const conditions = [eq(actionItems.userId, userId), isNull(actionItems.deletedAt)];
     if (status) {
       conditions.push(
         eq(actionItems.status, status as "open" | "in_progress" | "completed" | "cancelled")
@@ -32,9 +32,11 @@ export async function GET(request: NextRequest) {
         id: actionItems.id,
         userId: actionItems.userId,
         meetingId: actionItems.meetingId,
+        cardId: actionItems.cardId,
         title: actionItems.title,
         description: actionItems.description,
         assignee: actionItems.assignee,
+        extractionSource: actionItems.extractionSource,
         status: actionItems.status,
         priority: actionItems.priority,
         dueDate: actionItems.dueDate,

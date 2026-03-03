@@ -1,0 +1,12 @@
+{
+  "id": "meeting-participant-email-match",
+  "category": "Meeting Intelligence",
+  "title": "Meeting Participant–Email Cross-Reference",
+  "description": "After a meeting is ingested, automatically query the emails table for messages from any listed participant within 48 hours of the meeting. Surfaces matched emails in a 'Related Emails' section of the meeting detail drawer, showing subject and date for each.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.543Z",
+  "updatedAt": "2026-03-02T19:00:34.544Z"
+}

@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "http://localhost:3001/boards \n\nWe want to make it easier to switch between Kanban boards and to return to the most currently selected Kanban board. Right now, when you select on the Kanban tab, you get a list of your boards and then you can select one of the boards. I want to eliminate the extra step of having to select your board after clicking on the Kanban. You should just go back to the last board that you were looking at. ",
+  "title": "Add quick return to last viewed Kanban board",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-02T13:48:36.661Z",
+  "id": "feature-1772459316662-8jfwvwe0z9i",
+  "descriptionHistory": [
+    {
+      "description": "http://localhost:3001/boards \n\nWe want to make it easier to switch between Kanban boards and to return to the most currently selected Kanban board. Right now, when you select on the Kanban tab, you get a list of your boards and then you can select one of the boards. I want to eliminate the extra step of having to select your board after clicking on the Kanban. You should just go back to the last board that you were looking at. ",
+      "timestamp": "2026-03-02T13:48:37.097Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-02T13:56:58.984Z",
+  "justFinishedAt": "2026-03-02T13:56:58.984Z"
+}

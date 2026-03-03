@@ -1,0 +1,12 @@
+{
+  "id": "kanban-time-tracking",
+  "category": "Kanban",
+  "title": "Card Time Tracking & Work Logging",
+  "description": "Add a timer to each card that users can start/stop to log work sessions. Time logs are stored per card with start/end timestamps and optional notes. Card detail panel shows total logged time and a log history. Board summary shows total time per column for capacity planning.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.511Z",
+  "updatedAt": "2026-03-02T18:35:40.511Z"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "two-factor-auth",
+  "category": "Authentication",
+  "title": "Two-Factor Authentication (TOTP)",
+  "description": "Add optional TOTP-based two-factor authentication using the speakeasy library. Users enable 2FA from the Settings page by scanning a QR code into their authenticator app. On subsequent logins, a 6-digit code entry step is added after credentials are verified.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [
+    "user-profile-settings"
+  ],
+  "createdAt": "2026-03-02T19:00:34.470Z",
+  "updatedAt": "2026-03-02T19:00:34.470Z"
+}

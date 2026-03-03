@@ -1,0 +1,15 @@
+{
+  "id": "open-brain-thought-versioning",
+  "category": "Open Brain",
+  "title": "Thought Edit History & Version Control",
+  "description": "Track all edits made to Open Brain thoughts with a full version history stored in a thought_versions table. Users can view a diff between any two versions and restore any prior version with one click. Preserves the original capture alongside all subsequent edits.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [
+    "open-brain-db-schema",
+    "open-brain-thought-detail"
+  ],
+  "createdAt": "2026-03-02T19:21:46.934Z",
+  "updatedAt": "2026-03-02T19:21:46.934Z"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "notification-preferences",
+  "category": "Notifications",
+  "title": "Per-Channel Notification Preference Center",
+  "description": "A Settings > Notifications page where users configure which events trigger in-app vs email notifications, with granular toggles per event type (overdue card, new email from VIP, action item due, thought reminder). Preferences are stored per user and respected by all notification dispatch paths.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [
+    "notifications-center"
+  ],
+  "createdAt": "2026-03-02T19:21:47.360Z",
+  "updatedAt": "2026-03-02T19:21:47.360Z"
+}

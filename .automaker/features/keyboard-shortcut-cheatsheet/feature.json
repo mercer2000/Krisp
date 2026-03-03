@@ -1,0 +1,12 @@
+{
+  "id": "keyboard-shortcut-cheatsheet",
+  "category": "UI",
+  "title": "In-App Keyboard Shortcut Reference Sheet",
+  "description": "A modal triggered by pressing '?' that displays a categorized, searchable list of all keyboard shortcuts available in the app. Keyboard shortcut definitions are centralized in a keybindings config file so they stay in sync with the actual bindings.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "simple",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.462Z",
+  "updatedAt": "2026-03-02T19:00:34.462Z"
+}

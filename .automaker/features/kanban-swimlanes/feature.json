@@ -1,0 +1,12 @@
+{
+  "id": "kanban-swimlanes",
+  "category": "Kanban",
+  "title": "Kanban Swimlane View by Assignee or Priority",
+  "description": "Add a Swimlane toggle to the board header that groups cards horizontally by assignee or priority level inside each column. Swimlane groupings are rendered as labeled row sections within each DnD column. State is persisted in localStorage per board.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.393Z",
+  "updatedAt": "2026-03-02T19:00:34.393Z"
+}

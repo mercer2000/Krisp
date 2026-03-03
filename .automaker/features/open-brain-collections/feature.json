@@ -1,0 +1,14 @@
+{
+  "id": "open-brain-collections",
+  "category": "Open Brain",
+  "title": "Thought Collections & Curated Notebooks",
+  "description": "Allow users to create named collections (notebooks) that group related Open Brain thoughts, similar to folders or playlists. Thoughts can belong to multiple collections simultaneously. Collections have titles, descriptions, and optional cover colors, and are browsable from a dedicated sidebar section.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [
+    "open-brain-db-schema"
+  ],
+  "createdAt": "2026-03-02T19:21:46.938Z",
+  "updatedAt": "2026-03-02T19:21:46.938Z"
+}

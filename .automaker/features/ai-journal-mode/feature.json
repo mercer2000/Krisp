@@ -1,0 +1,14 @@
+{
+  "id": "ai-journal-mode",
+  "category": "AI",
+  "title": "AI Journaling Mode with Reflective Prompts",
+  "description": "A daily journal view where Claude generates three personalized reflective prompts based on the user's captured thoughts, completed tasks, and attended meetings from that day. Users write free-form responses that are automatically saved as Open Brain thoughts with the 'journal' type tag.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [
+    "open-brain-db-schema"
+  ],
+  "createdAt": "2026-03-02T19:21:47.204Z",
+  "updatedAt": "2026-03-02T19:21:47.204Z"
+}

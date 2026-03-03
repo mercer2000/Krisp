@@ -1,0 +1,12 @@
+{
+  "id": "kanban-burndown-chart",
+  "category": "Kanban",
+  "title": "Board Burndown & Velocity Chart",
+  "description": "Generate a burndown chart showing completed vs remaining cards over a date range for any board. Data is computed from card creation and completion timestamps. Renders as an SVG line chart inside a modal, exportable as PNG.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.405Z",
+  "updatedAt": "2026-03-02T19:00:34.405Z"
+}

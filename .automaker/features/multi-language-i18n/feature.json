@@ -1,0 +1,14 @@
+{
+  "id": "multi-language-i18n",
+  "category": "Core",
+  "title": "Internationalization (i18n) Framework Setup",
+  "description": "Integrate next-intl for internationalization, extracting all UI strings into locale message files (en, es, fr as initial locales). Adds a language selector to the Settings page. Locale preference is stored on the user profile and respected across all pages.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "complex",
+  "dependencies": [
+    "user-profile-settings"
+  ],
+  "createdAt": "2026-03-02T19:00:34.465Z",
+  "updatedAt": "2026-03-02T19:00:34.465Z"
+}
