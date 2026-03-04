@@ -62,20 +62,22 @@ export async function autoProcessEmailActions(
     return { actionItemsCreated: 0, cardsCreated: 0 };
   }
 
-  // Get first column of the board (lowest position)
-  const [firstCol] = await db
-    .select({ id: columns.id })
+  // Prefer a "Draft" column; fall back to first column by position
+  const allCols = await db
+    .select({ id: columns.id, title: columns.title })
     .from(columns)
     .where(eq(columns.boardId, boardId))
-    .orderBy(asc(columns.position))
-    .limit(1);
+    .orderBy(asc(columns.position));
 
-  if (!firstCol) {
+  if (allCols.length === 0) {
     console.warn(
       `[AutoProcess] No columns found in board ${boardId} for user ${tenantId}`
     );
     return { actionItemsCreated: 0, cardsCreated: 0 };
   }
+
+  const firstCol =
+    allCols.find((c) => c.title.toLowerCase() === "draft") ?? allCols[0];
 
   // Extract action items using AI
   const extracted = await extractActionsFromEmail(

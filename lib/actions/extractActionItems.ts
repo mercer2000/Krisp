@@ -177,15 +177,17 @@ export async function createCardsForActionItems(
 
   if (!board) return 0;
 
-  // Get the first column (by position)
-  const [firstCol] = await db
-    .select({ id: columns.id })
+  // Prefer a "Draft" column; fall back to first column by position
+  const allCols = await db
+    .select({ id: columns.id, title: columns.title })
     .from(columns)
     .where(eq(columns.boardId, boardId))
-    .orderBy(asc(columns.position))
-    .limit(1);
+    .orderBy(asc(columns.position));
 
-  if (!firstCol) return 0;
+  if (allCols.length === 0) return 0;
+
+  const firstCol =
+    allCols.find((c) => c.title.toLowerCase() === "draft") ?? allCols[0];
 
   // Get current max position in that column
   const [posResult] = await db

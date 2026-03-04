@@ -22,6 +22,7 @@ const STATUS_ACCENT: Record<string, string> = {
   "done": "bg-green-500",
   "complete": "bg-green-500",
   "completed": "bg-green-500",
+  "draft": "bg-purple-500",
 };
 
 function getAccentClass(title: string): string {
@@ -212,7 +213,7 @@ export function Column({ column, boardId, onCardClick, onDeleteCard, isOver }: C
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex w-72 min-w-[280px] shrink-0 flex-col min-h-0 rounded-xl bg-slate-100 dark:bg-slate-800/50 transition-all ${
+      className={`group flex w-80 min-w-[320px] shrink-0 flex-col min-h-0 rounded-xl bg-slate-100 dark:bg-slate-800/50 transition-all ${
         isDragging ? "opacity-50 ring-2 ring-[var(--primary)]" : ""
       } ${isOver ? "ring-2 ring-blue-400" : ""}`}
     >

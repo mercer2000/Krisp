@@ -12,7 +12,7 @@ import { PriorityReviewPanel } from "@/components/board/PriorityReviewPanel";
 
 function SkeletonColumn() {
   return (
-    <div className="flex w-72 shrink-0 flex-col gap-3 rounded-xl bg-slate-100 p-3 dark:bg-slate-800/50">
+    <div className="flex w-80 shrink-0 flex-col gap-3 rounded-xl bg-slate-100 p-3 dark:bg-slate-800/50">
       {/* Accent bar */}
       <div className="h-1 w-full rounded-t-xl bg-slate-300 dark:bg-slate-600 animate-pulse" />
       {/* Header skeleton */}

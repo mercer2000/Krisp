@@ -24,6 +24,7 @@ import { Column } from "./Column";
 import { Card as CardComponent } from "./Card";
 import { AddColumnButton } from "./AddColumnButton";
 import { CardDetailDrawer } from "./CardDetailDrawer";
+import { TrashDropZone, TRASH_ZONE_ID } from "./TrashDropZone";
 import { useReorderColumns } from "@/lib/hooks/useColumns";
 import { useDeleteCard, useMoveCard, useReorderCards } from "@/lib/hooks/useCards";
 import type { BoardWithColumns, Card as CardType, ColumnWithCards } from "@/types";
@@ -180,6 +181,9 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
     const overId = over.id as string;
     if (activeId === overId) return;
 
+    // Skip column-matching logic when hovering over trash zone
+    if (overId === TRASH_ZONE_ID) return;
+
     // Track which column is being hovered for highlight
     let targetColumnId: string | undefined;
     if (isColumnId(overId)) {
@@ -252,6 +256,20 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
 
     const activeId = active.id as string;
     const overId = over.id as string;
+
+    // Drag-to-delete: drop on trash zone
+    if (overId === TRASH_ZONE_ID && activeCard) {
+      deleteCard.mutate(activeCard.id);
+      setLocalColumns((prev) =>
+        prev.map((col) => ({
+          ...col,
+          cards: col.cards.filter((c) => c.id !== activeCard.id),
+        }))
+      );
+      setActiveCard(null);
+      setDragSourceColumnId(null);
+      return;
+    }
 
     if (!activeCard) {
       // Column drag
@@ -362,7 +380,7 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
 
         <DragOverlay>
           {activeCard ? (
-            <div className="w-72 rotate-2 scale-105">
+            <div className="w-80 rotate-2 scale-105">
               {/* Ghost card with semi-transparent, dashed border */}
               <div className="rounded-lg border-2 border-dashed border-blue-400 bg-blue-50/80 dark:bg-blue-900/30 shadow-lg">
                 <CardComponent card={activeCard} onClick={() => {}} />
@@ -370,6 +388,8 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
             </div>
           ) : null}
         </DragOverlay>
+
+        <TrashDropZone isVisible={activeCard !== null} />
       </DndContext>
 
       {/* Card detail slide-over drawer */}
