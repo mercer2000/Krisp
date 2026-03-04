@@ -3979,6 +3979,12 @@ function TelegramSection() {
     botUsername?: string;
     chatId?: string;
     active?: boolean;
+    webhook?: {
+      url?: string;
+      pendingUpdates?: number;
+      lastError?: string;
+      lastErrorDate?: string;
+    };
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [botToken, setBotToken] = useState("");
@@ -4145,6 +4151,27 @@ function TelegramSection() {
                 <li>Type any question to query your Second Brain</li>
               </ol>
             </div>
+
+            {/* Webhook Debug Info */}
+            {status.webhook && (
+              <div className="p-4 rounded-lg bg-[var(--secondary)] border border-[var(--border)]">
+                <h4 className="text-sm font-medium text-[var(--foreground)] mb-2">
+                  Webhook Status
+                </h4>
+                <div className="text-xs text-[var(--muted-foreground)] space-y-1 font-mono">
+                  <p>URL: {status.webhook.url || "(not set)"}</p>
+                  <p>Pending updates: {status.webhook.pendingUpdates ?? 0}</p>
+                  {status.webhook.lastError && (
+                    <p className="text-red-500">
+                      Last error: {status.webhook.lastError}
+                      {status.webhook.lastErrorDate && (
+                        <> ({new Date(status.webhook.lastErrorDate).toLocaleString()})</>
+                      )}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           /* Disconnected state - setup form */

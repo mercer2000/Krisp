@@ -7,6 +7,7 @@ import {
   validateBotToken,
   setWebhook,
   deleteWebhook,
+  getWebhookInfo,
 } from "@/lib/telegram/client";
 import crypto from "crypto";
 
@@ -25,6 +26,7 @@ export async function GET() {
     const [record] = await db
       .select({
         id: telegramBotTokens.id,
+        botToken: telegramBotTokens.botToken,
         botUsername: telegramBotTokens.botUsername,
         chatId: telegramBotTokens.chatId,
         active: telegramBotTokens.active,
@@ -38,12 +40,25 @@ export async function GET() {
       return NextResponse.json({ connected: false });
     }
 
+    // Fetch webhook info from Telegram for debugging
+    const webhookInfo = await getWebhookInfo(record.botToken);
+
     return NextResponse.json({
       connected: true,
       botUsername: record.botUsername,
       chatId: record.chatId,
       active: record.active,
       createdAt: record.createdAt,
+      webhook: webhookInfo
+        ? {
+            url: webhookInfo.url,
+            pendingUpdates: webhookInfo.pending_update_count,
+            lastError: webhookInfo.last_error_message,
+            lastErrorDate: webhookInfo.last_error_date
+              ? new Date(webhookInfo.last_error_date * 1000).toISOString()
+              : null,
+          }
+        : null,
     });
   } catch (error) {
     console.error("Telegram status error:", error);

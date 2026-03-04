@@ -132,6 +132,32 @@ export async function sendMessage(
 }
 
 /**
+ * Get the current webhook info for a bot (useful for debugging).
+ */
+export async function getWebhookInfo(
+  botToken: string
+): Promise<{
+  url: string;
+  has_custom_certificate: boolean;
+  pending_update_count: number;
+  last_error_date?: number;
+  last_error_message?: string;
+} | null> {
+  try {
+    const res = await fetch(
+      `${TELEGRAM_API}/bot${botToken}/getWebhookInfo`
+    );
+    const data = await res.json();
+    if (data.ok) {
+      return data.result;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Send a "typing" action to indicate the bot is working.
  */
 export async function sendTypingAction(
