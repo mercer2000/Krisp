@@ -117,16 +117,18 @@ export async function sendMessage(
         }),
       }
     );
-    const data: TelegramSendMessageResponse = await res.json();
+    const data = await res.json();
     if (data.ok) {
       return { ok: true, messageId: data.result.message_id };
     }
+    console.error("Telegram sendMessage API error:", data.description || JSON.stringify(data));
     // Retry without parse_mode if markdown fails
     if (parseMode) {
       return sendMessage(botToken, chatId, text, undefined);
     }
     return { ok: false };
-  } catch {
+  } catch (err) {
+    console.error("Telegram sendMessage fetch error:", err);
     return { ok: false };
   }
 }

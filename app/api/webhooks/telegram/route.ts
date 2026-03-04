@@ -5,6 +5,9 @@ import { eq, and } from "drizzle-orm";
 import { processBrainChat } from "@/lib/brain/chat";
 import { sendMessage, sendTypingAction } from "@/lib/telegram/client";
 
+// Allow up to 60 seconds for AI processing + Telegram send
+export const maxDuration = 60;
+
 /**
  * Telegram webhook update types (subset we care about).
  */
@@ -27,7 +30,6 @@ interface TelegramUpdate {
   };
 }
 
-const TELEGRAM_SESSION_TITLE = "Telegram Chat";
 const MAX_MESSAGE_LENGTH = 4000;
 
 /**
@@ -64,6 +66,7 @@ export async function POST(request: NextRequest) {
         userId: telegramBotTokens.userId,
         botToken: telegramBotTokens.botToken,
         chatId: telegramBotTokens.chatId,
+        activeSessionId: telegramBotTokens.activeSessionId,
         webhookSecret: telegramBotTokens.webhookSecret,
       })
       .from(telegramBotTokens)
@@ -111,7 +114,10 @@ export async function POST(request: NextRequest) {
           "Try asking:\n" +
           "- _What were the key decisions from my last meeting?_\n" +
           "- _Summarize my open action items_\n" +
-          "- _Any emails about the project deadline?_"
+          "- _Any emails about the project deadline?_\n\n" +
+          "*Commands:*\n" +
+          "/new - Start a new conversation\n" +
+          "/help - Show help"
       );
       return NextResponse.json({ ok: true });
     }
@@ -123,8 +129,33 @@ export async function POST(request: NextRequest) {
         chatId,
         "*Brain Bot Commands*\n\n" +
           "/start - Welcome message\n" +
+          "/new - Start a new conversation (clears context)\n" +
           "/help - Show this help\n\n" +
-          "Just type any question to search your Second Brain data."
+          "Just type any question to search your Second Brain data. " +
+          "The bot remembers your conversation context until you use /new."
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    // Handle /new command — start a fresh conversation
+    if (messageText === "/new" || messageText.startsWith("/new ")) {
+      const customTitle = messageText.slice(4).trim();
+      const sessionTitle = customTitle || `Telegram Chat — ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+
+      const [newSession] = await db
+        .insert(brainChatSessions)
+        .values({ userId, title: sessionTitle })
+        .returning();
+
+      await db
+        .update(telegramBotTokens)
+        .set({ activeSessionId: newSession.id, updatedAt: new Date() })
+        .where(eq(telegramBotTokens.id, botRecord.id));
+
+      await sendMessage(
+        botToken,
+        chatId,
+        `New conversation started: *${sessionTitle}*\n\nAsk me anything!`
       );
       return NextResponse.json({ ok: true });
     }
@@ -132,28 +163,43 @@ export async function POST(request: NextRequest) {
     // Show typing indicator
     await sendTypingAction(botToken, chatId);
 
-    // Find or create a dedicated Telegram session for this user
-    let sessionId: string | null = null;
-    const existingSession = await db
-      .select({ id: brainChatSessions.id })
-      .from(brainChatSessions)
-      .where(
-        and(
-          eq(brainChatSessions.userId, userId),
-          eq(brainChatSessions.title, TELEGRAM_SESSION_TITLE)
-        )
-      )
-      .limit(1);
+    // Get or create the active session
+    let sessionId = botRecord.activeSessionId;
 
-    if (existingSession.length > 0) {
-      sessionId = existingSession[0].id;
+    if (sessionId) {
+      // Verify the session still exists
+      const [existing] = await db
+        .select({ id: brainChatSessions.id })
+        .from(brainChatSessions)
+        .where(eq(brainChatSessions.id, sessionId))
+        .limit(1);
+      if (!existing) {
+        sessionId = null;
+      }
+    }
+
+    if (!sessionId) {
+      // Create a default session
+      const [newSession] = await db
+        .insert(brainChatSessions)
+        .values({ userId, title: "Telegram Chat" })
+        .returning();
+      sessionId = newSession.id;
+
+      await db
+        .update(telegramBotTokens)
+        .set({ activeSessionId: sessionId, updatedAt: new Date() })
+        .where(eq(telegramBotTokens.id, botRecord.id));
     }
 
     // Process through Brain AI
     const result = await processBrainChat(userId, messageText, sessionId);
 
     // Send the AI response back to Telegram (split if > 4096 chars)
-    await sendLongMessage(botToken, chatId, result.answer);
+    const sendResult = await sendLongMessage(botToken, chatId, result.answer);
+    if (!sendResult) {
+      console.error("Telegram send failed for chat", chatId, "- answer length:", result.answer.length);
+    }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
@@ -165,19 +211,24 @@ export async function POST(request: NextRequest) {
 
 /**
  * Split long messages into chunks that fit Telegram's 4096-char limit.
+ * Returns true if all chunks sent successfully.
  */
 async function sendLongMessage(
   botToken: string,
   chatId: string,
   text: string
-): Promise<void> {
+): Promise<boolean> {
   const MAX_CHUNK = 4096;
   if (text.length <= MAX_CHUNK) {
-    await sendMessage(botToken, chatId, text);
-    return;
+    const result = await sendMessage(botToken, chatId, text);
+    if (!result.ok) {
+      console.error("Telegram sendMessage failed for chat", chatId);
+    }
+    return result.ok;
   }
   // Split on newlines when possible
   let remaining = text;
+  let allOk = true;
   while (remaining.length > 0) {
     let chunk: string;
     if (remaining.length <= MAX_CHUNK) {
@@ -189,6 +240,11 @@ async function sendLongMessage(
       chunk = remaining.slice(0, cutPoint);
       remaining = remaining.slice(cutPoint).trimStart();
     }
-    await sendMessage(botToken, chatId, chunk);
+    const result = await sendMessage(botToken, chatId, chunk);
+    if (!result.ok) {
+      console.error("Telegram sendMessage chunk failed for chat", chatId);
+      allOk = false;
+    }
   }
+  return allOk;
 }

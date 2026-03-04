@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-    const webhookUrl = `${baseUrl}/api/webhooks/telegram`;
+    const webhookUrl = `${baseUrl.replace(/\/+$/, "")}/api/webhooks/telegram`;
 
     // Register webhook with Telegram
     const webhookResult = await setWebhook(
@@ -151,6 +151,7 @@ export async function POST(request: NextRequest) {
           webhookSecret,
           active: true,
           chatId: null, // Reset chat ID, will be set on first message
+          activeSessionId: null, // Reset session, will be created on first message
           updatedAt: new Date(),
         })
         .where(eq(telegramBotTokens.id, existing.id));

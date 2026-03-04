@@ -904,6 +904,7 @@ export const telegramBotTokens = pgTable(
     botUsername: varchar("bot_username", { length: 255 }),
     chatId: varchar("chat_id", { length: 100 }),
     webhookSecret: varchar("webhook_secret", { length: 255 }).notNull(),
+    activeSessionId: uuid("active_session_id"),
     active: boolean("active").default(true).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
