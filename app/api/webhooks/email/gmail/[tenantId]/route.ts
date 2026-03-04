@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { insertGmailEmail } from "@/lib/gmail/emails";
 import { processGmailNotification } from "@/lib/gmail/watch";
 import {
@@ -8,6 +8,7 @@ import {
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { autoProcessEmailActions } from "@/lib/actions/autoProcessEmailActions";
 
 const GMAIL_WEBHOOK_SECRET = process.env.GMAIL_WEBHOOK_SECRET;
 
@@ -189,10 +190,14 @@ async function handlePubSubPush(
 
     if (result.emails && result.emails.length > 0) {
       let stored = 0;
+      const storedEmails: typeof result.emails = [];
       for (const emailData of result.emails) {
         try {
-          await insertGmailEmail(emailData);
-          stored++;
+          const row = await insertGmailEmail(emailData);
+          if (row) {
+            stored++;
+            storedEmails.push(emailData);
+          }
         } catch (err) {
           // Skip duplicates silently
           if (
@@ -206,6 +211,34 @@ async function handlePubSubPush(
             err
           );
         }
+      }
+
+      // Auto-extract action items from newly stored emails in background
+      if (storedEmails.length > 0) {
+        after(async () => {
+          for (const emailData of storedEmails) {
+            try {
+              const recipients = Array.isArray(emailData.recipients)
+                ? emailData.recipients.map(String)
+                : [];
+              await autoProcessEmailActions(tenantId, {
+                sender: emailData.sender,
+                recipients,
+                subject: emailData.subject ?? null,
+                bodyPlainText: emailData.body_plain ?? null,
+                receivedAt:
+                  emailData.received_at instanceof Date
+                    ? emailData.received_at.toISOString()
+                    : String(emailData.received_at),
+              });
+            } catch (actionErr) {
+              console.error(
+                `[Gmail Pub/Sub] Error auto-processing actions for ${emailData.gmail_message_id}:`,
+                actionErr instanceof Error ? actionErr.message : actionErr
+              );
+            }
+          }
+        });
       }
 
       return NextResponse.json(
@@ -289,6 +322,24 @@ async function handleAppsScriptPayload(
       { status: 200 }
     );
   }
+
+  // Auto-extract action items in background
+  after(async () => {
+    try {
+      await autoProcessEmailActions(tenantId, {
+        sender: payload.sender,
+        recipients: recipientsList,
+        subject: payload.subject ?? null,
+        bodyPlainText: payload.bodyPlain ?? null,
+        receivedAt: payload.receivedAt,
+      });
+    } catch (err) {
+      console.error(
+        `[Gmail Apps Script] Error auto-processing actions for ${payload.messageId}:`,
+        err instanceof Error ? err.message : err
+      );
+    }
+  });
 
   return NextResponse.json(
     {

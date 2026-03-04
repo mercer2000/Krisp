@@ -1,8 +1,20 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Drawer } from "@/components/ui/Drawer";
-import type { ActionItem, Board } from "@/types";
+import type { ActionItem, Board, Column } from "@/types";
+
+// ---------------------------------------------------------------------------
+// AI-generated card preview type
+// ---------------------------------------------------------------------------
+
+interface GeneratedCard {
+  actionItemId: string;
+  title: string;
+  description: string;
+  priority: "low" | "medium" | "high" | "urgent";
+  dueDate: string | null;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,6 +69,7 @@ const SPEAKER_COLORS = [
 interface TranscriptSegment {
   speaker: string;
   speakerIndex: number;
+  timestamp: string | null;
   text: string;
 }
 
@@ -64,89 +77,137 @@ function parseTranscript(
   rawContent: string,
   speakers: (string | Speaker)[]
 ): TranscriptSegment[] {
-  // Build a map of speaker names for matching
   const speakerNames: string[] = speakers.map((s) => {
     if (typeof s === "string") return s;
     return [s.first_name, s.last_name].filter(Boolean).join(" ") || `Speaker ${s.index}`;
   });
 
-  // Try to parse speaker-prefixed lines like "John Smith: Hello everyone"
-  // or "Speaker 1: Hello everyone"
-  const segments: TranscriptSegment[] = [];
+  // Build a regex that matches inline speaker turns in Krisp format:
+  //   "Speaker Name | MM:SS text" or "Speaker Name | HH:MM:SS text"
+  // Also supports colon-separated format: "Speaker Name: text"
+  const allNames = [
+    ...speakerNames.map((n) => escapeRegex(n)),
+    "Speaker\\s*\\d+",
+  ];
+  const nameAlternation = allNames.join("|");
 
-  // Build regex to match speaker prefixes
-  // Match patterns like "Name:", "Speaker N:", or just timestamps with speakers
-  const speakerPattern = speakerNames.length > 0
+  // Krisp pipe+timestamp format: "Name | 00:13 text"
+  const pipePattern = new RegExp(
+    `(${nameAlternation})\\s*\\|\\s*(\\d{1,2}:\\d{2}(?::\\d{2})?)\\s*`,
+    "gi"
+  );
+
+  // Colon-separated format: "Name: text" (line-based)
+  const colonPattern = speakerNames.length > 0
     ? new RegExp(
-        `^(${speakerNames.map(n => escapeRegex(n)).join("|")}|Speaker\\s*\\d+)\\s*:\\s*`,
+        `^(${nameAlternation})\\s*:\\s*`,
         "im"
       )
     : /^(Speaker\s*\d+)\s*:\s*/im;
 
-  const lines = rawContent.split("\n");
-  let currentSpeaker = "";
-  let currentIndex = -1;
-  let currentText: string[] = [];
+  const rawSegments: TranscriptSegment[] = [];
 
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
+  // First try pipe+timestamp parsing (Krisp's native format)
+  const pipeMatches = [...rawContent.matchAll(pipePattern)];
 
-    const match = trimmed.match(speakerPattern);
-    if (match) {
-      // Save previous segment
-      if (currentText.length > 0 && currentSpeaker) {
-        segments.push({
-          speaker: currentSpeaker,
-          speakerIndex: currentIndex,
-          text: currentText.join(" "),
+  if (pipeMatches.length > 0) {
+    for (let i = 0; i < pipeMatches.length; i++) {
+      const match = pipeMatches[i];
+      const speaker = match[1].trim();
+      const timestamp = match[2];
+      const startIdx = match.index! + match[0].length;
+      const endIdx = i + 1 < pipeMatches.length ? pipeMatches[i + 1].index! : rawContent.length;
+      const text = rawContent.slice(startIdx, endIdx).trim();
+
+      const speakerIdx = findSpeakerIndex(speaker, speakerNames);
+
+      if (text) {
+        rawSegments.push({
+          speaker,
+          speakerIndex: speakerIdx,
+          timestamp,
+          text,
         });
       }
+    }
+  } else {
+    // Fallback: colon-separated line-based parsing
+    const lines = rawContent.split("\n");
+    let currentSpeaker = "";
+    let currentIndex = -1;
+    let currentText: string[] = [];
 
-      currentSpeaker = match[1].trim();
-      currentIndex = speakerNames.findIndex(
-        (n) => n.toLowerCase() === currentSpeaker.toLowerCase()
-      );
-      if (currentIndex === -1) {
-        // Try matching "Speaker N" pattern
-        const num = currentSpeaker.match(/Speaker\s*(\d+)/i);
-        currentIndex = num ? parseInt(num[1], 10) : segments.length;
-      }
-      currentText = [trimmed.slice(match[0].length).trim()].filter(Boolean);
-    } else {
-      // Continuation of current speaker's text
-      if (currentSpeaker) {
-        currentText.push(trimmed);
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      const match = trimmed.match(colonPattern);
+      if (match) {
+        if (currentText.length > 0 && currentSpeaker) {
+          rawSegments.push({
+            speaker: currentSpeaker,
+            speakerIndex: currentIndex,
+            timestamp: null,
+            text: currentText.join(" "),
+          });
+        }
+        currentSpeaker = match[1].trim();
+        currentIndex = findSpeakerIndex(currentSpeaker, speakerNames);
+        currentText = [trimmed.slice(match[0].length).trim()].filter(Boolean);
       } else {
-        // No speaker detected yet — treat as first speaker
-        currentSpeaker = speakerNames[0] || "Speaker";
-        currentIndex = 0;
-        currentText.push(trimmed);
+        if (currentSpeaker) {
+          currentText.push(trimmed);
+        } else {
+          currentSpeaker = speakerNames[0] || "Speaker";
+          currentIndex = 0;
+          currentText.push(trimmed);
+        }
       }
+    }
+
+    if (currentText.length > 0 && currentSpeaker) {
+      rawSegments.push({
+        speaker: currentSpeaker,
+        speakerIndex: currentIndex,
+        timestamp: null,
+        text: currentText.join(" "),
+      });
     }
   }
 
-  // Push final segment
-  if (currentText.length > 0 && currentSpeaker) {
-    segments.push({
-      speaker: currentSpeaker,
-      speakerIndex: currentIndex,
-      text: currentText.join(" "),
-    });
+  // Merge consecutive segments from the same speaker
+  const merged: TranscriptSegment[] = [];
+  for (const seg of rawSegments) {
+    const prev = merged[merged.length - 1];
+    if (prev && prev.speaker.toLowerCase() === seg.speaker.toLowerCase()) {
+      prev.text += " " + seg.text;
+    } else {
+      merged.push({ ...seg });
+    }
   }
 
-  // If parsing produced no segments (unstructured transcript), return as single block
-  if (segments.length === 0 && rawContent.trim()) {
+  // Fallback: if no segments parsed, return single block
+  if (merged.length === 0 && rawContent.trim()) {
     return [
       {
         speaker: speakerNames[0] || "Transcript",
         speakerIndex: 0,
+        timestamp: null,
         text: rawContent.trim(),
       },
     ];
   }
 
-  return segments;
+  return merged;
+}
+
+function findSpeakerIndex(speaker: string, speakerNames: string[]): number {
+  const idx = speakerNames.findIndex(
+    (n) => n.toLowerCase() === speaker.toLowerCase()
+  );
+  if (idx !== -1) return idx;
+  const num = speaker.match(/Speaker\s*(\d+)/i);
+  return num ? parseInt(num[1], 10) : 0;
 }
 
 function escapeRegex(str: string): string {
@@ -218,6 +279,42 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [defaultBoardId, setDefaultBoardId] = useState<string | null>(null);
 
+  // AI card generation state
+  const [generatingCards, setGeneratingCards] = useState(false);
+  const [generatedCards, setGeneratedCards] = useState<GeneratedCard[]>([]);
+  const [showCardPreview, setShowCardPreview] = useState(false);
+  const [cardGenError, setCardGenError] = useState<string | null>(null);
+  const [creatingCards, setCreatingCards] = useState(false);
+  const [boardColumns, setBoardColumns] = useState<Column[]>([]);
+  const [selectedColumnId, setSelectedColumnId] = useState<string | null>(null);
+
+  // Speaker filter state for transcript view
+  const [filteredSpeaker, setFilteredSpeaker] = useState<string | null>(null);
+
+  // Copy transcript state
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyTranscript = useCallback(async () => {
+    if (!meeting?.raw_content) return;
+    try {
+      await navigator.clipboard.writeText(meeting.raw_content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement("textarea");
+      textarea.value = meeting.raw_content;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [meeting?.raw_content]);
+
   // Load boards list and default board setting
   useEffect(() => {
     fetch("/api/v1/boards")
@@ -239,6 +336,7 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
       setMeeting(null);
       setMeetingActionItems([]);
       setActiveTab("transcript");
+      setFilteredSpeaker(null);
       return;
     }
 
@@ -318,17 +416,148 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
     }
   };
 
+  // Fetch columns when a board is selected for card generation preview
+  useEffect(() => {
+    if (!selectedBoardId) {
+      setBoardColumns([]);
+      setSelectedColumnId(null);
+      return;
+    }
+    fetch(`/api/v1/boards/${selectedBoardId}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => {
+        const cols: Column[] = data.columns ?? [];
+        setBoardColumns(cols);
+        if (cols.length > 0) setSelectedColumnId(cols[0].id);
+      })
+      .catch(() => {
+        setBoardColumns([]);
+        setSelectedColumnId(null);
+      });
+  }, [selectedBoardId]);
+
+  const handleGenerateCards = async () => {
+    if (!meetingId) return;
+    setGeneratingCards(true);
+    setCardGenError(null);
+
+    try {
+      const res = await fetch("/api/action-items/generate-cards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ meetingId }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Generation failed");
+      }
+
+      const data = await res.json();
+      const cards: GeneratedCard[] = data.cards ?? [];
+      if (cards.length === 0) {
+        setCardGenError("No unlinked action items to generate cards from");
+        return;
+      }
+      setGeneratedCards(cards);
+      setShowCardPreview(true);
+    } catch (err) {
+      setCardGenError(err instanceof Error ? err.message : "Failed to generate cards");
+    } finally {
+      setGeneratingCards(false);
+    }
+  };
+
+  const handleBulkCreateCards = async () => {
+    if (!selectedBoardId || !selectedColumnId || generatedCards.length === 0) return;
+    setCreatingCards(true);
+    setCardGenError(null);
+
+    try {
+      const res = await fetch("/api/action-items/bulk-create-cards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cards: generatedCards,
+          boardId: selectedBoardId,
+          columnId: selectedColumnId,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Creation failed");
+      }
+
+      // Refresh action items to show linked status
+      const aiRes = await fetch(`/api/action-items?meetingId=${meetingId}`);
+      if (aiRes.ok) {
+        const aiData = await aiRes.json();
+        setMeetingActionItems(aiData.actionItems ?? []);
+      }
+
+      setShowCardPreview(false);
+      setGeneratedCards([]);
+    } catch (err) {
+      setCardGenError(err instanceof Error ? err.message : "Failed to create cards");
+    } finally {
+      setCreatingCards(false);
+    }
+  };
+
+  const handleUpdateGeneratedCard = (index: number, updates: Partial<GeneratedCard>) => {
+    setGeneratedCards((prev) =>
+      prev.map((card, i) => (i === index ? { ...card, ...updates } : card))
+    );
+  };
+
+  const handleRemoveGeneratedCard = (index: number) => {
+    setGeneratedCards((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const unlinkedCount = meetingActionItems.filter((i) => !i.cardId && !i.deletedAt).length;
+
   const speakerNames = meeting?.speakers?.map(getSpeakerName) ?? [];
 
   // Build speaker → color index map
-  const speakerColorMap = new Map<string, number>();
-  speakerNames.forEach((name, i) => {
-    speakerColorMap.set(name.toLowerCase(), i % SPEAKER_COLORS.length);
-  });
+  const speakerColorMap = useMemo(() => {
+    const map = new Map<string, number>();
+    speakerNames.forEach((name, i) => {
+      map.set(name.toLowerCase(), i % SPEAKER_COLORS.length);
+    });
+    return map;
+  }, [speakerNames.join(",")]);
 
-  const segments = meeting?.raw_content
-    ? parseTranscript(meeting.raw_content, meeting.speakers ?? [])
-    : [];
+  const segments = useMemo(
+    () =>
+      meeting?.raw_content
+        ? parseTranscript(meeting.raw_content, meeting.speakers ?? [])
+        : [],
+    [meeting?.raw_content, meeting?.speakers]
+  );
+
+  // Collect unique speakers from segments (includes any speakers found during parsing
+  // that might not be in the speakers metadata array)
+  const allSpeakers = useMemo(() => {
+    const seen = new Set<string>();
+    const result: string[] = [];
+    // Start with metadata speakers
+    for (const name of speakerNames) {
+      if (!seen.has(name.toLowerCase())) {
+        seen.add(name.toLowerCase());
+        result.push(name);
+      }
+    }
+    // Add any speakers found only in transcript
+    for (const seg of segments) {
+      if (!seen.has(seg.speaker.toLowerCase())) {
+        seen.add(seg.speaker.toLowerCase());
+        result.push(seg.speaker);
+        speakerColorMap.set(seg.speaker.toLowerCase(), result.length - 1);
+      }
+    }
+    return result;
+  }, [speakerNames, segments, speakerColorMap]);
 
   const keyPoints = meeting?.content?.filter(
     (item): item is KeyPointContent => "description" in item
@@ -366,24 +595,47 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
             </p>
 
             {/* Speaker legend */}
-            {speakerNames.length > 0 && (
+            {allSpeakers.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {speakerNames.map((name, i) => {
-                  const color = SPEAKER_COLORS[i % SPEAKER_COLORS.length];
+                {allSpeakers.map((name, i) => {
+                  const colorIdx = speakerColorMap.get(name.toLowerCase()) ?? (i % SPEAKER_COLORS.length);
+                  const color = SPEAKER_COLORS[colorIdx];
+                  const isActive = filteredSpeaker === null || filteredSpeaker === name.toLowerCase();
                   return (
-                    <span
+                    <button
                       key={i}
-                      className="text-xs px-2.5 py-1 rounded-full font-medium"
+                      type="button"
+                      onClick={() =>
+                        setFilteredSpeaker((prev) =>
+                          prev === name.toLowerCase() ? null : name.toLowerCase()
+                        )
+                      }
+                      className="text-xs px-2.5 py-1 rounded-full font-medium transition-opacity cursor-pointer"
                       style={{
                         backgroundColor: color.bg,
                         border: `1px solid ${color.border}`,
                         color: color.name,
+                        opacity: isActive ? 1 : 0.35,
                       }}
+                      title={
+                        filteredSpeaker === name.toLowerCase()
+                          ? "Show all speakers"
+                          : `Filter to ${name}`
+                      }
                     >
                       {name}
-                    </span>
+                    </button>
                   );
                 })}
+                {filteredSpeaker !== null && (
+                  <button
+                    type="button"
+                    onClick={() => setFilteredSpeaker(null)}
+                    className="text-xs px-2 py-1 rounded-full font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)] transition-colors"
+                  >
+                    Show all
+                  </button>
+                )}
               </div>
             )}
 
@@ -524,23 +776,60 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
 
           {/* Tab content */}
           {activeTab === "transcript" ? (
-            <div className="space-y-1">
+            <div className="space-y-2.5">
+              {segments.length > 0 && meeting?.raw_content && (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleCopyTranscript}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--secondary)] transition-colors"
+                  >
+                    {copied ? (
+                      <>
+                        <svg className="w-3.5 h-3.5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        Copy transcript
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
               {segments.length > 0 ? (
                 segments.map((seg, i) => {
                   const colorIdx = speakerColorMap.get(seg.speaker.toLowerCase()) ?? (seg.speakerIndex % SPEAKER_COLORS.length);
                   const color = SPEAKER_COLORS[colorIdx >= 0 ? colorIdx : 0];
+                  const isDimmed = filteredSpeaker !== null && filteredSpeaker !== seg.speaker.toLowerCase();
                   return (
                     <div
                       key={i}
-                      className="rounded-lg px-3 py-2"
-                      style={{ backgroundColor: color.bg, borderLeft: `3px solid ${color.border}` }}
+                      className="rounded-lg px-3.5 py-2.5 transition-opacity duration-200"
+                      style={{
+                        backgroundColor: color.bg,
+                        borderLeft: `3px solid ${color.border}`,
+                        opacity: isDimmed ? 0.25 : 1,
+                      }}
                     >
-                      <span
-                        className="text-xs font-semibold block mb-0.5"
-                        style={{ color: color.name }}
-                      >
-                        {seg.speaker}
-                      </span>
+                      <div className="flex items-baseline gap-2 mb-1">
+                        <span
+                          className="text-xs font-semibold"
+                          style={{ color: color.name }}
+                        >
+                          {seg.speaker}
+                        </span>
+                        {seg.timestamp && (
+                          <span className="text-[10px] text-[var(--muted-foreground)] font-mono">
+                            {seg.timestamp}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-[var(--foreground)] leading-relaxed">
                         {seg.text}
                       </p>
@@ -587,42 +876,81 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
                   ))}
                 </div>
               ) : meetingActionItems.length > 0 ? (
-                meetingActionItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-3 rounded-lg bg-[var(--secondary)]/50 space-y-1"
-                  >
-                    <div className="flex items-center gap-2">
-                      <h4 className={`text-sm font-medium text-[var(--foreground)] ${item.status === "completed" ? "line-through opacity-60" : ""}`}>
-                        {item.title}
-                      </h4>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[item.status] || ""}`}>
-                        {STATUS_LABELS[item.status] || item.status}
-                      </span>
-                    </div>
-                    {item.description && (
-                      <p className="text-xs text-[var(--muted-foreground)] line-clamp-2">
-                        {item.description}
-                      </p>
-                    )}
-                    <div className="flex gap-3 text-xs text-[var(--muted-foreground)] flex-wrap">
-                      {item.assignee && <span>Assigned: {item.assignee}</span>}
-                      {item.dueDate && <span>Due: {item.dueDate}</span>}
-                      {item.priority && <span>Priority: {item.priority}</span>}
-                      {item.extractionSource === "auto_webhook" && (
-                        <span className="text-green-600">Auto-extracted</span>
-                      )}
-                      {item.cardId && (
-                        <span className="inline-flex items-center gap-1 text-[var(--primary)]">
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7" />
-                          </svg>
-                          On Kanban
+                <>
+                  {meetingActionItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-3 rounded-lg bg-[var(--secondary)]/50 space-y-1"
+                    >
+                      <div className="flex items-center gap-2">
+                        <h4 className={`text-sm font-medium text-[var(--foreground)] ${item.status === "completed" ? "line-through opacity-60" : ""}`}>
+                          {item.title}
+                        </h4>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[item.status] || ""}`}>
+                          {STATUS_LABELS[item.status] || item.status}
                         </span>
+                      </div>
+                      {item.description && (
+                        <p className="text-xs text-[var(--muted-foreground)] line-clamp-2">
+                          {item.description}
+                        </p>
+                      )}
+                      <div className="flex gap-3 text-xs text-[var(--muted-foreground)] flex-wrap">
+                        {item.assignee && <span>Assigned: {item.assignee}</span>}
+                        {item.dueDate && <span>Due: {item.dueDate}</span>}
+                        {item.priority && <span>Priority: {item.priority}</span>}
+                        {item.extractionSource === "auto_webhook" && (
+                          <span className="text-green-600">Auto-extracted</span>
+                        )}
+                        {item.cardId && (
+                          <span className="inline-flex items-center gap-1 text-[var(--primary)]">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7" />
+                            </svg>
+                            On Kanban
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Generate Kanban Cards button */}
+                  {unlinkedCount > 0 && (
+                    <div className="pt-3 border-t border-[var(--border)]">
+                      <button
+                        onClick={handleGenerateCards}
+                        disabled={generatingCards || !selectedBoardId}
+                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50 transition-opacity"
+                        data-testid="generate-kanban-cards-btn"
+                      >
+                        {generatingCards ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            </svg>
+                            Generating cards...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            Generate Kanban Cards ({unlinkedCount} item{unlinkedCount !== 1 ? "s" : ""})
+                          </>
+                        )}
+                      </button>
+                      {!selectedBoardId && (
+                        <p className="text-xs text-amber-600 mt-1.5 text-center">
+                          Select a board above to generate cards
+                        </p>
+                      )}
+                      {cardGenError && (
+                        <p className="text-xs text-[var(--destructive)] mt-1.5 text-center">{cardGenError}</p>
                       )}
                     </div>
-                  </div>
-                ))
+                  )}
+                </>
               ) : (
                 <div className="text-center py-6">
                   <svg className="w-10 h-10 mx-auto text-[var(--muted-foreground)]/40 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -647,6 +975,173 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
           )}
         </div>
       ) : null}
+
+      {/* Card Preview Modal */}
+      {showCardPreview && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowCardPreview(false)}
+          />
+          <div className="relative bg-[var(--background)] border border-[var(--border)] rounded-xl shadow-2xl w-full max-w-xl max-h-[80vh] flex flex-col mx-4" data-testid="card-preview-modal">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] flex-shrink-0">
+              <div>
+                <h3 className="text-base font-semibold text-[var(--foreground)]">
+                  Review Generated Cards
+                </h3>
+                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                  {generatedCards.length} card{generatedCards.length !== 1 ? "s" : ""} will be created
+                </p>
+              </div>
+              <button
+                onClick={() => setShowCardPreview(false)}
+                className="p-1.5 rounded-lg hover:bg-[var(--secondary)] text-[var(--muted-foreground)] transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Board + Column selector */}
+            <div className="px-5 py-3 border-b border-[var(--border)] flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <label className="text-xs font-medium text-[var(--muted-foreground)] block mb-1">Board</label>
+                  <select
+                    value={selectedBoardId || ""}
+                    onChange={(e) => setSelectedBoardId(e.target.value || null)}
+                    className="w-full text-sm px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)]"
+                  >
+                    <option value="">Select board</option>
+                    {boardsList.map((b) => (
+                      <option key={b.id} value={b.id}>{b.title}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs font-medium text-[var(--muted-foreground)] block mb-1">Column</label>
+                  <select
+                    value={selectedColumnId || ""}
+                    onChange={(e) => setSelectedColumnId(e.target.value || null)}
+                    className="w-full text-sm px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)]"
+                    disabled={boardColumns.length === 0}
+                  >
+                    {boardColumns.length === 0 ? (
+                      <option value="">No columns</option>
+                    ) : (
+                      boardColumns.map((col) => (
+                        <option key={col.id} value={col.id}>{col.title}</option>
+                      ))
+                    )}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Card list */}
+            <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
+              {generatedCards.map((card, i) => (
+                <div
+                  key={card.actionItemId}
+                  className="p-3 rounded-lg border border-[var(--border)] bg-[var(--secondary)]/30 space-y-2"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <input
+                      type="text"
+                      value={card.title}
+                      onChange={(e) =>
+                        handleUpdateGeneratedCard(i, { title: e.target.value })
+                      }
+                      className="flex-1 text-sm font-medium bg-transparent text-[var(--foreground)] border-b border-transparent hover:border-[var(--border)] focus:border-[var(--primary)] focus:outline-none px-0 py-0.5"
+                    />
+                    <button
+                      onClick={() => handleRemoveGeneratedCard(i)}
+                      className="p-1 rounded hover:bg-[var(--destructive)]/10 text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-colors flex-shrink-0"
+                      title="Remove card"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <textarea
+                    value={card.description}
+                    onChange={(e) =>
+                      handleUpdateGeneratedCard(i, { description: e.target.value })
+                    }
+                    rows={2}
+                    className="w-full text-xs bg-transparent text-[var(--muted-foreground)] border border-transparent hover:border-[var(--border)] focus:border-[var(--primary)] focus:outline-none rounded px-1.5 py-1 resize-none"
+                  />
+                  <div className="flex items-center gap-3">
+                    <select
+                      value={card.priority}
+                      onChange={(e) =>
+                        handleUpdateGeneratedCard(i, {
+                          priority: e.target.value as GeneratedCard["priority"],
+                        })
+                      }
+                      className="text-xs px-2 py-1 rounded border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)]"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                    <input
+                      type="date"
+                      value={card.dueDate || ""}
+                      onChange={(e) =>
+                        handleUpdateGeneratedCard(i, {
+                          dueDate: e.target.value || null,
+                        })
+                      }
+                      className="text-xs px-2 py-1 rounded border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)]"
+                    />
+                  </div>
+                </div>
+              ))}
+              {generatedCards.length === 0 && (
+                <p className="text-sm text-[var(--muted-foreground)] text-center py-4">
+                  All cards have been removed
+                </p>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3 border-t border-[var(--border)] flex items-center justify-between flex-shrink-0">
+              <button
+                onClick={() => setShowCardPreview(false)}
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--secondary)] transition-colors"
+              >
+                Cancel
+              </button>
+              {cardGenError && (
+                <p className="text-xs text-[var(--destructive)]">{cardGenError}</p>
+              )}
+              <button
+                onClick={handleBulkCreateCards}
+                disabled={creatingCards || generatedCards.length === 0 || !selectedBoardId || !selectedColumnId}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50 transition-opacity"
+                data-testid="confirm-create-cards-btn"
+              >
+                {creatingCards ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Creating...
+                  </>
+                ) : (
+                  <>Create {generatedCards.length} Card{generatedCards.length !== 1 ? "s" : ""}</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Drawer>
   );
 }

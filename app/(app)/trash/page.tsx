@@ -14,6 +14,7 @@ const TYPE_LABELS: Record<TrashItemType, string> = {
   email: "Email",
   meeting: "Meeting",
   decision: "Decision",
+  page: "Page",
 };
 
 const TYPE_COLORS: Record<TrashItemType, string> = {
@@ -22,6 +23,7 @@ const TYPE_COLORS: Record<TrashItemType, string> = {
   email: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
   meeting: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
   decision: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+  page: "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-300",
 };
 
 function formatDeletedDate(iso: string): string {

@@ -1,0 +1,12 @@
+{
+  "id": "kanban-ai-card-generation",
+  "category": "AI",
+  "title": "AI Card Generation from Meeting Action Items",
+  "description": "One-click button in the meeting detail drawer to send all unlinked action items to Claude, which generates properly formatted Kanban cards with suggested titles, descriptions, priorities, and due dates. Users review a preview before bulk-creating the cards into a selected board and column.",
+  "status": "backlog",
+  "priority": 1,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.515Z",
+  "updatedAt": "2026-03-02T18:35:40.515Z"
+}

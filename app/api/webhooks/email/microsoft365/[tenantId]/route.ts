@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { insertEmail, emailExists } from "@/lib/email/emails";
 import { emailWebhookPayloadSchema } from "@/lib/validators/schemas";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { autoProcessEmailActions } from "@/lib/actions/autoProcessEmailActions";
 
 const EMAIL_WEBHOOK_SECRET = process.env.EMAIL_WEBHOOK_SECRET;
 
@@ -105,6 +106,24 @@ export async function POST(
 
     // Insert the email
     const result = await insertEmail(payload, tenantId);
+
+    // Auto-extract action items and create Kanban cards in background
+    after(async () => {
+      try {
+        await autoProcessEmailActions(tenantId, {
+          sender: payload.from,
+          recipients: payload.to,
+          subject: payload.subject ?? null,
+          bodyPlainText: payload.bodyPlainText ?? null,
+          receivedAt: payload.receivedDateTime,
+        });
+      } catch (err) {
+        console.error(
+          `[M365] Error auto-processing actions for message ${payload.messageId}:`,
+          err instanceof Error ? err.message : err
+        );
+      }
+    });
 
     return NextResponse.json(
       {

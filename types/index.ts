@@ -174,7 +174,104 @@ export interface WeeklyReview {
   updatedAt: string;
 }
 
-export type TrashItemType = "card" | "action_item" | "email" | "meeting" | "decision";
+// ── Pages / Workspace ────────────────────────────────
+export interface Workspace {
+  id: string;
+  name: string;
+  ownerId: string;
+  createdAt: string;
+}
+
+export interface Page {
+  id: string;
+  workspaceId: string;
+  parentId: string | null;
+  title: string;
+  icon: string | null;
+  coverUrl: string | null;
+  isDatabase: boolean;
+  databaseConfig: DatabaseConfig | null;
+  isArchived: boolean;
+  createdBy: string;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PageWithBlocks extends Page {
+  blocks: Block[];
+}
+
+export interface Block {
+  id: string;
+  pageId: string;
+  parentBlockId: string | null;
+  type: BlockType;
+  content: Record<string, unknown>;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type BlockType =
+  | "paragraph"
+  | "heading_1"
+  | "heading_2"
+  | "heading_3"
+  | "bulleted_list"
+  | "numbered_list"
+  | "to_do"
+  | "toggle"
+  | "code"
+  | "quote"
+  | "divider"
+  | "callout"
+  | "image"
+  | "bookmark";
+
+export interface DatabaseConfig {
+  properties: DatabaseProperty[];
+  views: DatabaseView[];
+}
+
+export interface DatabaseProperty {
+  id: string;
+  name: string;
+  type: "text" | "number" | "select" | "multi_select" | "date" | "checkbox" | "url";
+  options: { id: string; name: string; color: string }[];
+}
+
+export interface DatabaseView {
+  id: string;
+  name: string;
+  type: "table" | "board";
+  group_by?: string;
+  filters: DatabaseFilter[];
+  sorts: DatabaseSort[];
+}
+
+export interface DatabaseFilter {
+  propertyId: string;
+  operator: string;
+  value: unknown;
+}
+
+export interface DatabaseSort {
+  propertyId: string;
+  direction: "ascending" | "descending";
+}
+
+export interface DatabaseRow {
+  id: string;
+  databasePageId: string;
+  rowPageId: string | null;
+  properties: Record<string, unknown>;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TrashItemType = "card" | "action_item" | "email" | "meeting" | "decision" | "page";
 
 export interface TrashItem {
   id: string | number;

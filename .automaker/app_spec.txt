@@ -281,6 +281,14 @@ Prerequisites
 - Existing multi-tenant architecture and tenant resolution mechanism in place
 - Admin authentication and role-based access controlling the /admin/integrations route</description>
     </feature>
+    <feature>
+      <name>AI Card Generation from Meeting Action Items</name>
+      <description>One-click button in the meeting detail drawer to send all unlinked action items to Claude, which generates properly formatted Kanban cards with suggested titles, descriptions, priorities, and due dates. Users review a preview before bulk-creating the cards into a selected board and column.</description>
+    </feature>
+    <feature>
+      <name>AI-Powered Card Priority Suggestions</name>
+      <description>A Claude-powered assistant that analyses open Kanban cards alongside recent meeting action items and emails to suggest priority changes and due dates. Displays a &apos;Priority Review&apos; panel on the board page with explanations for each suggestion. Users can accept or dismiss each recommendation.</description>
+    </feature>
   </implemented_features>
 
   <additional_requirements>

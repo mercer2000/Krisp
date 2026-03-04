@@ -2,6 +2,111 @@
   "version": 1,
   "events": [
     {
+      "id": "evt-1772604394538-cfba5f53",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-04T06:06:34.538Z",
+      "featureName": "Enable Telegram integration for brain AI chat",
+      "featureId": "feature-1772602997136-0gj0abxstyp"
+    },
+    {
+      "id": "evt-1772604154190-e2e4253a",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-04T06:02:34.190Z",
+      "featureName": "Extract email action items to Kanban board",
+      "featureId": "feature-1772602726954-gknpd67phfn"
+    },
+    {
+      "id": "evt-1772603827651-1120f51a",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-04T05:57:07.651Z",
+      "featureName": "Add AI agent chat interface for second brain queries",
+      "featureId": "feature-1772544423330-vrg1q6htako"
+    },
+    {
+      "id": "evt-1772602997661-8cd08b4a",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-04T05:43:17.661Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772602997136-0gj0abxstyp"
+    },
+    {
+      "id": "evt-1772602727544-885e66f6",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-04T05:38:47.544Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772602726954-gknpd67phfn"
+    },
+    {
+      "id": "evt-1772564529335-4473b55a",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-03T19:02:09.335Z",
+      "featureName": "Build a lightweight Notion-like workspace app",
+      "featureId": "feature-1772557161411-k9qedsdhry"
+    },
+    {
+      "id": "evt-1772560486298-8fb6af4c",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-03T17:54:46.298Z",
+      "featureName": "Build a lightweight Notion-like workspace app",
+      "featureId": "feature-1772557161411-k9qedsdhry"
+    },
+    {
+      "id": "evt-1772558556590-e90bdbe8",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-03T17:22:36.590Z",
+      "featureName": "Build a lightweight Notion-like workspace app",
+      "featureId": "feature-1772557161411-k9qedsdhry"
+    },
+    {
+      "id": "evt-1772557162005-f6764ebf",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-03T16:59:22.005Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772557161411-k9qedsdhry"
+    },
+    {
+      "id": "evt-1772556530816-c864d44b",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-03T16:48:50.816Z",
+      "featureName": "Add meeting list filtering and search interface",
+      "featureId": "feature-1772555569604-a49ui93voxd"
+    },
+    {
+      "id": "evt-1772555844257-e7fb9c4d",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-03T16:37:24.257Z",
+      "featureName": "Add color-coded speaker segmentation to meeting transcripts",
+      "featureId": "feature-1772555497240-u9eebgrxafj"
+    },
+    {
+      "id": "evt-1772555570270-45f53bfb",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-03T16:32:50.271Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772555569604-a49ui93voxd"
+    },
+    {
+      "id": "evt-1772555497738-970661cd",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-03T16:31:37.738Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772555497240-u9eebgrxafj"
+    },
+    {
+      "id": "evt-1772552415431-c43b71aa",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-03T15:40:15.431Z",
+      "featureName": "AI-Powered Card Priority Suggestions",
+      "featureId": "ai-smart-prioritization"
+    },
+    {
+      "id": "evt-1772552403181-3f6c423c",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-03T15:40:03.181Z",
+      "featureName": "AI Card Generation from Meeting Action Items",
+      "featureId": "kanban-ai-card-generation"
+    },
+    {
       "id": "evt-1772549462598-df85b815",
       "trigger": "feature_success",
       "timestamp": "2026-03-03T14:51:02.598Z",

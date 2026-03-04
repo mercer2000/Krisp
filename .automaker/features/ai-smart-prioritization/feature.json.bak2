@@ -1,0 +1,14 @@
+{
+  "id": "ai-smart-prioritization",
+  "category": "AI",
+  "title": "AI-Powered Card Priority Suggestions",
+  "description": "A Claude-powered assistant that analyses open Kanban cards alongside recent meeting action items and emails to suggest priority changes and due dates. Displays a 'Priority Review' panel on the board page with explanations for each suggestion. Users can accept or dismiss each recommendation.",
+  "status": "in_progress",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.440Z",
+  "updatedAt": "2026-03-02T19:00:34.440Z",
+  "startedAt": "2026-03-03T15:21:41.351Z",
+  "descriptionHistory": []
+}

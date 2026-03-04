@@ -245,3 +245,116 @@ export async function searchMeetingsSimple(
   `;
   return rows as WebhookKeyPointsRow[];
 }
+
+/**
+ * Filter parameters for meeting list queries
+ */
+export interface MeetingFilters {
+  dateFrom?: string;
+  dateTo?: string;
+  durationMin?: number;
+  durationMax?: number;
+  participants?: string[];
+  hasActionItems?: boolean;
+  actionItemStatus?: string;
+  hasTranscript?: boolean;
+  keyword?: string;
+}
+
+/**
+ * Get filtered meetings with total count for pagination/display.
+ * All filters are combined with AND logic, applied server-side.
+ */
+export async function getFilteredMeetings(
+  userId: string,
+  filters: MeetingFilters,
+  limit: number = 100
+): Promise<{ meetings: WebhookKeyPointsRow[]; total: number }> {
+  // Use a single SQL query with IS NULL checks so all params are always provided
+  // and unused filters are short-circuited by the database.
+  const dateFrom = filters.dateFrom || null;
+  const dateTo = filters.dateTo || null;
+  const durationMin = filters.durationMin ?? null;
+  const durationMax = filters.durationMax ?? null;
+  const hasTranscript = filters.hasTranscript ?? null;
+  const hasActionItems = filters.hasActionItems ?? null;
+  const keyword = filters.keyword ? `%${filters.keyword}%` : null;
+  const participantsJson = filters.participants && filters.participants.length > 0
+    ? JSON.stringify(filters.participants)
+    : null;
+  const actionItemStatus = filters.actionItemStatus || null;
+
+  const rows = await sql`
+    SELECT w.*, COUNT(*) OVER() AS total_count
+    FROM webhook_key_points w
+    WHERE w.user_id = ${userId}
+      AND w.deleted_at IS NULL
+      AND (${dateFrom}::timestamptz IS NULL OR w.meeting_start_date >= ${dateFrom}::timestamptz)
+      AND (${dateTo}::timestamptz IS NULL OR w.meeting_start_date <= (${dateTo}::date + interval '1 day'))
+      AND (${durationMin}::int IS NULL OR w.meeting_duration >= ${durationMin})
+      AND (${durationMax}::int IS NULL OR w.meeting_duration <= ${durationMax})
+      AND (${hasTranscript}::boolean IS NULL OR
+        (${hasTranscript}::boolean = true AND w.raw_content IS NOT NULL AND w.raw_content != '') OR
+        (${hasTranscript}::boolean = false AND (w.raw_content IS NULL OR w.raw_content = ''))
+      )
+      AND (${keyword}::text IS NULL OR (
+        w.meeting_title ILIKE ${keyword}
+        OR w.content::text ILIKE ${keyword}
+        OR w.raw_content ILIKE ${keyword}
+      ))
+      AND (${participantsJson}::jsonb IS NULL OR (
+        EXISTS (
+          SELECT 1 FROM jsonb_array_elements(w.speakers) AS s
+          WHERE LOWER(
+            COALESCE(s->>'first_name', '') || ' ' || COALESCE(s->>'last_name', '')
+          ) ILIKE ANY(
+            SELECT '%' || LOWER(p) || '%' FROM jsonb_array_elements_text(${participantsJson}::jsonb) AS p
+          )
+          OR LOWER(s::text) ILIKE ANY(
+            SELECT '%' || LOWER(p) || '%' FROM jsonb_array_elements_text(${participantsJson}::jsonb) AS p
+          )
+        )
+      ))
+      AND (${hasActionItems}::boolean IS NULL OR
+        (${hasActionItems}::boolean = true AND EXISTS (
+          SELECT 1 FROM action_items ai WHERE ai.meeting_id = w.id AND ai.deleted_at IS NULL
+        )) OR
+        (${hasActionItems}::boolean = false AND NOT EXISTS (
+          SELECT 1 FROM action_items ai WHERE ai.meeting_id = w.id AND ai.deleted_at IS NULL
+        ))
+      )
+      AND (${actionItemStatus}::text IS NULL OR EXISTS (
+        SELECT 1 FROM action_items ai
+        WHERE ai.meeting_id = w.id AND ai.deleted_at IS NULL AND ai.status = ${actionItemStatus}
+      ))
+    ORDER BY w.meeting_start_date DESC NULLS LAST, w.received_at DESC
+    LIMIT ${limit}
+  `;
+
+  const total = rows.length > 0 ? Number((rows[0] as Record<string, unknown>).total_count) : 0;
+  return {
+    meetings: rows as WebhookKeyPointsRow[],
+    total,
+  };
+}
+
+/**
+ * Get all unique participants/speakers across all meetings for a user.
+ * Used to populate the participant filter dropdown.
+ */
+export async function getAllParticipants(
+  userId: string
+): Promise<string[]> {
+  const rows = await sql`
+    SELECT DISTINCT
+      TRIM(COALESCE(s->>'first_name', '') || ' ' || COALESCE(s->>'last_name', '')) AS name
+    FROM webhook_key_points w,
+      jsonb_array_elements(w.speakers) AS s
+    WHERE w.user_id = ${userId}
+      AND w.deleted_at IS NULL
+      AND jsonb_typeof(w.speakers) = 'array'
+      AND TRIM(COALESCE(s->>'first_name', '') || ' ' || COALESCE(s->>'last_name', '')) != ''
+    ORDER BY name
+  `;
+  return rows.map((r: Record<string, unknown>) => (r as { name: string }).name);
+}

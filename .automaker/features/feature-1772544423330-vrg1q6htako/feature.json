@@ -15,7 +15,7 @@
   "requirePlanApproval": true,
   "dependencies": [],
   "status": "waiting_approval",
-  "startedAt": "2026-03-03T14:15:34.185Z",
+  "startedAt": "2026-03-04T05:40:37.688Z",
   "id": "feature-1772544423330-vrg1q6htako",
   "descriptionHistory": [
     {
@@ -24,7 +24,7 @@
       "source": "initial"
     }
   ],
-  "updatedAt": "2026-03-03T14:31:00.368Z",
-  "justFinishedAt": "2026-03-03T14:31:00.368Z",
-  "summary": "## Summary: AI Agent Chat Interface for Second Brain\n\n### Changes Implemented\n- Added `brain_chat_sessions` and `brain_chat_messages` database tables to the Drizzle schema with proper indexes, foreign keys, and cascade deletes\n- Created `brain_chat_role` enum type (`user`, `assistant`) for message roles\n- Built the main chat API endpoint (`POST /api/brain/chat`) that:\n  - Authenticates the user\n  - Creates or reuses chat sessions\n  - Gathers context from the user's meetings, emails, decisions, and action items\n  - Maintains conversation history across messages in a session\n  - Sends structured prompts to the LLM (via OpenRouter/chatCompletion)\n  - Stores both user and assistant messages with source attribution\n- Created session management API routes:\n  - `GET /api/brain/sessions` - List all user chat sessions\n  - `GET /api/brain/sessions/[sessionId]` - Load a session with all messages\n  - `DELETE /api/brain/sessions/[sessionId]` - Delete a session (cascades to messages)\n- Built a full chat UI page at `/brain` featuring:\n  - Collapsible sidebar with chat session history\n  - New chat creation with suggestion chips for empty state\n  - Real-time optimistic message rendering\n  - Auto-growing textarea with Enter-to-send (Shift+Enter for newline)\n  - Loading dots animation while AI responds\n  - Lightweight markdown rendering (headers, bold, inline code, lists)\n  - Source badges showing which data types (meetings, emails, decisions, action items) were used\n  - Session deletion from sidebar with hover-reveal delete button\n- Added \"Brain\" navigation item with brain icon to the SideNav component\n- Created SQL migration file `0016_add-brain-chat.sql` and updated the migration journal\n\n### Files Modified\n- `lib/db/schema.ts` - Added brainChatSessions, brainChatMessages tables and brainChatRoleEnum\n- `components/ui/SideNav.tsx` - Added BrainIcon component and \"Brain\" nav item\n- `drizzle/migrations/meta/_journal.json` - Added migration entry for 0016\n\n### Files Created\n- `app/api/brain/chat/route.ts` - Main chat API endpoint\n- `app/api/brain/sessions/route.ts` - Sessions list API\n- `app/api/brain/sessions/[sessionId]/route.ts` - Session detail/delete API\n- `app/(app)/brain/page.tsx` - Brain Chat UI page\n- `drizzle/migrations/0016_add-brain-chat.sql` - Database migration\n\n### Notes for Developer\n- Run the migration `0016_add-brain-chat.sql` against your database before using the feature\n- The chat uses the existing `chatCompletion` function from `lib/ai/client.ts` (OpenRouter API) - ensure `OPENROUTER_API_KEY` is set\n- Context window: The chat pulls the 15 most recent items from each data source (meetings, emails, decisions, action items) to stay within LLM token limits\n- Conversation history is limited to the 20 most recent messages per session\n- The feature requires an authenticated user session (NextAuth)"
+  "updatedAt": "2026-03-04T05:57:07.651Z",
+  "justFinishedAt": "2026-03-04T05:57:07.630Z",
+  "summary": "### New Files Created\n1. **`lib/brain/types.ts`** — Type definitions for intent classification (`BrainIntent`, `ActionResult`, `PendingAction`, `BoardContext`) with discriminated union types for each Kanban action\n2. **`lib/brain/intentParser.ts`** — LLM-based intent classifier that sends a compact prompt (~500 tokens) to determine if a message is a Kanban command or brain query. Handles pending confirmations with direct yes/no matching. Falls back to `brain_query` on parse failure\n3. **`lib/bra..."
 }

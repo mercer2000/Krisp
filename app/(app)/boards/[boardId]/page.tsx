@@ -4,6 +4,7 @@ import { use, useState, useEffect } from "react";
 import { useBoard } from "@/lib/hooks/useBoard";
 import { BoardHeader, type BoardFilters, type BoardView } from "@/components/board/BoardHeader";
 import { KanbanBoard } from "@/components/board/KanbanBoard";
+import { PriorityReviewPanel } from "@/components/board/PriorityReviewPanel";
 
 // ---------------------------------------------------------------------------
 // Skeleton loader for columns
@@ -152,7 +153,12 @@ export default function BoardPage({ params }: BoardPageProps) {
         filters={filters}
         onFiltersChange={handleFiltersChange}
       />
-      <KanbanBoard board={board} filters={filters} />
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden">
+          <KanbanBoard board={board} filters={filters} />
+        </div>
+        <PriorityReviewPanel boardId={board.id} />
+      </div>
     </div>
   );
 }

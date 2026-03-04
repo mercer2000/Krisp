@@ -1,0 +1,165 @@
+import { db } from "@/lib/db";
+import {
+  users,
+  boards,
+  columns,
+  cards,
+  cardTags,
+  actionItems,
+} from "@/lib/db/schema";
+import { eq, and, asc, max } from "drizzle-orm";
+import { extractActionsFromEmail } from "./extractEmailActions";
+
+interface EmailData {
+  sender: string;
+  recipients: string[];
+  subject: string | null;
+  bodyPlainText: string | null;
+  receivedAt: string;
+}
+
+/**
+ * Automatically extract action items from a new email and create Kanban cards.
+ *
+ * Called from email webhook handlers after a new email is ingested.
+ * Looks up the user's configured email action board and, if set, uses AI
+ * to extract action items and create cards in the board's first column.
+ */
+export async function autoProcessEmailActions(
+  tenantId: string,
+  email: EmailData
+): Promise<{ actionItemsCreated: number; cardsCreated: number }> {
+  // Skip emails with no body content
+  if (!email.bodyPlainText?.trim()) {
+    return { actionItemsCreated: 0, cardsCreated: 0 };
+  }
+
+  // Look up user's email action board preference and email
+  const [user] = await db
+    .select({
+      emailActionBoardId: users.emailActionBoardId,
+      email: users.email,
+    })
+    .from(users)
+    .where(eq(users.id, tenantId));
+
+  if (!user?.emailActionBoardId) {
+    return { actionItemsCreated: 0, cardsCreated: 0 };
+  }
+
+  const boardId = user.emailActionBoardId;
+
+  // Verify board exists and belongs to user
+  const [board] = await db
+    .select({ id: boards.id })
+    .from(boards)
+    .where(and(eq(boards.id, boardId), eq(boards.userId, tenantId)));
+
+  if (!board) {
+    console.warn(
+      `[AutoProcess] Board ${boardId} not found for user ${tenantId}`
+    );
+    return { actionItemsCreated: 0, cardsCreated: 0 };
+  }
+
+  // Get first column of the board (lowest position)
+  const [firstCol] = await db
+    .select({ id: columns.id })
+    .from(columns)
+    .where(eq(columns.boardId, boardId))
+    .orderBy(asc(columns.position))
+    .limit(1);
+
+  if (!firstCol) {
+    console.warn(
+      `[AutoProcess] No columns found in board ${boardId} for user ${tenantId}`
+    );
+    return { actionItemsCreated: 0, cardsCreated: 0 };
+  }
+
+  // Extract action items using AI
+  const extracted = await extractActionsFromEmail(
+    {
+      sender: email.sender,
+      recipients: email.recipients,
+      subject: email.subject,
+      bodyPlainText: email.bodyPlainText,
+      receivedAt: email.receivedAt,
+    },
+    user.email
+  );
+
+  if (extracted.length === 0) {
+    return { actionItemsCreated: 0, cardsCreated: 0 };
+  }
+
+  let actionItemsCreated = 0;
+  let cardsCreated = 0;
+
+  for (const action of extracted) {
+    try {
+      // Create the action item
+      const [item] = await db
+        .insert(actionItems)
+        .values({
+          userId: tenantId,
+          title: action.title,
+          description: action.description || null,
+          assignee: action.assignee || null,
+          extractionSource: "email",
+          priority: action.priority || "medium",
+          dueDate: action.dueDate || null,
+        })
+        .returning();
+
+      actionItemsCreated++;
+
+      // Get next position in column
+      const [posResult] = await db
+        .select({ maxPosition: max(cards.position) })
+        .from(cards)
+        .where(eq(cards.columnId, firstCol.id));
+
+      const nextPosition = (posResult?.maxPosition ?? 0) + 1024;
+
+      // Create Kanban card
+      const [card] = await db
+        .insert(cards)
+        .values({
+          columnId: firstCol.id,
+          title: action.title.slice(0, 255),
+          description: action.description || null,
+          position: nextPosition,
+          priority: action.priority || "medium",
+          dueDate: action.dueDate || null,
+        })
+        .returning();
+
+      // Add "Email" tag for traceability
+      await db.insert(cardTags).values({
+        cardId: card.id,
+        label: "Email",
+        color: "#3B82F6",
+      });
+
+      // Link card to action item
+      await db
+        .update(actionItems)
+        .set({ cardId: card.id, updatedAt: new Date() })
+        .where(eq(actionItems.id, item.id));
+
+      cardsCreated++;
+    } catch (err) {
+      console.error(
+        `[AutoProcess] Error creating action item/card for "${action.title}":`,
+        err instanceof Error ? err.message : err
+      );
+    }
+  }
+
+  console.log(
+    `[AutoProcess] User ${tenantId}: ${actionItemsCreated} action items, ${cardsCreated} cards created from email "${email.subject}"`
+  );
+
+  return { actionItemsCreated, cardsCreated };
+}

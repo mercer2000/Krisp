@@ -130,6 +130,16 @@ const TABS = [
     ),
     color: "#4B45DC",
   },
+  {
+    id: "telegram" as const,
+    label: "Telegram",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+      </svg>
+    ),
+    color: "#0088CC",
+  },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -1665,6 +1675,151 @@ function OutlookIntegrationManager() {
   );
 }
 
+interface BoardOption {
+  id: string;
+  title: string;
+}
+
+function EmailActionBoardSelector() {
+  const [boards, setBoards] = useState<BoardOption[]>([]);
+  const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [boardsRes, settingRes] = await Promise.all([
+        fetch("/api/v1/boards"),
+        fetch("/api/settings/email-action-board"),
+      ]);
+      if (boardsRes.ok) {
+        const boardsData = await boardsRes.json();
+        setBoards(boardsData.map((b: { id: string; title: string }) => ({ id: b.id, title: b.title })));
+      }
+      if (settingRes.ok) {
+        const settingData = await settingRes.json();
+        setSelectedBoardId(settingData.emailActionBoardId);
+      }
+    } catch {
+      setError("Failed to load board settings");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleSave = async (boardId: string | null) => {
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch("/api/settings/email-action-board", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ boardId }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setSelectedBoardId(boardId);
+      setSuccess(boardId ? "Auto-ticket board saved" : "Auto-ticket board cleared");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch {
+      setError("Failed to save board setting");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-4 rounded-lg bg-[var(--secondary)] border border-[var(--border)] text-sm text-[var(--muted-foreground)]">
+        Loading board settings...
+      </div>
+    );
+  }
+
+  return (
+    <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+      <div className="px-6 py-5 border-b border-[var(--border)]">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+              <path d="M17.5 14v7M14 17.5h7" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">
+              Auto-Create Kanban Tickets
+            </h2>
+            <p className="text-sm text-[var(--muted-foreground)]">
+              Automatically extract action items from incoming emails and create Kanban cards
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-6 space-y-4">
+        <p className="text-sm text-[var(--muted-foreground)]">
+          When a new email arrives via any connected integration, AI will scan the email for
+          action items assigned to you and automatically create Kanban cards in the selected board.
+          If no board is selected, auto-ticket creation is disabled.
+        </p>
+
+        {error && (
+          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-600">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-sm text-green-600">
+            {success}
+          </div>
+        )}
+
+        <div>
+          <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+            Target Kanban Board
+          </label>
+          <div className="mt-1 flex items-center gap-2">
+            <select
+              value={selectedBoardId ?? ""}
+              onChange={(e) => handleSave(e.target.value || null)}
+              disabled={saving}
+              className="flex-1 px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] disabled:opacity-50"
+            >
+              <option value="">-- Disabled (no auto-tickets) --</option>
+              {boards.map((board) => (
+                <option key={board.id} value={board.id}>
+                  {board.title}
+                </option>
+              ))}
+            </select>
+            {saving && (
+              <span className="text-xs text-[var(--muted-foreground)]">Saving...</span>
+            )}
+          </div>
+        </div>
+
+        {selectedBoardId && (
+          <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-sm text-[var(--foreground)]">
+            Auto-ticket creation is <span className="font-semibold text-emerald-600">enabled</span>.
+            New emails will be scanned for action items and cards will be created in the first column
+            of the selected board with an &quot;Email&quot; tag.
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export function IntegrationsClient({ tenantId }: { tenantId: string }) {
   const [activeTab, setActiveTab] = useState<TabId>("microsoft365");
   const [graphCredentials, setGraphCredentials] = useState<GraphCredential[]>([]);
@@ -1715,6 +1870,9 @@ export function IntegrationsClient({ tenantId }: { tenantId: string }) {
 
       <main className="flex-1 overflow-auto px-6 py-8">
         <div className="max-w-4xl mx-auto space-y-8">
+          {/* Email Action Board Selector */}
+          <EmailActionBoardSelector />
+
           {/* Microsoft 365 Section */}
           {activeTab === "microsoft365" && <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
             <div className="px-6 py-5 border-b border-[var(--border)]">
@@ -3805,8 +3963,293 @@ export function IntegrationsClient({ tenantId }: { tenantId: string }) {
               </div>
             </div>
           </section>}
+
+          {/* Telegram Section */}
+          {activeTab === "telegram" && <TelegramSection />}
         </div>
       </main>
     </div>
+  );
+}
+
+// ── Telegram Integration Section ─────────────────────────────────
+function TelegramSection() {
+  const [status, setStatus] = useState<{
+    connected: boolean;
+    botUsername?: string;
+    chatId?: string;
+    active?: boolean;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [botToken, setBotToken] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const fetchStatus = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch("/api/telegram");
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      setStatus(data);
+    } catch {
+      setError("Failed to load Telegram status");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStatus();
+  }, [fetchStatus]);
+
+  const handleConnect = async () => {
+    if (!botToken.trim()) return;
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch("/api/telegram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ botToken: botToken.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to connect bot");
+        return;
+      }
+      setBotToken("");
+      setSuccess(`Connected to @${data.botUsername}`);
+      setTimeout(() => setSuccess(null), 4000);
+      await fetchStatus();
+    } catch {
+      setError("Failed to connect Telegram bot");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    setDisconnecting(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch("/api/telegram", { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed");
+      setSuccess("Telegram bot disconnected");
+      setTimeout(() => setSuccess(null), 4000);
+      await fetchStatus();
+    } catch {
+      setError("Failed to disconnect Telegram bot");
+    } finally {
+      setDisconnecting(false);
+    }
+  };
+
+  return (
+    <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+      <div className="px-6 py-5 border-b border-[var(--border)]">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-[#0088CC] flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+              <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">
+              Telegram Bot
+            </h2>
+            <p className="text-sm text-[var(--muted-foreground)]">
+              Chat with your Second Brain AI via Telegram
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-6 space-y-8">
+        {/* Description */}
+        <div>
+          <p className="text-sm text-[var(--muted-foreground)]">
+            Connect a Telegram bot to chat with your Brain AI from anywhere. The
+            bot has access to the same meetings, emails, decisions, and action items
+            as the web-based Brain Chat. Messages sent via Telegram are processed
+            through the same AI and stored in your Brain conversation history.
+          </p>
+        </div>
+
+        {/* Status / Error / Success messages */}
+        {error && (
+          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-600">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-sm text-green-600">
+            {success}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
+            Loading...
+          </div>
+        ) : status?.connected ? (
+          /* Connected state */
+          <div className="space-y-6">
+            <div className="p-4 rounded-lg bg-green-500/5 border border-green-500/20">
+              <div className="flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-[var(--foreground)]">
+                    Connected to{" "}
+                    <span className="font-semibold text-[#0088CC]">
+                      @{status.botUsername}
+                    </span>
+                  </p>
+                  {status.chatId ? (
+                    <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                      Chat linked (ID: {status.chatId})
+                    </p>
+                  ) : (
+                    <p className="text-xs text-amber-600 mt-0.5">
+                      Send /start to your bot on Telegram to link the chat
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={handleDisconnect}
+                  disabled={disconnecting}
+                  className="px-3 py-1.5 text-xs font-medium rounded-md border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                >
+                  {disconnecting ? "Disconnecting..." : "Disconnect"}
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg bg-[var(--secondary)] border border-[var(--border)]">
+              <h4 className="text-sm font-medium text-[var(--foreground)] mb-2">
+                How to use
+              </h4>
+              <ol className="text-sm text-[var(--muted-foreground)] space-y-1.5 list-decimal list-inside">
+                <li>
+                  Open Telegram and search for{" "}
+                  <span className="font-medium text-[var(--foreground)]">
+                    @{status.botUsername}
+                  </span>
+                </li>
+                <li>Send <code className="px-1 py-0.5 rounded bg-[var(--accent)] text-xs">/start</code> to begin</li>
+                <li>Type any question to query your Second Brain</li>
+              </ol>
+            </div>
+          </div>
+        ) : (
+          /* Disconnected state - setup form */
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
+                Connect Your Bot
+              </h3>
+              <p className="text-sm text-[var(--muted-foreground)] mb-4">
+                Enter your Telegram bot token to connect. The webhook will be
+                automatically registered.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  value={botToken}
+                  onChange={(e) => setBotToken(e.target.value)}
+                  placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:border-[var(--primary)] focus:outline-none"
+                />
+                <button
+                  onClick={handleConnect}
+                  disabled={!botToken.trim() || saving}
+                  className="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--primary)] text-white hover:opacity-90 transition-colors disabled:opacity-50"
+                >
+                  {saving ? "Connecting..." : "Connect"}
+                </button>
+              </div>
+            </div>
+
+            {/* Setup guide */}
+            <div>
+              <h3 className="text-sm font-semibold text-[var(--foreground)] mb-4">
+                Setup Guide
+              </h3>
+              <ol className="space-y-5">
+                <li className="flex gap-4">
+                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
+                    1
+                  </span>
+                  <div className="flex-1">
+                    <p className="font-medium text-[var(--foreground)]">
+                      Create a Telegram Bot
+                    </p>
+                    <p className="text-sm text-[var(--muted-foreground)] mt-1">
+                      Open Telegram and message{" "}
+                      <span className="font-medium text-[#0088CC]">@BotFather</span>.
+                      Send <code className="px-1 py-0.5 rounded bg-[var(--secondary)] text-xs">/newbot</code>{" "}
+                      and follow the prompts to create a new bot.
+                    </p>
+                  </div>
+                </li>
+                <li className="flex gap-4">
+                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
+                    2
+                  </span>
+                  <div className="flex-1">
+                    <p className="font-medium text-[var(--foreground)]">
+                      Copy the Bot Token
+                    </p>
+                    <p className="text-sm text-[var(--muted-foreground)] mt-1">
+                      BotFather will give you a token that looks like{" "}
+                      <code className="px-1 py-0.5 rounded bg-[var(--secondary)] text-xs">
+                        123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
+                      </code>
+                      . Copy this token.
+                    </p>
+                  </div>
+                </li>
+                <li className="flex gap-4">
+                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
+                    3
+                  </span>
+                  <div className="flex-1">
+                    <p className="font-medium text-[var(--foreground)]">
+                      Paste Token Above
+                    </p>
+                    <p className="text-sm text-[var(--muted-foreground)] mt-1">
+                      Paste the bot token into the field above and click{" "}
+                      <span className="font-medium text-[var(--foreground)]">Connect</span>.
+                      The webhook will be registered automatically.
+                    </p>
+                  </div>
+                </li>
+                <li className="flex gap-4">
+                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
+                    4
+                  </span>
+                  <div className="flex-1">
+                    <p className="font-medium text-[var(--foreground)]">
+                      Start Chatting
+                    </p>
+                    <p className="text-sm text-[var(--muted-foreground)] mt-1">
+                      Open your bot in Telegram and send{" "}
+                      <code className="px-1 py-0.5 rounded bg-[var(--secondary)] text-xs">/start</code>
+                      . Then start asking questions about your meetings, emails,
+                      and action items.
+                    </p>
+                  </div>
+                </li>
+              </ol>
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }

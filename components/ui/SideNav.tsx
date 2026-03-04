@@ -13,10 +13,41 @@ import { UpcomingEvents } from "@/components/calendar/UpcomingEvents";
 
 const NAV_ITEMS = [
   {
+    key: "brain",
+    label: "Brain",
+    href: "/brain",
+    icon: BrainIcon,
+    shortcut: "Ctrl+B",
+  },
+  {
     key: "dashboard",
     label: "Dashboard",
     href: "/dashboard",
     icon: DashboardIcon,
+  },
+  {
+    key: "weekly-reviews",
+    label: "Reviews",
+    href: "/weekly-reviews",
+    icon: WeeklyReviewIcon,
+  },
+  {
+    key: "boards",
+    label: "Kanban",
+    href: "/boards",
+    icon: KanbanIcon,
+  },
+  {
+    key: "decisions",
+    label: "Decisions",
+    href: "/decisions",
+    icon: DecisionsIcon,
+  },
+  {
+    key: "pages",
+    label: "Pages",
+    href: "/workspace",
+    icon: PagesIcon,
   },
   {
     key: "inbox",
@@ -35,30 +66,6 @@ const NAV_ITEMS = [
     label: "Calendar",
     href: "/calendar",
     icon: CalendarIcon,
-  },
-  {
-    key: "boards",
-    label: "Kanban",
-    href: "/boards",
-    icon: KanbanIcon,
-  },
-  {
-    key: "brain",
-    label: "Brain",
-    href: "/brain",
-    icon: BrainIcon,
-  },
-  {
-    key: "decisions",
-    label: "Decisions",
-    href: "/decisions",
-    icon: DecisionsIcon,
-  },
-  {
-    key: "weekly-reviews",
-    label: "Reviews",
-    href: "/weekly-reviews",
-    icon: WeeklyReviewIcon,
   },
   {
     key: "analytics",
@@ -183,6 +190,28 @@ function KanbanIcon({ size = 20 }: { size?: number }) {
       <rect x="3" y="3" width="18" height="18" rx="2" />
       <path d="M9 3v18" />
       <path d="M15 3v18" />
+    </svg>
+  );
+}
+
+function PagesIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+      <path d="M10 9H8" />
+      <path d="M16 13H8" />
+      <path d="M16 17H8" />
     </svg>
   );
 }
@@ -413,6 +442,7 @@ export function SideNav() {
     if (href === "/krisp") return pathname === "/krisp";
     if (href === "/calendar") return pathname.startsWith("/calendar");
     if (href === "/boards") return pathname.startsWith("/boards");
+    if (href === "/workspace") return pathname.startsWith("/workspace");
     if (href === "/brain") return pathname.startsWith("/brain");
     if (href === "/decisions") return pathname.startsWith("/decisions");
     if (href === "/weekly-reviews") return pathname.startsWith("/weekly-reviews");
@@ -450,6 +480,7 @@ export function SideNav() {
         {NAV_ITEMS.map((item) => {
           const active = isActive(item.href);
           const Icon = item.icon;
+          const shortcut = "shortcut" in item ? item.shortcut : undefined;
           const resolvedHref =
             item.key === "boards" && lastBoardId
               ? `/boards/${lastBoardId}`
@@ -463,10 +494,19 @@ export function SideNav() {
                   ? "bg-[var(--primary)]/10 text-[var(--primary)]"
                   : "text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
               } ${collapsed ? "justify-center px-0" : ""}`}
-              title={collapsed ? item.label : undefined}
+              title={collapsed ? `${item.label}${shortcut ? ` (${shortcut})` : ""}` : undefined}
             >
               <Icon size={20} />
-              {!collapsed && <span>{item.label}</span>}
+              {!collapsed && (
+                <>
+                  <span className="flex-1">{item.label}</span>
+                  {shortcut && (
+                    <kbd className="ml-auto rounded border border-[var(--border)] bg-[var(--background)] px-1.5 py-0.5 text-[10px] font-normal text-[var(--muted-foreground)]">
+                      {shortcut}
+                    </kbd>
+                  )}
+                </>
+              )}
             </Link>
           );
         })}

@@ -48,6 +48,7 @@ export const users = pgTable("users", {
   displayName: varchar("display_name", { length: 100 }).notNull(),
   avatarUrl: text("avatar_url"),
   defaultBoardId: uuid("default_board_id"),
+  emailActionBoardId: uuid("email_action_board_id"),
   dashboardConfig: jsonb("dashboard_config"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -707,6 +708,7 @@ export const brainChatSessions = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     title: varchar("title", { length: 255 }).default("New Chat").notNull(),
+    pendingAction: jsonb("pending_action"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -780,5 +782,137 @@ export const weeklyReviews = pgTable(
   (table) => [
     index("idx_weekly_reviews_user_id").on(table.userId),
     index("idx_weekly_reviews_user_week").on(table.userId, table.weekStart),
+  ]
+);
+
+// ── Workspaces (Pages feature) ──────────────────────
+export const workspaces = pgTable("workspaces", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  ownerId: uuid("owner_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// ── Pages ───────────────────────────────────────────
+export const pages = pgTable(
+  "pages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    parentId: uuid("parent_id"),
+    title: varchar("title", { length: 500 }).default("").notNull(),
+    icon: varchar("icon", { length: 50 }),
+    coverUrl: text("cover_url"),
+    isDatabase: boolean("is_database").default(false).notNull(),
+    databaseConfig: jsonb("database_config"),
+    isArchived: boolean("is_archived").default(false).notNull(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sortOrder: integer("sort_order").default(0).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_pages_workspace_parent_sort").on(
+      table.workspaceId,
+      table.parentId,
+      table.sortOrder
+    ),
+    index("idx_pages_workspace_archived").on(
+      table.workspaceId,
+      table.isArchived
+    ),
+  ]
+);
+
+// ── Blocks ──────────────────────────────────────────
+export const blocks = pgTable(
+  "blocks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => pages.id, { onDelete: "cascade" }),
+    parentBlockId: uuid("parent_block_id"),
+    type: varchar("type", { length: 50 }).notNull(),
+    content: jsonb("content").notNull().default({}),
+    sortOrder: integer("sort_order").default(0).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_blocks_page_parent_sort").on(
+      table.pageId,
+      table.parentBlockId,
+      table.sortOrder
+    ),
+  ]
+);
+
+// ── Database Rows ───────────────────────────────────
+export const databaseRows = pgTable(
+  "database_rows",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    databasePageId: uuid("database_page_id")
+      .notNull()
+      .references(() => pages.id, { onDelete: "cascade" }),
+    rowPageId: uuid("row_page_id").references(() => pages.id, {
+      onDelete: "set null",
+    }),
+    properties: jsonb("properties").notNull().default({}),
+    sortOrder: integer("sort_order").default(0).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_database_rows_page_sort").on(
+      table.databasePageId,
+      table.sortOrder
+    ),
+  ]
+);
+
+// ── Telegram Bot Tokens ─────────────────────────────
+export const telegramBotTokens = pgTable(
+  "telegram_bot_tokens",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    botToken: text("bot_token").notNull(),
+    botUsername: varchar("bot_username", { length: 255 }),
+    chatId: varchar("chat_id", { length: 100 }),
+    webhookSecret: varchar("webhook_secret", { length: 255 }).notNull(),
+    active: boolean("active").default(true).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_telegram_bot_user").on(table.userId),
   ]
 );

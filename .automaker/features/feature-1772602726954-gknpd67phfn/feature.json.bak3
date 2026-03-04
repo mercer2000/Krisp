@@ -1,0 +1,27 @@
+{
+  "category": "Uncategorized",
+  "description": "When new email arrives, we want to automaticaly us AI to extract the action item assigned to the current user and to create new kanban tickets. You need to scan for action items for the currently logged in user. On each of the email integration settings pages, add a Kanban board name so you know what board to add new action items too. Use openrouter for the API. You have been asked to do this a few times so there maybe some existing code to leverage. \n",
+  "title": "",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "in_progress",
+  "startedAt": "2026-03-04T05:38:46.954Z",
+  "id": "feature-1772602726954-gknpd67phfn",
+  "descriptionHistory": [
+    {
+      "description": "When new email arrives, we want to automaticaly us AI to extract the action item assigned to the current user and to create new kanban tickets. You need to scan for action items for the currently logged in user. On each of the email integration settings pages, add a Kanban board name so you know what board to add new action items too. Use openrouter for the API. You have been asked to do this a few times so there maybe some existing code to leverage. \n",
+      "timestamp": "2026-03-04T05:38:47.538Z",
+      "source": "initial"
+    }
+  ]
+}

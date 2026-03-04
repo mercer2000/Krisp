@@ -340,7 +340,7 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <div className="flex flex-1 gap-4 overflow-x-auto p-4">
+        <div className="flex h-full gap-4 overflow-x-auto p-4">
           <SortableContext
             items={columnIds}
             strategy={horizontalListSortingStrategy}

@@ -131,6 +131,8 @@ const SOURCE_COLORS: Record<string, string> = {
     "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
   action_items:
     "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+  kanban:
+    "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
 };
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -138,6 +140,7 @@ const SOURCE_LABELS: Record<string, string> = {
   emails: "Emails",
   decisions: "Decisions",
   action_items: "Action Items",
+  kanban: "Kanban",
 };
 
 // ── Main Component ──────────────────────────────────
@@ -161,6 +164,11 @@ export default function BrainChatPage() {
   // Load sessions on mount
   useEffect(() => {
     fetchSessions();
+  }, []);
+
+  // Auto-focus input when page loads
+  useEffect(() => {
+    inputRef.current?.focus();
   }, []);
 
   const fetchSessions = async () => {
@@ -350,8 +358,8 @@ export default function BrainChatPage() {
               Brain Chat
             </h1>
             <p className="text-xs text-[var(--muted-foreground)]">
-              Ask questions about your meetings, emails, decisions & action
-              items
+              Ask questions about your data or manage Kanban tasks via
+              chat
             </p>
           </div>
         </header>
@@ -367,13 +375,15 @@ export default function BrainChatPage() {
                 Ask your Second Brain
               </h2>
               <p className="mt-2 max-w-md text-center text-sm text-[var(--muted-foreground)]">
-                I have access to your meetings, emails, decisions, and action
-                items. Ask me anything about your data.
+                I have access to your meetings, emails, decisions, action
+                items, and Kanban boards. Ask questions or manage tasks.
               </p>
               <div className="mt-6 grid max-w-lg gap-2 sm:grid-cols-2">
                 {[
                   "What were the key decisions from my last meeting?",
                   "Summarize my open action items",
+                  "Create a task to review Q1 metrics due Friday",
+                  "Show me all high priority cards",
                   "What topics came up most in recent meetings?",
                   "Any overdue action items I should follow up on?",
                 ].map((suggestion) => (
@@ -499,8 +509,8 @@ export default function BrainChatPage() {
             </button>
           </div>
           <p className="mt-1.5 text-center text-[10px] text-[var(--muted-foreground)]">
-            Brain searches your meetings, emails, decisions & action items to
-            answer questions
+            Brain searches your data and manages Kanban tasks — try
+            &quot;create a task&quot; or ask about your meetings
           </p>
         </div>
       </div>

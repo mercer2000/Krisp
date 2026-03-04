@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772604154190-e2e4253a",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-04T06:02:34.190Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772602726954-gknpd67phfn",
+  "featureName": "Extract email action items to Kanban board",
+  "passes": true
+}

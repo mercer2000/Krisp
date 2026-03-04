@@ -12,6 +12,7 @@ import {
   fetchGraphMessage,
   extractUserFromResource,
 } from "@/lib/graph/messages";
+import { autoProcessEmailActions } from "@/lib/actions/autoProcessEmailActions";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -242,6 +243,22 @@ export async function POST(
 
             await updateEmailByMessageId(tenantId, item.messageId, fullEmail);
             console.log(`[Graph] Fetched full email for message ${item.messageId}`);
+
+            // Auto-extract action items and create Kanban cards
+            try {
+              await autoProcessEmailActions(tenantId, {
+                sender: fullEmail.from,
+                recipients: fullEmail.to,
+                subject: fullEmail.subject ?? null,
+                bodyPlainText: fullEmail.bodyPlainText ?? null,
+                receivedAt: fullEmail.receivedDateTime,
+              });
+            } catch (actionErr) {
+              console.error(
+                `[Graph] Error auto-processing actions for message ${item.messageId}:`,
+                actionErr instanceof Error ? actionErr.message : actionErr
+              );
+            }
           } catch (err) {
             console.error(
               `[Graph] Error in async fetch for message ${item.messageId}:`,
