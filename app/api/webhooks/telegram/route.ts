@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { telegramBotTokens, brainChatSessions } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { processBrainChat } from "@/lib/brain/chat";
+import { TokenLimitError } from "@/lib/ai/client";
 import { sendMessage, sendTypingAction } from "@/lib/telegram/client";
 
 // Allow up to 60 seconds for AI processing + Telegram send
@@ -193,12 +194,31 @@ export async function POST(request: NextRequest) {
     }
 
     // Process through Brain AI
-    const result = await processBrainChat(userId, messageText, sessionId);
+    try {
+      const result = await processBrainChat(userId, messageText, sessionId);
 
-    // Send the AI response back to Telegram (split if > 4096 chars)
-    const sendResult = await sendLongMessage(botToken, chatId, result.answer);
-    if (!sendResult) {
-      console.error("Telegram send failed for chat", chatId, "- answer length:", result.answer.length);
+      // Send the AI response back to Telegram (split if > 4096 chars)
+      const sendResult = await sendLongMessage(botToken, chatId, result.answer);
+      if (!sendResult) {
+        console.error("Telegram send failed for chat", chatId, "- answer length:", result.answer.length);
+      }
+    } catch (aiError) {
+      if (aiError instanceof TokenLimitError) {
+        await sendMessage(
+          botToken,
+          chatId,
+          "Sorry, the AI service credit limit has been reached. Please contact the administrator or try again later.",
+          undefined
+        );
+      } else {
+        console.error("Telegram webhook processing error:", aiError);
+        await sendMessage(
+          botToken,
+          chatId,
+          "Sorry, something went wrong processing your message. Please try again.",
+          undefined
+        );
+      }
     }
 
     return NextResponse.json({ ok: true });

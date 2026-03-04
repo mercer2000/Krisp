@@ -242,7 +242,13 @@ export default function BrainChatPage() {
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to send");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        if (res.status === 402 || errorData?.error === "token_limit") {
+          throw new Error("token_limit");
+        }
+        throw new Error("Failed to send");
+      }
       const data = await res.json();
 
       // If this was a new session, update state
@@ -254,14 +260,16 @@ export default function BrainChatPage() {
 
       // Add assistant message
       setMessages((prev) => [...prev, data.message]);
-    } catch {
+    } catch (err) {
+      const isTokenLimit = err instanceof Error && err.message === "token_limit";
       // Remove optimistic message and show error
       setMessages((prev) =>
         prev.filter((m) => m.id !== tempUserMsg.id).concat({
           id: `error-${Date.now()}`,
           role: "assistant",
-          content:
-            "Sorry, I encountered an error processing your message. Please try again.",
+          content: isTokenLimit
+            ? "The AI service credit limit has been reached. Please check your OpenRouter API key limits at openrouter.ai/settings/keys and increase the monthly budget."
+            : "Sorry, I encountered an error processing your message. Please try again.",
           createdAt: new Date().toISOString(),
         })
       );

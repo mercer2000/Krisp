@@ -10,11 +10,11 @@ import {
 import { eq, desc, and, isNull, asc } from "drizzle-orm";
 import { chatCompletion } from "@/lib/ai/client";
 
-const MAX_CONTEXT_MEETINGS = 15;
-const MAX_CONTEXT_EMAILS = 15;
-const MAX_CONTEXT_DECISIONS = 15;
-const MAX_CONTEXT_ACTION_ITEMS = 15;
-const MAX_HISTORY_MESSAGES = 20;
+const MAX_CONTEXT_MEETINGS = 5;
+const MAX_CONTEXT_EMAILS = 8;
+const MAX_CONTEXT_DECISIONS = 10;
+const MAX_CONTEXT_ACTION_ITEMS = 10;
+const MAX_HISTORY_MESSAGES = 10;
 
 /**
  * Process a Brain AI chat message for a given user.
@@ -148,6 +148,7 @@ export async function processBrainChat(
               .map((kp) => kp.description || kp.text || "")
               .filter(Boolean)
               .join("; ")
+              .slice(0, 500)
           : "";
         const speakers = Array.isArray(m.speakers)
           ? (
@@ -163,7 +164,7 @@ export async function processBrainChat(
               )
               .join(", ")
           : "";
-        const transcript = m.rawContent ? m.rawContent.slice(0, 800) : "";
+        const transcript = m.rawContent ? m.rawContent.slice(0, 400) : "";
         return `Meeting ${i + 1}: "${m.meetingTitle || "Untitled"}" (${
           m.meetingStartDate
             ? new Date(m.meetingStartDate).toLocaleDateString()
