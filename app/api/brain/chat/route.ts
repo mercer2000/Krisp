@@ -36,7 +36,7 @@ import type {
 } from "@/lib/brain/types";
 
 const MAX_CONTEXT_MEETINGS = 5;
-const MAX_CONTEXT_EMAILS = 8;
+const MAX_CONTEXT_EMAILS = 10;
 const MAX_CONTEXT_DECISIONS = 10;
 const MAX_CONTEXT_ACTION_ITEMS = 10;
 const MAX_HISTORY_MESSAGES = 50;

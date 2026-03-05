@@ -9,9 +9,20 @@ import {
 } from "@/lib/db/schema";
 import { eq, desc, and, isNull } from "drizzle-orm";
 import { chatCompletion } from "@/lib/ai/client";
+import {
+  encryptFields,
+  decryptFields,
+  decryptRows,
+  WEBHOOK_ENCRYPTED_FIELDS,
+  EMAIL_ENCRYPTED_FIELDS,
+  DECISION_ENCRYPTED_FIELDS,
+  ACTION_ITEM_ENCRYPTED_FIELDS,
+  BRAIN_CHAT_MESSAGE_ENCRYPTED_FIELDS,
+  BRAIN_CHAT_SESSION_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
 
 const MAX_CONTEXT_MEETINGS = 5;
-const MAX_CONTEXT_EMAILS = 8;
+const MAX_CONTEXT_EMAILS = 10;
 const MAX_CONTEXT_DECISIONS = 10;
 const MAX_CONTEXT_ACTION_ITEMS = 10;
 const MAX_HISTORY_MESSAGES = 50;
@@ -39,17 +50,19 @@ export async function processBrainChat(
       message.length > 60 ? message.slice(0, 57) + "..." : message;
     const [newSession] = await db
       .insert(brainChatSessions)
-      .values({ userId, title })
+      .values(encryptFields({ userId, title }, BRAIN_CHAT_SESSION_ENCRYPTED_FIELDS))
       .returning();
     activeSessionId = newSession.id;
   }
 
-  // Save the user message
-  await db.insert(brainChatMessages).values({
-    sessionId: activeSessionId,
-    role: "user",
-    content: message.trim(),
-  });
+  // Save the user message (encrypted)
+  await db.insert(brainChatMessages).values(
+    encryptFields({
+      sessionId: activeSessionId,
+      role: "user" as const,
+      content: message.trim(),
+    }, BRAIN_CHAT_MESSAGE_ENCRYPTED_FIELDS)
+  );
 
   // Fetch conversation history for context (most recent first, then reverse for chronological order)
   const historyDesc = await db
@@ -61,7 +74,7 @@ export async function processBrainChat(
     .where(eq(brainChatMessages.sessionId, activeSessionId))
     .orderBy(desc(brainChatMessages.createdAt))
     .limit(MAX_HISTORY_MESSAGES);
-  const history = historyDesc.reverse();
+  const history = decryptRows(historyDesc, BRAIN_CHAT_MESSAGE_ENCRYPTED_FIELDS).reverse();
 
   // Gather context from the user's second brain
   const [meetings, userEmails, userDecisions, userActionItems] =
@@ -136,13 +149,19 @@ export async function processBrainChat(
         .limit(MAX_CONTEXT_ACTION_ITEMS),
     ]);
 
+  // Decrypt sensitive fields from each data source
+  const decMeetings = decryptRows(meetings as Record<string, unknown>[], WEBHOOK_ENCRYPTED_FIELDS) as typeof meetings;
+  const decEmails = decryptRows(userEmails as Record<string, unknown>[], EMAIL_ENCRYPTED_FIELDS) as typeof userEmails;
+  const decDecisions = decryptRows(userDecisions as Record<string, unknown>[], DECISION_ENCRYPTED_FIELDS) as typeof userDecisions;
+  const decActionItems = decryptRows(userActionItems as Record<string, unknown>[], ACTION_ITEM_ENCRYPTED_FIELDS) as typeof userActionItems;
+
   // Build context string
   const contextParts: string[] = [];
   const sourcesUsed: string[] = [];
 
-  if (meetings.length > 0) {
+  if (decMeetings.length > 0) {
     sourcesUsed.push("meetings");
-    const meetingCtx = meetings
+    const meetingCtx = decMeetings
       .map((m, i) => {
         const keyPoints = Array.isArray(m.content)
           ? (m.content as Array<{ description?: string; text?: string }>)
@@ -177,13 +196,13 @@ Transcript: ${transcript}`;
       })
       .join("\n---\n");
     contextParts.push(
-      `## Meetings (${meetings.length} recent)\n${meetingCtx}`
+      `## Meetings (${decMeetings.length} recent)\n${meetingCtx}`
     );
   }
 
-  if (userEmails.length > 0) {
+  if (decEmails.length > 0) {
     sourcesUsed.push("emails");
-    const emailCtx = userEmails
+    const emailCtx = decEmails
       .map(
         (e, i) =>
           `Email ${i + 1}: "${e.subject || "(no subject)"}" from ${
@@ -196,13 +215,13 @@ Transcript: ${transcript}`;
       )
       .join("\n---\n");
     contextParts.push(
-      `## Emails (${userEmails.length} recent)\n${emailCtx}`
+      `## Emails (${decEmails.length} recent)\n${emailCtx}`
     );
   }
 
-  if (userDecisions.length > 0) {
+  if (decDecisions.length > 0) {
     sourcesUsed.push("decisions");
-    const decisionCtx = userDecisions
+    const decisionCtx = decDecisions
       .map(
         (d, i) =>
           `Decision ${i + 1} [${d.status}/${d.category}]: "${d.statement}"${
@@ -211,13 +230,13 @@ Transcript: ${transcript}`;
       )
       .join("\n---\n");
     contextParts.push(
-      `## Decisions (${userDecisions.length} recent)\n${decisionCtx}`
+      `## Decisions (${decDecisions.length} recent)\n${decisionCtx}`
     );
   }
 
-  if (userActionItems.length > 0) {
+  if (decActionItems.length > 0) {
     sourcesUsed.push("action_items");
-    const actionCtx = userActionItems
+    const actionCtx = decActionItems
       .map(
         (a, i) =>
           `Action ${i + 1} [${a.status}/${a.priority}]: "${a.title}"${
@@ -228,7 +247,7 @@ Transcript: ${transcript}`;
       )
       .join("\n---\n");
     contextParts.push(
-      `## Action Items (${userActionItems.length} recent)\n${actionCtx}`
+      `## Action Items (${decActionItems.length} recent)\n${actionCtx}`
     );
   }
 
@@ -268,15 +287,17 @@ Provide a helpful, concise answer based on the available data:`;
 
   const answer = await chatCompletion(prompt, { maxTokens: 1500 });
 
-  // Save the assistant response
+  // Save the assistant response (encrypted)
   const [assistantMsg] = await db
     .insert(brainChatMessages)
-    .values({
-      sessionId: activeSessionId,
-      role: "assistant",
-      content: answer,
-      sourcesUsed,
-    })
+    .values(
+      encryptFields({
+        sessionId: activeSessionId,
+        role: "assistant" as const,
+        content: answer,
+        sourcesUsed,
+      }, BRAIN_CHAT_MESSAGE_ENCRYPTED_FIELDS)
+    )
     .returning();
 
   // Update session timestamp
