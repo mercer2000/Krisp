@@ -5,6 +5,12 @@ import { db } from "@/lib/db";
 import { actionItems, boards, columns, cards, cardTags } from "@/lib/db/schema";
 import { eq, and, asc, max } from "drizzle-orm";
 import { z } from "zod";
+import {
+  encryptFields,
+  decryptFields,
+  ACTION_ITEM_ENCRYPTED_FIELDS,
+  CARD_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
 
 const createFromEmailSchema = z.object({
   title: z.string().min(1).max(500),
@@ -49,18 +55,20 @@ export async function POST(
 
     const { title, description, assignee, priority, dueDate, boardId } = parsed.data;
 
-    // Create the action item
+    // Create the action item (encrypted)
     const [item] = await db
       .insert(actionItems)
-      .values({
-        userId,
-        title,
-        description: description ?? null,
-        assignee: assignee ?? null,
-        extractionSource: "email",
-        priority: priority ?? "medium",
-        dueDate: dueDate ?? null,
-      })
+      .values(
+        encryptFields({
+          userId,
+          title,
+          description: description ?? null,
+          assignee: assignee ?? null,
+          extractionSource: "email",
+          priority: priority ?? "medium",
+          dueDate: dueDate ?? null,
+        }, ACTION_ITEM_ENCRYPTED_FIELDS)
+      )
       .returning();
 
     let cardCreated = false;
@@ -90,14 +98,16 @@ export async function POST(
 
           const [card] = await db
             .insert(cards)
-            .values({
-              columnId: firstCol.id,
-              title: title.slice(0, 255),
-              description: description ?? null,
-              position: nextPosition,
-              priority: priority ?? "medium",
-              dueDate: dueDate ?? null,
-            })
+            .values(
+              encryptFields({
+                columnId: firstCol.id,
+                title: title.slice(0, 255),
+                description: description ?? null,
+                position: nextPosition,
+                priority: priority ?? "medium",
+                dueDate: dueDate ?? null,
+              }, CARD_ENCRYPTED_FIELDS)
+            )
             .returning();
 
           // Add "Email" tag for traceability
@@ -118,7 +128,8 @@ export async function POST(
       }
     }
 
-    return NextResponse.json({ actionItem: item, cardCreated }, { status: 201 });
+    const decryptedItem = decryptFields(item as Record<string, unknown>, ACTION_ITEM_ENCRYPTED_FIELDS);
+    return NextResponse.json({ actionItem: decryptedItem, cardCreated }, { status: 201 });
   } catch (error) {
     console.error("Error creating action item from email:", error);
     return NextResponse.json(

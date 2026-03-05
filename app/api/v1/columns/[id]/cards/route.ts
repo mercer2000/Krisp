@@ -4,6 +4,12 @@ import { getRequiredUser } from "@/lib/auth/getRequiredUser";
 import { createCardSchema } from "@/lib/validators/schemas";
 import { eq, and, max } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  encryptFields,
+  decryptFields,
+  CARD_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
+import { dispatchWebhooks } from "@/lib/webhooks/dispatch";
 
 export async function POST(
   request: NextRequest,
@@ -44,14 +50,26 @@ export async function POST(
 
     const [card] = await db
       .insert(cards)
-      .values({
-        ...parsed.data,
-        columnId: id,
-        position: nextPosition,
-      })
+      .values(
+        encryptFields({
+          ...parsed.data,
+          columnId: id,
+          position: nextPosition,
+        }, CARD_ENCRYPTED_FIELDS)
+      )
       .returning();
 
-    return NextResponse.json(card, { status: 201 });
+    const decrypted = decryptFields(card as Record<string, unknown>, CARD_ENCRYPTED_FIELDS);
+
+    // Fire outbound webhooks (non-blocking)
+    dispatchWebhooks(user.id, "card.created", card.id, {
+      title: decrypted.title,
+      description: decrypted.description,
+      priority: decrypted.priority,
+      columnId: id,
+    }).catch(() => {});
+
+    return NextResponse.json(decrypted, { status: 201 });
   } catch (error) {
     if (error instanceof Response) throw error;
     return NextResponse.json(

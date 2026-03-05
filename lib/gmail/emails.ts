@@ -1,5 +1,27 @@
 import sql from "./db";
 import type { GmailEmailRow, GmailEmailInsert } from "@/types/gmail";
+import { encrypt, encryptNullable, decryptNullable } from "@/lib/encryption";
+
+/** Encrypted columns in gmail_emails */
+const ENCRYPTED_COLS = ["sender", "subject", "body_plain", "body_html"] as const;
+
+/** Decrypt gmail email row fields */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function decryptGmailRow(row: any): any {
+  const result = { ...row };
+  for (const col of ENCRYPTED_COLS) {
+    if (col in result && typeof result[col] === "string") {
+      result[col] = decryptNullable(result[col] as string);
+    }
+  }
+  return result;
+}
+
+/** Decrypt an array of gmail rows */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function decryptGmailRows(rows: any[]): any[] {
+  return rows.map((r) => decryptGmailRow(r));
+}
 
 const MAX_BODY_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -40,11 +62,11 @@ export async function insertGmailEmail(
       ${data.tenant_id},
       ${data.gmail_message_id},
       ${data.thread_id ?? null},
-      ${data.sender},
+      ${encrypt(data.sender)},
       ${JSON.stringify(data.recipients ?? [])},
-      ${data.subject ?? null},
-      ${bodyPlain},
-      ${bodyHtml},
+      ${encryptNullable(data.subject ?? null)},
+      ${encryptNullable(bodyPlain)},
+      ${encryptNullable(bodyHtml)},
       ${data.received_at.toISOString()},
       ${JSON.stringify(data.attachments ?? [])},
       ${JSON.stringify(data.labels ?? [])},
@@ -55,7 +77,8 @@ export async function insertGmailEmail(
   `;
 
   // null means the row already existed (duplicate)
-  return (rows[0] as GmailEmailRow) || null;
+  if (!rows[0]) return null;
+  return decryptGmailRow(rows[0]) as GmailEmailRow;
 }
 
 /**
@@ -85,7 +108,7 @@ export async function getRecentGmailEmails(
     ORDER BY received_at DESC
     LIMIT ${limit}
   `;
-  return rows as GmailEmailRow[];
+  return decryptGmailRows(rows) as GmailEmailRow[];
 }
 
 /**
@@ -99,5 +122,6 @@ export async function getGmailEmailById(
     SELECT * FROM gmail_emails
     WHERE id = ${id} AND tenant_id = ${tenantId}
   `;
-  return (rows[0] as GmailEmailRow) || null;
+  if (!rows[0]) return null;
+  return decryptGmailRow(rows[0]) as GmailEmailRow;
 }

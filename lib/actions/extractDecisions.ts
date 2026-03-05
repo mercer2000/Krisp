@@ -3,6 +3,14 @@ import { decisions } from "@/lib/db/schema";
 import { getMeetingById } from "@/lib/krisp/webhookKeyPoints";
 import { eq, and, isNull } from "drizzle-orm";
 import { chatCompletion } from "@/lib/ai/client";
+import { resolvePrompt } from "@/lib/ai/resolvePrompt";
+import { PROMPT_DECISIONS_MEETING, PROMPT_DECISIONS_EMAIL } from "@/lib/ai/prompts";
+import {
+  encryptFields,
+  decryptFields,
+  decryptRows,
+  DECISION_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
 
 interface ExtractedDecision {
   statement: string;
@@ -52,7 +60,8 @@ export async function extractDecisionsFromMeeting(
           isNull(decisions.deletedAt)
         )
       );
-    return { decisions: items, count: 0 };
+    const decItems = decryptRows(items as Record<string, unknown>[], DECISION_ENCRYPTED_FIELDS) as typeof items;
+    return { decisions: decItems, count: 0 };
   }
 
   const meeting = await getMeetingById(meetingId, userId);
@@ -84,7 +93,9 @@ export async function extractDecisionsFromMeeting(
     ? new Date(meeting.meeting_start_date).toISOString().split("T")[0]
     : new Date().toISOString().split("T")[0];
 
-  const prompt = `Analyze this meeting and extract any decisions that were made or agreed upon by participants.
+  const instructions = await resolvePrompt(PROMPT_DECISIONS_MEETING, userId);
+
+  const prompt = `${instructions}
 
 Meeting: "${meeting.meeting_title || "Untitled"}"
 Date: ${meetingDate}
@@ -96,32 +107,7 @@ ${keyPoints.map((kp: string, i: number) => `${i + 1}. ${kp}`).join("\n")}
 Transcript (excerpt):
 ${transcript.slice(0, 8000)}
 
-Extract decisions as a JSON array. A decision is a clear choice, agreement, or resolution made during the meeting. Look for phrases like:
-- "We decided to..."
-- "Let's go with..."
-- "We agreed that..."
-- "The decision is to..."
-- "We'll proceed with..."
-- Approval or rejection of proposals
-
-For each decision include:
-- "statement": the decision statement (concise, clear, max 200 chars)
-- "context": what led to this decision being made
-- "rationale": why this decision was made (reasoning discussed)
-- "participants": array of participant names involved in the decision
-- "category": one of "technical", "process", "budget", "strategic", "other"
-- "priority": "low", "medium", "high", or "urgent" based on impact
-- "confidence": 0-100 score of how confident you are this is a real decision
-- "decisionDate": "${meetingDate}"
-
-Only include clear, definitive decisions. Do NOT include:
-- Vague intentions or wishes
-- Action items or tasks (those are separate)
-- Ongoing discussions without resolution
-- Hypothetical scenarios
-
-If no decisions are found, return an empty array [].
-Respond with ONLY a valid JSON array, no other text.`;
+Use decisionDate: "${meetingDate}"`;
 
   const text = await chatCompletion(prompt, { maxTokens: 2500 });
 
@@ -142,21 +128,23 @@ Respond with ONLY a valid JSON array, no other text.`;
   for (const item of extracted) {
     const [inserted] = await db
       .insert(decisions)
-      .values({
-        userId,
-        meetingId,
-        statement: item.statement.slice(0, 500),
-        context: item.context || null,
-        rationale: item.rationale || null,
-        participants: item.participants || [],
-        category: item.category || "other",
-        priority: item.priority || "medium",
-        extractionSource: "ai_detection",
-        confidence: item.confidence ?? 80,
-        decisionDate: item.decisionDate ? new Date(item.decisionDate) : null,
-      })
+      .values(
+        encryptFields({
+          userId,
+          meetingId,
+          statement: item.statement.slice(0, 500),
+          context: item.context || null,
+          rationale: item.rationale || null,
+          participants: item.participants || [],
+          category: item.category || "other",
+          priority: item.priority || "medium",
+          extractionSource: "ai_detection",
+          confidence: item.confidence ?? 80,
+          decisionDate: item.decisionDate ? new Date(item.decisionDate) : null,
+        }, DECISION_ENCRYPTED_FIELDS)
+      )
       .returning();
-    insertedItems.push(inserted);
+    insertedItems.push(decryptFields(inserted as Record<string, unknown>, DECISION_ENCRYPTED_FIELDS) as typeof inserted);
   }
 
   return { decisions: insertedItems, count: insertedItems.length };
@@ -197,12 +185,15 @@ export async function extractDecisionsFromEmail(
           isNull(decisions.deletedAt)
         )
       );
-    return { decisions: items, count: 0 };
+    const decItems = decryptRows(items as Record<string, unknown>[], DECISION_ENCRYPTED_FIELDS) as typeof items;
+    return { decisions: decItems, count: 0 };
   }
 
   const today = new Date().toISOString().split("T")[0];
 
-  const prompt = `Analyze this email and extract any decisions that were communicated or confirmed.
+  const instructions = await resolvePrompt(PROMPT_DECISIONS_EMAIL, userId);
+
+  const prompt = `${instructions}
 
 Subject: "${subject || "No Subject"}"
 From: ${sender}
@@ -211,24 +202,7 @@ To: ${recipients.join(", ")}
 Body:
 ${bodyText.slice(0, 8000)}
 
-Extract decisions as a JSON array. A decision in an email might be:
-- An approval or rejection
-- A confirmed plan or direction
-- A final choice communicated to the team
-- Budget or resource allocation decisions
-
-For each decision include:
-- "statement": the decision statement (concise, max 200 chars)
-- "context": what the email discussion was about
-- "rationale": reasoning provided in the email
-- "participants": array of people involved (sender + relevant recipients)
-- "category": one of "technical", "process", "budget", "strategic", "other"
-- "priority": "low", "medium", "high", or "urgent"
-- "confidence": 0-100 confidence score
-- "decisionDate": "${today}"
-
-If no decisions are found, return an empty array [].
-Respond with ONLY a valid JSON array, no other text.`;
+Use decisionDate: "${today}"`;
 
   const text = await chatCompletion(prompt, { maxTokens: 2000 });
 
@@ -249,21 +223,23 @@ Respond with ONLY a valid JSON array, no other text.`;
   for (const item of extracted) {
     const [inserted] = await db
       .insert(decisions)
-      .values({
-        userId,
-        emailId,
-        statement: item.statement.slice(0, 500),
-        context: item.context || null,
-        rationale: item.rationale || null,
-        participants: item.participants || [],
-        category: item.category || "other",
-        priority: item.priority || "medium",
-        extractionSource: "ai_detection",
-        confidence: item.confidence ?? 80,
-        decisionDate: item.decisionDate ? new Date(item.decisionDate) : null,
-      })
+      .values(
+        encryptFields({
+          userId,
+          emailId,
+          statement: item.statement.slice(0, 500),
+          context: item.context || null,
+          rationale: item.rationale || null,
+          participants: item.participants || [],
+          category: item.category || "other",
+          priority: item.priority || "medium",
+          extractionSource: "ai_detection",
+          confidence: item.confidence ?? 80,
+          decisionDate: item.decisionDate ? new Date(item.decisionDate) : null,
+        }, DECISION_ENCRYPTED_FIELDS)
+      )
       .returning();
-    insertedItems.push(inserted);
+    insertedItems.push(decryptFields(inserted as Record<string, unknown>, DECISION_ENCRYPTED_FIELDS) as typeof inserted);
   }
 
   return { decisions: insertedItems, count: insertedItems.length };

@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { actionItems } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { chatCompletion } from "@/lib/ai/client";
+import { resolvePrompt } from "@/lib/ai/resolvePrompt";
+import { PROMPT_GENERATE_CARDS } from "@/lib/ai/prompts";
 
 export interface GeneratedCard {
   actionItemId: string;
@@ -61,21 +63,13 @@ export async function POST(request: NextRequest) {
       )
       .join("\n\n");
 
-    const prompt = `You are a project management assistant. Convert these meeting action items into well-formatted Kanban board cards.
+    const basePrompt = await resolvePrompt(PROMPT_GENERATE_CARDS, userId);
+    const prompt = `${basePrompt}
 
 Action Items:
 ${itemsSummary}
 
-Today's date: ${today}
-
-For each action item, generate a Kanban card with:
-- "index": the 1-based index matching the action item above
-- "title": a concise, actionable card title (max 80 chars, start with a verb)
-- "description": a clear description with acceptance criteria or steps if applicable (2-4 sentences)
-- "priority": "low", "medium", "high", or "urgent" (refine based on context)
-- "dueDate": YYYY-MM-DD string (keep existing date if reasonable, or suggest one based on priority), or null
-
-Respond with ONLY a valid JSON array, no other text.`;
+Today's date: ${today}`;
 
     const text = await chatCompletion(prompt, { maxTokens: 2000 });
 

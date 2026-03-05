@@ -295,6 +295,38 @@ export const emailSearchQuerySchema = z.object({
 
 export type EmailSearchQueryInput = z.infer<typeof emailSearchQuerySchema>;
 
+// ── Outbound Webhooks ────────────────────────────────
+export const outboundWebhookEventTypes = [
+  "card.created",
+  "meeting.ingested",
+  "email.received",
+  "thought.captured",
+] as const;
+
+export const createOutboundWebhookSchema = z.object({
+  name: z.string().min(1, "Name is required").max(255),
+  url: z.string().url("Must be a valid URL"),
+  secret: z.string().max(255).optional(),
+  events: z
+    .array(z.enum(outboundWebhookEventTypes))
+    .min(1, "Select at least one event"),
+  active: z.boolean().optional(),
+});
+
+export const updateOutboundWebhookSchema = z.object({
+  name: z.string().min(1).max(255).optional(),
+  url: z.string().url("Must be a valid URL").optional(),
+  secret: z.string().max(255).nullable().optional(),
+  events: z
+    .array(z.enum(outboundWebhookEventTypes))
+    .min(1, "Select at least one event")
+    .optional(),
+  active: z.boolean().optional(),
+});
+
+export type CreateOutboundWebhookInput = z.infer<typeof createOutboundWebhookSchema>;
+export type UpdateOutboundWebhookInput = z.infer<typeof updateOutboundWebhookSchema>;
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;

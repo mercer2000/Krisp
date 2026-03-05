@@ -5,6 +5,35 @@ import type {
   EmailInsert,
   EmailAttachmentMetadata,
 } from "@/types/email";
+import {
+  encrypt,
+  encryptNullable,
+  decryptNullable,
+  isEncrypted,
+} from "@/lib/encryption";
+
+// Raw SQL column names that are encrypted in the emails table
+const ENCRYPTED_COLS = ["sender", "subject", "body_plain_text", "body_html"] as const;
+
+/**
+ * Decrypt the encrypted columns on a raw SQL row object.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function decryptRow(row: any): any {
+  const result = { ...row };
+  for (const col of ENCRYPTED_COLS) {
+    const val = result[col];
+    if (typeof val === "string" && isEncrypted(val)) {
+      result[col] = decryptNullable(val);
+    }
+  }
+  return result;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function decryptRows(rows: any[]): any[] {
+  return rows.map(decryptRow);
+}
 
 /**
  * Update an existing email stub with full content fetched from Graph API.
@@ -17,13 +46,13 @@ export async function updateEmailByMessageId(
   await sql`
     UPDATE emails
     SET
-      sender            = ${data.from},
+      sender            = ${encrypt(data.from)},
       recipients        = ${JSON.stringify(data.to)},
       cc                = ${JSON.stringify(data.cc ?? [])},
       bcc               = ${JSON.stringify(data.bcc ?? [])},
-      subject           = ${data.subject ?? null},
-      body_plain_text   = ${data.bodyPlainText ?? null},
-      body_html         = ${data.bodyHtml ?? null},
+      subject           = ${encryptNullable(data.subject ?? null)},
+      body_plain_text   = ${encryptNullable(data.bodyPlainText ?? null)},
+      body_html         = ${encryptNullable(data.bodyHtml ?? null)},
       received_at       = ${new Date(data.receivedDateTime).toISOString()},
       attachments_metadata = ${JSON.stringify(data.attachments ?? [])},
       web_link          = ${data.webLink ?? null},
@@ -59,13 +88,13 @@ export async function insertEmail(
     ) VALUES (
       ${tenantId},
       ${payload.messageId},
-      ${payload.from},
+      ${encrypt(payload.from)},
       ${JSON.stringify(payload.to)},
       ${JSON.stringify(payload.cc ?? [])},
       ${JSON.stringify(payload.bcc ?? [])},
-      ${payload.subject ?? null},
-      ${payload.bodyPlainText ?? null},
-      ${payload.bodyHtml ?? null},
+      ${encryptNullable(payload.subject ?? null)},
+      ${encryptNullable(payload.bodyPlainText ?? null)},
+      ${encryptNullable(payload.bodyHtml ?? null)},
       ${new Date(payload.receivedDateTime).toISOString()},
       ${JSON.stringify(payload.attachments ?? [])},
       ${payload.webLink ?? null},
@@ -74,7 +103,7 @@ export async function insertEmail(
     RETURNING *
   `;
 
-  return rows[0] as EmailRow;
+  return decryptRow(rows[0] as EmailRow);
 }
 
 /**
@@ -104,7 +133,7 @@ export async function getRecentEmails(
     ORDER BY received_at DESC
     LIMIT ${limit}
   `;
-  return rows as EmailRow[];
+  return decryptRows(rows as EmailRow[]);
 }
 
 /**
@@ -118,12 +147,16 @@ export async function getEmailById(
     SELECT * FROM emails
     WHERE id = ${id} AND tenant_id = ${tenantId} AND deleted_at IS NULL
   `;
-  return (rows[0] as EmailRow) || null;
+  if (!rows[0]) return null;
+  return decryptRow(rows[0] as EmailRow);
 }
 
 /**
  * List emails for inbox view with pagination, search, and date filters.
  * Returns lightweight rows (no body content) plus total count.
+ *
+ * NOTE: With encrypted sender/subject columns, keyword search (q) is applied
+ * application-side after decryption. Date filters remain SQL-side.
  */
 export async function listEmails(
   tenantId: string,
@@ -138,51 +171,57 @@ export async function listEmails(
   preview: string | null;
   web_link: string | null;
 }>; total: number }> {
-  const offset = (opts.page - 1) * opts.limit;
-  const q = opts.q || null;
   const after = opts.after || null;
   const before = opts.before || null;
 
-  const countRows = await sql`
-    SELECT COUNT(*)::int AS total
-    FROM emails
-    WHERE tenant_id = ${tenantId}
-      AND deleted_at IS NULL
-      AND (${q}::text IS NULL OR sender ILIKE '%' || ${q} || '%' OR subject ILIKE '%' || ${q} || '%')
-      AND (${after}::timestamptz IS NULL OR received_at >= ${after}::timestamptz)
-      AND (${before}::timestamptz IS NULL OR received_at <= ${before}::timestamptz)
-  `;
-
-  const rows = await sql`
+  // Fetch all matching emails (date-filtered server-side)
+  const allRows = await sql`
     SELECT
       id, sender, subject, received_at,
       recipients,
       attachments_metadata,
-      LEFT(body_plain_text, 200) AS preview,
+      body_plain_text,
       web_link
     FROM emails
     WHERE tenant_id = ${tenantId}
       AND deleted_at IS NULL
-      AND (${q}::text IS NULL OR sender ILIKE '%' || ${q} || '%' OR subject ILIKE '%' || ${q} || '%')
       AND (${after}::timestamptz IS NULL OR received_at >= ${after}::timestamptz)
       AND (${before}::timestamptz IS NULL OR received_at <= ${before}::timestamptz)
     ORDER BY received_at DESC
-    LIMIT ${opts.limit} OFFSET ${offset}
   `;
 
-  return {
-    rows: rows as Array<{
-      id: number;
-      sender: string;
-      subject: string | null;
-      received_at: string;
-      recipients: string[];
-      attachments_metadata: EmailAttachmentMetadata[];
-      preview: string | null;
-      web_link: string | null;
-    }>,
-    total: (countRows[0] as { total: number }).total,
-  };
+  // Decrypt and build result objects
+  let decrypted = (allRows as Record<string, unknown>[]).map((row) => {
+    const dr = decryptRow(row);
+    return {
+      id: dr.id as number,
+      sender: dr.sender as string,
+      subject: dr.subject as string | null,
+      received_at: dr.received_at as string,
+      recipients: dr.recipients as string[],
+      attachments_metadata: dr.attachments_metadata as EmailAttachmentMetadata[],
+      preview: dr.body_plain_text
+        ? (dr.body_plain_text as string).slice(0, 200)
+        : null,
+      web_link: dr.web_link as string | null,
+    };
+  });
+
+  // Apply keyword filter on decrypted sender/subject
+  if (opts.q) {
+    const lower = opts.q.toLowerCase();
+    decrypted = decrypted.filter(
+      (r) =>
+        r.sender.toLowerCase().includes(lower) ||
+        (r.subject?.toLowerCase().includes(lower) ?? false)
+    );
+  }
+
+  const total = decrypted.length;
+  const offset = (opts.page - 1) * opts.limit;
+  const paged = decrypted.slice(offset, offset + opts.limit);
+
+  return { rows: paged, total };
 }
 
 /**
@@ -265,11 +304,12 @@ export async function getEmailDetail(
     WHERE id = ${id} AND tenant_id = ${tenantId} AND deleted_at IS NULL
     LIMIT 1
   `;
-  return (rows[0] as typeof rows[0] & {
+  if (!rows[0]) return null;
+  return decryptRow(rows[0] as {
     id: number; tenant_id: string; message_id: string; sender: string;
     recipients: string[]; cc: string[]; bcc: string[];
     subject: string | null; body_plain_text: string | null; body_html: string | null;
     received_at: string; attachments_metadata: EmailAttachmentMetadata[];
     web_link: string | null; created_at: string; updated_at: string;
-  }) || null;
+  });
 }

@@ -6,9 +6,16 @@ import {
 } from "@/lib/db/schema";
 import { getRequiredUser } from "@/lib/auth/getRequiredUser";
 import { chatCompletion } from "@/lib/ai/client";
+import { resolvePrompt } from "@/lib/ai/resolvePrompt";
+import { PROMPT_PRIORITY_REVIEW } from "@/lib/ai/prompts";
 import { eq, and, isNull, asc } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import sql from "@/lib/krisp/db";
+import {
+  decryptFields,
+  CARD_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
+import { decryptNullable } from "@/lib/encryption";
 
 interface PrioritySuggestion {
   cardId: string;
@@ -51,7 +58,7 @@ export async function POST(
 
     const allCards = boardColumns.flatMap((col) =>
       col.cards.map((card) => ({
-        ...card,
+        ...decryptFields(card as Record<string, unknown>, CARD_ENCRYPTED_FIELDS) as typeof card,
         columnTitle: col.title,
       })),
     );
@@ -122,6 +129,7 @@ export async function POST(
       recentMeetings.length > 0
         ? recentMeetings
             .map((m) => {
+              const title = decryptNullable(m.meeting_title);
               const points = Array.isArray(m.content)
                 ? m.content
                     .filter(
@@ -132,7 +140,7 @@ export async function POST(
                     .slice(0, 5)
                     .join("; ")
                 : "";
-              return `- "${m.meeting_title || "Untitled"}" (${m.meeting_start_date ? new Date(m.meeting_start_date).toLocaleDateString() : "?"}): ${points}`;
+              return `- "${title || "Untitled"}" (${m.meeting_start_date ? new Date(m.meeting_start_date).toLocaleDateString() : "?"}): ${points}`;
             })
             .join("\n")
         : "No recent meetings.";
@@ -142,7 +150,7 @@ export async function POST(
         ? recentEmails
             .map(
               (e) =>
-                `- "${e.subject || "(no subject)"}" from ${e.sender || "unknown"} (${e.received_at ? new Date(e.received_at).toLocaleDateString() : "?"})`,
+                `- "${decryptNullable(e.subject) || "(no subject)"}" from ${decryptNullable(e.sender) || "unknown"} (${e.received_at ? new Date(e.received_at).toLocaleDateString() : "?"})`,
             )
             .join("\n")
         : "No recent emails.";
@@ -152,12 +160,13 @@ export async function POST(
         ? recentActionItems
             .map(
               (a) =>
-                `- "${a.title}" | Priority: ${a.priority} | Due: ${a.due_date || "none"} | Status: ${a.status}`,
+                `- "${decryptNullable(a.title) || a.title}" | Priority: ${a.priority} | Due: ${a.due_date || "none"} | Status: ${a.status}`,
             )
             .join("\n")
         : "No open action items.";
 
-    const prompt = `You are a project management assistant. Analyze the Kanban board cards alongside recent meetings, emails, and action items to suggest priority changes and due dates.
+    const basePrompt = await resolvePrompt(PROMPT_PRIORITY_REVIEW, user.id);
+    const prompt = `${basePrompt}
 
 Today's date: ${today}
 Board: "${board.title}"
@@ -172,27 +181,7 @@ ${meetingsContext}
 ${emailsContext}
 
 ## Open Action Items:
-${actionItemsContext}
-
-## Instructions:
-- Review each card and determine if its priority should change based on meeting discussions, email urgency, action item overlap, or approaching deadlines.
-- Suggest due dates for cards that don't have one, based on context from meetings/emails.
-- Only suggest changes where there is a clear reason. Do NOT suggest changes for every card.
-- Priority levels are: "low", "medium", "high", "urgent".
-- Provide a concise, specific reason for each suggestion referencing the context (e.g. "Discussed as urgent in 'Sprint Planning' meeting on 2/28").
-
-Return a JSON array of suggestions. Each object:
-{
-  "cardId": "<card id>",
-  "cardTitle": "<card title>",
-  "currentPriority": "<current priority>",
-  "suggestedPriority": "<suggested priority>",
-  "suggestedDueDate": "<YYYY-MM-DD or null>",
-  "reason": "<concise explanation>"
-}
-
-If no changes are warranted, return an empty array [].
-Respond with ONLY valid JSON, no other text.`;
+${actionItemsContext}`;
 
     const text = await chatCompletion(prompt, { maxTokens: 2000 });
 

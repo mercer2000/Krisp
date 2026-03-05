@@ -4,6 +4,11 @@ import { getRequiredUser } from "@/lib/auth/getRequiredUser";
 import { updateCardSchema } from "@/lib/validators/schemas";
 import { eq, and } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  encryptFields,
+  decryptFields,
+  CARD_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
 
 async function verifyCardOwnership(cardId: string, userId: string) {
   const [result] = await db
@@ -37,7 +42,8 @@ export async function GET(
       },
     });
 
-    return NextResponse.json(card);
+    const decrypted = card ? decryptFields(card as Record<string, unknown>, CARD_ENCRYPTED_FIELDS) : card;
+    return NextResponse.json(decrypted);
   } catch (error) {
     if (error instanceof Response) throw error;
     return NextResponse.json(
@@ -73,11 +79,12 @@ export async function PATCH(
 
     const [updated] = await db
       .update(cards)
-      .set({ ...parsed.data, updatedAt: new Date() })
+      .set(encryptFields({ ...parsed.data, updatedAt: new Date() }, CARD_ENCRYPTED_FIELDS))
       .where(eq(cards.id, id))
       .returning();
 
-    return NextResponse.json(updated);
+    const decrypted = decryptFields(updated as Record<string, unknown>, CARD_ENCRYPTED_FIELDS);
+    return NextResponse.json(decrypted);
   } catch (error) {
     if (error instanceof Response) throw error;
     return NextResponse.json(

@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { autoProcessEmailActions } from "@/lib/actions/autoProcessEmailActions";
+import { dispatchWebhooks } from "@/lib/webhooks/dispatch";
 
 const GMAIL_WEBHOOK_SECRET = process.env.GMAIL_WEBHOOK_SECRET;
 
@@ -213,6 +214,15 @@ async function handlePubSubPush(
         }
       }
 
+      // Fire outbound webhooks for each stored email (non-blocking)
+      for (const emailData of storedEmails) {
+        dispatchWebhooks(tenantId, "email.received", emailData.gmail_message_id, {
+          sender: emailData.sender,
+          subject: emailData.subject || null,
+          messageId: emailData.gmail_message_id,
+        }).catch(() => {});
+      }
+
       // Auto-extract action items from newly stored emails in background
       if (storedEmails.length > 0) {
         after(async () => {
@@ -322,6 +332,13 @@ async function handleAppsScriptPayload(
       { status: 200 }
     );
   }
+
+  // Fire outbound webhooks (non-blocking)
+  dispatchWebhooks(tenantId, "email.received", result.id, {
+    sender: payload.sender,
+    subject: payload.subject || null,
+    messageId: payload.messageId,
+  }).catch(() => {});
 
   // Auto-extract action items in background
   after(async () => {

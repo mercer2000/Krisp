@@ -5,6 +5,11 @@ import { weeklyReviews } from "@/lib/db/schema";
 import { eq, and, desc, isNull } from "drizzle-orm";
 import { generateWeeklyReview, getPreviousWeekRange } from "@/lib/weekly-review/generate";
 import { sendWeeklyReviewEmail } from "@/lib/weekly-review/email";
+import {
+  decryptFields,
+  decryptRows,
+  WEEKLY_REVIEW_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +25,8 @@ export async function GET(request: NextRequest) {
       .where(and(eq(weeklyReviews.userId, userId), isNull(weeklyReviews.deletedAt)))
       .orderBy(desc(weeklyReviews.weekStart));
 
-    return NextResponse.json({ reviews: items });
+    const decrypted = decryptRows(items as Record<string, unknown>[], WEEKLY_REVIEW_ENCRYPTED_FIELDS);
+    return NextResponse.json({ reviews: decrypted });
   } catch (error) {
     console.error("Error fetching weekly reviews:", error);
     return NextResponse.json(
@@ -69,7 +75,8 @@ export async function POST(request: NextRequest) {
       .from(weeklyReviews)
       .where(eq(weeklyReviews.id, reviewId));
 
-    return NextResponse.json({ review }, { status: 201 });
+    const decryptedReview = review ? decryptFields(review as Record<string, unknown>, WEEKLY_REVIEW_ENCRYPTED_FIELDS) : review;
+    return NextResponse.json({ review: decryptedReview }, { status: 201 });
   } catch (error) {
     console.error("Error generating weekly review:", error);
     return NextResponse.json(

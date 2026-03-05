@@ -13,6 +13,7 @@ import {
   extractUserFromResource,
 } from "@/lib/graph/messages";
 import { autoProcessEmailActions } from "@/lib/actions/autoProcessEmailActions";
+import { dispatchWebhooks } from "@/lib/webhooks/dispatch";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -243,6 +244,13 @@ export async function POST(
 
             await updateEmailByMessageId(tenantId, item.messageId, fullEmail);
             console.log(`[Graph] Fetched full email for message ${item.messageId}`);
+
+            // Fire outbound webhooks (non-blocking)
+            dispatchWebhooks(tenantId, "email.received", item.messageId, {
+              sender: fullEmail.from,
+              subject: fullEmail.subject || null,
+              messageId: item.messageId,
+            }).catch(() => {});
 
             // Auto-extract action items and create Kanban cards
             try {

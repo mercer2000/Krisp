@@ -3,6 +3,10 @@ import { db } from "@/lib/db";
 import { weeklyReviews, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import type { TopicCluster, CrossDayPattern } from "@/types";
+import {
+  decryptFields,
+  WEEKLY_REVIEW_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
 
 function buildEmailHtml(review: {
   weekStart: string;
@@ -162,6 +166,9 @@ export async function sendWeeklyReviewEmail(reviewId: string): Promise<void> {
     throw new Error("Review not found or not completed");
   }
 
+  // Decrypt encrypted fields (synthesisReport)
+  const decReview = decryptFields(review as Record<string, unknown>, WEEKLY_REVIEW_ENCRYPTED_FIELDS) as typeof review;
+
   // Get the user's email
   const [user] = await db
     .select({ email: users.email, displayName: users.displayName })
@@ -177,27 +184,27 @@ export async function sendWeeklyReviewEmail(reviewId: string): Promise<void> {
     });
 
   const html = buildEmailHtml({
-    weekStart: review.weekStart,
-    weekEnd: review.weekEnd,
-    topicClusters: review.topicClusters as TopicCluster[],
-    crossDayPatterns: review.crossDayPatterns as CrossDayPattern[],
-    unresolvedActionItems: review.unresolvedActionItems as Array<{
+    weekStart: decReview.weekStart,
+    weekEnd: decReview.weekEnd,
+    topicClusters: decReview.topicClusters as TopicCluster[],
+    crossDayPatterns: decReview.crossDayPatterns as CrossDayPattern[],
+    unresolvedActionItems: decReview.unresolvedActionItems as Array<{
       title: string;
       priority: string;
       dueDate: string | null;
     }>,
-    synthesisReport: review.synthesisReport,
-    meetingCount: review.meetingCount,
-    emailCount: review.emailCount,
-    decisionCount: review.decisionCount,
-    actionItemCount: review.actionItemCount,
+    synthesisReport: decReview.synthesisReport,
+    meetingCount: decReview.meetingCount,
+    emailCount: decReview.emailCount,
+    decisionCount: decReview.decisionCount,
+    actionItemCount: decReview.actionItemCount,
   });
 
   const resend = getResend();
   await resend.emails.send({
     from: getSenderEmail(),
     to: user.email,
-    subject: `Weekly Review: ${formatDate(review.weekStart)} — ${formatDate(review.weekEnd)}`,
+    subject: `Weekly Review: ${formatDate(decReview.weekStart)} — ${formatDate(decReview.weekEnd)}`,
     html,
   });
 

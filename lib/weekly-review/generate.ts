@@ -1,4 +1,6 @@
 import { chatCompletion } from "@/lib/ai/client";
+import { resolvePrompt } from "@/lib/ai/resolvePrompt";
+import { PROMPT_WEEKLY_REVIEW } from "@/lib/ai/prompts";
 import { db } from "@/lib/db";
 import {
   weeklyReviews,
@@ -9,6 +11,15 @@ import {
 } from "@/lib/db/schema";
 import { eq, and, gte, lte, isNull, desc } from "drizzle-orm";
 import type { TopicCluster, CrossDayPattern } from "@/types";
+import {
+  encryptFields,
+  decryptRows,
+  WEBHOOK_ENCRYPTED_FIELDS,
+  EMAIL_ENCRYPTED_FIELDS,
+  DECISION_ENCRYPTED_FIELDS,
+  ACTION_ITEM_ENCRYPTED_FIELDS,
+  WEEKLY_REVIEW_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
 
 interface WeekRange {
   start: Date;
@@ -123,14 +134,19 @@ async function gatherWeekData(userId: string, week: WeekRange) {
       .orderBy(desc(actionItems.createdAt)),
   ]);
 
-  return { meetings, weekEmails, weekDecisions, openActions };
+  return {
+    meetings: decryptRows(meetings as Record<string, unknown>[], WEBHOOK_ENCRYPTED_FIELDS) as typeof meetings,
+    weekEmails: decryptRows(weekEmails as Record<string, unknown>[], EMAIL_ENCRYPTED_FIELDS) as typeof weekEmails,
+    weekDecisions: decryptRows(weekDecisions as Record<string, unknown>[], DECISION_ENCRYPTED_FIELDS) as typeof weekDecisions,
+    openActions: decryptRows(openActions as Record<string, unknown>[], ACTION_ITEM_ENCRYPTED_FIELDS) as typeof openActions,
+  };
 }
 
 /**
  * Use Claude to analyze the week's data and produce topic clusters,
  * cross-day patterns, and a synthesis report.
  */
-async function analyzeWithClaude(data: Awaited<ReturnType<typeof gatherWeekData>>, week: WeekRange) {
+async function analyzeWithClaude(data: Awaited<ReturnType<typeof gatherWeekData>>, week: WeekRange, userId: string) {
   const meetingSummaries = data.meetings
     .map((m) => {
       const date = m.meetingStartDate
@@ -160,7 +176,11 @@ async function analyzeWithClaude(data: Awaited<ReturnType<typeof gatherWeekData>
   const unresolvedItems = data.openActions
     .filter((a) => a.status === "open" || a.status === "in_progress");
 
-  const prompt = `You are a personal productivity analyst. Analyze the following week's data (${toDateStr(week.start)} to ${toDateStr(week.end)}) and produce a structured weekly review.
+  const instructions = await resolvePrompt(PROMPT_WEEKLY_REVIEW, userId);
+
+  const prompt = `${instructions}
+
+Week: ${toDateStr(week.start)} to ${toDateStr(week.end)}
 
 ## Meetings This Week
 ${meetingSummaries || "No meetings this week."}
@@ -172,33 +192,7 @@ ${emailSummaries || "No emails this week."}
 ${decisionSummaries || "No decisions this week."}
 
 ## Open Action Items (all time)
-${unresolvedItems.map((a) => `- [${a.status}] "${a.title}" (${a.priority}${a.dueDate ? `, due ${a.dueDate}` : ""}${a.assignee ? `, assigned to ${a.assignee}` : ""})`).join("\n") || "No open action items."}
-
-Please respond with ONLY valid JSON in this exact format:
-{
-  "topicClusters": [
-    {
-      "topic": "Topic name",
-      "summary": "Brief summary of what happened with this topic this week",
-      "sources": [{"type": "meeting|email|decision", "title": "source title", "date": "YYYY-MM-DD"}]
-    }
-  ],
-  "crossDayPatterns": [
-    {
-      "pattern": "Description of a recurring pattern across multiple days",
-      "occurrences": 3,
-      "details": "More detail about the pattern"
-    }
-  ],
-  "synthesisReport": "A 3-5 paragraph synthesis of the week. Start with the most important themes. Highlight key accomplishments, notable decisions, and areas needing attention. End with actionable suggestions for next week."
-}
-
-Rules:
-- Group related meetings, emails, and decisions into topic clusters
-- Identify patterns that appear across multiple days (recurring themes, follow-ups, escalations)
-- Keep the synthesis report concise but insightful
-- If there's not enough data, still provide a brief summary
-- Return ONLY the JSON, no markdown fences`;
+${unresolvedItems.map((a) => `- [${a.status}] "${a.title}" (${a.priority}${a.dueDate ? `, due ${a.dueDate}` : ""}${a.assignee ? `, assigned to ${a.assignee}` : ""})`).join("\n") || "No open action items."}`;
 
   const text = await chatCompletion(prompt, { maxTokens: 4096 });
 
@@ -244,7 +238,7 @@ export async function generateWeeklyReview(
     const data = await gatherWeekData(userId, weekRange);
 
     // Analyze with Claude
-    const analysis = await analyzeWithClaude(data, weekRange);
+    const analysis = await analyzeWithClaude(data, weekRange, userId);
 
     // Get unresolved action items for storage
     const unresolvedItems = data.openActions
@@ -257,10 +251,10 @@ export async function generateWeeklyReview(
         assignee: a.assignee,
       }));
 
-    // Update the review with results
+    // Update the review with results (encrypt synthesis report)
     await db
       .update(weeklyReviews)
-      .set({
+      .set(encryptFields({
         status: "completed",
         topicClusters: analysis.topicClusters,
         crossDayPatterns: analysis.crossDayPatterns,
@@ -271,7 +265,7 @@ export async function generateWeeklyReview(
         decisionCount: data.weekDecisions.length,
         actionItemCount: unresolvedItems.length,
         updatedAt: new Date(),
-      })
+      }, WEEKLY_REVIEW_ENCRYPTED_FIELDS))
       .where(eq(weeklyReviews.id, review.id));
 
     return review.id;
@@ -279,11 +273,11 @@ export async function generateWeeklyReview(
     // Mark as failed
     await db
       .update(weeklyReviews)
-      .set({
+      .set(encryptFields({
         status: "failed",
         synthesisReport: error instanceof Error ? error.message : "Unknown error",
         updatedAt: new Date(),
-      })
+      }, WEEKLY_REVIEW_ENCRYPTED_FIELDS))
       .where(eq(weeklyReviews.id, review.id));
 
     throw error;

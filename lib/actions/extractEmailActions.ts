@@ -1,4 +1,6 @@
 import { chatCompletion } from "@/lib/ai/client";
+import { resolvePrompt } from "@/lib/ai/resolvePrompt";
+import { PROMPT_EMAIL_ACTIONS } from "@/lib/ai/prompts";
 
 export interface ExtractedEmailAction {
   title: string;
@@ -21,14 +23,19 @@ export async function extractActionsFromEmail(
     bodyPlainText: string | null;
     receivedAt: string;
   },
-  userEmail?: string
+  userEmail?: string,
+  userId?: string
 ): Promise<ExtractedEmailAction[]> {
   const body = email.bodyPlainText || "";
   if (!body.trim()) return [];
 
   const today = new Date().toISOString().split("T")[0];
 
-  const prompt = `Analyze this email and extract specific action items — requests, deadlines, commitments, and follow-ups addressed to the reader.
+  const instructions = userId
+    ? await resolvePrompt(PROMPT_EMAIL_ACTIONS, userId)
+    : (await import("@/lib/ai/prompts")).PROMPT_DEFAULTS[PROMPT_EMAIL_ACTIONS].defaultText;
+
+  const prompt = `${instructions}
 
 From: ${email.sender}
 To: ${email.recipients.join(", ")}
@@ -39,19 +46,7 @@ ${userEmail ? `Reader's email: ${userEmail}` : ""}
 Email body:
 ${body.slice(0, 10000)}
 
-Today's date: ${today}
-
-Extract action items as a JSON array. For each item include:
-- "title": concise action title (max 100 chars)
-- "description": what needs to be done, with relevant context from the email
-- "type": one of "request" (someone asks you to do something), "deadline" (a date/time constraint), "commitment" (you or someone promised to do something), "follow_up" (something to follow up on)
-- "assignee": who should do this (name or email from the participants, or null)
-- "priority": "low", "medium", "high", or "urgent" based on urgency cues
-- "dueDate": due date as YYYY-MM-DD if mentioned or inferable, or null
-
-Only include clear, actionable items. Skip pleasantries, FYI-only info, and vague mentions.
-If no action items are found, return an empty array [].
-Respond with ONLY a valid JSON array, no other text.`;
+Today's date: ${today}`;
 
   const text = await chatCompletion(prompt, { maxTokens: 2000 });
 

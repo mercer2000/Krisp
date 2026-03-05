@@ -917,3 +917,184 @@ export const telegramBotTokens = pgTable(
     uniqueIndex("uq_telegram_bot_user").on(table.userId),
   ]
 );
+
+// ── Outbound Webhooks ─────────────────────────────────
+export const outboundWebhookEventEnum = pgEnum("outbound_webhook_event", [
+  "card.created",
+  "meeting.ingested",
+  "email.received",
+  "thought.captured",
+]);
+
+export const outboundWebhooks = pgTable(
+  "outbound_webhooks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    url: text("url").notNull(),
+    secret: varchar("secret", { length: 255 }),
+    events: jsonb("events").notNull().default([]),
+    active: boolean("active").default(true).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_outbound_webhooks_user").on(table.userId),
+    index("idx_outbound_webhooks_active").on(table.userId, table.active),
+  ]
+);
+
+export const outboundWebhookDeliveries = pgTable(
+  "outbound_webhook_deliveries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    webhookId: uuid("webhook_id")
+      .notNull()
+      .references(() => outboundWebhooks.id, { onDelete: "cascade" }),
+    eventType: varchar("event_type", { length: 100 }).notNull(),
+    payload: jsonb("payload").notNull(),
+    statusCode: integer("status_code"),
+    success: boolean("success").notNull(),
+    errorMessage: text("error_message"),
+    sentAt: timestamp("sent_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_outbound_webhook_deliveries_webhook").on(table.webhookId),
+    index("idx_outbound_webhook_deliveries_sent").on(table.webhookId, table.sentAt),
+  ]
+);
+
+// ── Brain Thoughts (Open Brain persistent memory) ────
+export const brainThoughts = pgTable(
+  "brain_thoughts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    source: varchar("source", { length: 100 }).notNull().default("manual"),
+    author: varchar("author", { length: 255 }),
+    topic: varchar("topic", { length: 255 }),
+    sentiment: varchar("sentiment", { length: 50 }),
+    urgency: varchar("urgency", { length: 50 }),
+    tags: jsonb("tags").notNull().default([]),
+    embedding: vector("embedding"),
+    sourceUrl: text("source_url"),
+    sourceDomain: varchar("source_domain", { length: 255 }),
+    sourceTimestamp: timestamp("source_timestamp", { withTimezone: true }),
+    truncated: boolean("truncated").default(false).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_brain_thoughts_user").on(table.userId),
+    index("idx_brain_thoughts_user_created").on(table.userId, table.createdAt),
+    index("idx_brain_thoughts_source").on(table.userId, table.source),
+    index("idx_brain_thoughts_source_url").on(table.userId, table.sourceUrl),
+  ]
+);
+
+// ── Zapier Ingest Logs ──────────────────────────────
+export const zapierIngestStatusEnum = pgEnum("zapier_ingest_status", [
+  "success",
+  "failed",
+]);
+
+export const zapierIngestLogs = pgTable(
+  "zapier_ingest_logs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    source: varchar("source", { length: 255 }).notNull(),
+    routingTarget: varchar("routing_target", { length: 20 }).notNull(),
+    status: zapierIngestStatusEnum("status").notNull(),
+    idempotencyKey: varchar("idempotency_key", { length: 255 }),
+    errorMessage: text("error_message"),
+    thoughtId: uuid("thought_id"),
+    cardId: uuid("card_id"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_zapier_ingest_logs_user").on(table.userId),
+    index("idx_zapier_ingest_logs_user_created").on(table.userId, table.createdAt),
+    uniqueIndex("uq_zapier_ingest_idempotency").on(table.userId, table.idempotencyKey),
+  ]
+);
+
+// ── Custom AI Prompts ──────────────────────────────────
+export const customPrompts = pgTable(
+  "custom_prompts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    promptKey: varchar("prompt_key", { length: 100 }).notNull(),
+    promptText: text("prompt_text").notNull(),
+    version: integer("version").default(1).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_custom_prompts_user_key").on(table.userId, table.promptKey),
+    index("idx_custom_prompts_user").on(table.userId),
+  ]
+);
+
+// ── Custom Prompt History ──────────────────────────────
+export const customPromptHistory = pgTable(
+  "custom_prompt_history",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    promptKey: varchar("prompt_key", { length: 100 }).notNull(),
+    promptText: text("prompt_text").notNull(),
+    version: integer("version").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_custom_prompt_history_user_key").on(table.userId, table.promptKey),
+  ]
+);
+
+// ── Extension Downloads ───────────────────────────────
+export const extensionDownloads = pgTable(
+  "extension_downloads",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    version: varchar("version", { length: 20 }).notNull(),
+    downloadedAt: timestamp("downloaded_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_extension_downloads_user").on(table.userId),
+  ]
+);

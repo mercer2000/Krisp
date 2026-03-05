@@ -12,6 +12,13 @@ import {
   actionItems,
 } from "@/lib/db/schema";
 import { eq, and, gte, lte, isNull, desc, sql, count } from "drizzle-orm";
+import {
+  decryptRows,
+  CARD_ENCRYPTED_FIELDS,
+  WEBHOOK_ENCRYPTED_FIELDS,
+  ACTION_ITEM_ENCRYPTED_FIELDS,
+  CALENDAR_EVENT_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
 
 export async function GET() {
   try {
@@ -154,15 +161,21 @@ export async function GET() {
         .limit(5),
     ]);
 
+    // Decrypt sensitive fields before returning to frontend
+    const decUpcomingEvents = decryptRows(upcomingEventsRows as Record<string, unknown>[], CALENDAR_EVENT_ENCRYPTED_FIELDS) as typeof upcomingEventsRows;
+    const decOverdueCards = decryptRows(overdueCardsRows as Record<string, unknown>[], CARD_ENCRYPTED_FIELDS) as typeof overdueCardsRows;
+    const decRecentMeetings = decryptRows(recentMeetingsRows as Record<string, unknown>[], WEBHOOK_ENCRYPTED_FIELDS) as typeof recentMeetingsRows;
+    const decActionItemsDue = decryptRows(actionItemsDueRows as Record<string, unknown>[], ACTION_ITEM_ENCRYPTED_FIELDS) as typeof actionItemsDueRows;
+
     return NextResponse.json({
       config: userRow?.dashboardConfig ?? null,
       widgets: {
-        upcomingEvents: upcomingEventsRows,
-        overdueCards: overdueCardsRows,
-        recentMeetings: recentMeetingsRows,
+        upcomingEvents: decUpcomingEvents,
+        overdueCards: decOverdueCards,
+        recentMeetings: decRecentMeetings,
         meetingCount: meetingCountRows[0]?.value ?? 0,
         emailCount: emailCountRows[0]?.value ?? 0,
-        actionItemsDue: actionItemsDueRows,
+        actionItemsDue: decActionItemsDue,
       },
     });
   } catch (error) {

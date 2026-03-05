@@ -3,6 +3,35 @@ import type {
   KrispWebhook,
   WebhookKeyPointsRow,
 } from "@/types/webhook";
+import {
+  encryptNullable,
+  decryptNullable,
+  isEncrypted,
+} from "@/lib/encryption";
+
+// Raw SQL column names that are encrypted
+const ENCRYPTED_COLS = ["meeting_title", "raw_meeting", "raw_content"] as const;
+
+/**
+ * Decrypt the encrypted columns on a raw SQL row object.
+ * Handles both already-encrypted and plaintext (pre-migration) values.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function decryptRow(row: any): any {
+  const result = { ...row };
+  for (const col of ENCRYPTED_COLS) {
+    const val = result[col];
+    if (typeof val === "string" && isEncrypted(val)) {
+      result[col] = decryptNullable(val);
+    }
+  }
+  return result;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function decryptRows(rows: any[]): any[] {
+  return rows.map(decryptRow);
+}
 
 /**
  * Insert a new key points webhook into the database
@@ -13,6 +42,11 @@ export async function insertWebhookKeyPoints(
 ): Promise<WebhookKeyPointsRow> {
   const { id, event, data } = webhook;
   const { meeting, content, raw_meeting, raw_content } = data;
+
+  // Encrypt sensitive text fields before storing
+  const encMeetingTitle = encryptNullable(meeting.title);
+  const encRawMeeting = encryptNullable(raw_meeting);
+  const encRawContent = encryptNullable(raw_content);
 
   const rows = await sql`
     INSERT INTO webhook_key_points (
@@ -37,7 +71,7 @@ export async function insertWebhookKeyPoints(
       ${id},
       ${event},
       ${meeting.id},
-      ${meeting.title},
+      ${encMeetingTitle},
       ${meeting.url},
       ${meeting.start_date ? new Date(meeting.start_date).toISOString() : null},
       ${meeting.end_date ? new Date(meeting.end_date).toISOString() : null},
@@ -46,14 +80,14 @@ export async function insertWebhookKeyPoints(
       ${JSON.stringify(meeting.participants)},
       ${meeting.calendar_event_id},
       ${JSON.stringify(content)},
-      ${raw_meeting},
-      ${raw_content},
+      ${encRawMeeting},
+      ${encRawContent},
       ${JSON.stringify(webhook)}
     )
     RETURNING *
   `;
 
-  return rows[0] as WebhookKeyPointsRow;
+  return decryptRow(rows[0] as WebhookKeyPointsRow);
 }
 
 /**
@@ -65,7 +99,8 @@ export async function getWebhookKeyPointsByWebhookId(
   const rows = await sql`
     SELECT * FROM webhook_key_points WHERE webhook_id = ${webhookId}
   `;
-  return (rows[0] as WebhookKeyPointsRow) || null;
+  if (!rows[0]) return null;
+  return decryptRow(rows[0] as WebhookKeyPointsRow);
 }
 
 /**
@@ -80,7 +115,7 @@ export async function getWebhookKeyPointsByMeetingId(
     WHERE meeting_id = ${meetingId} AND user_id = ${userId} AND deleted_at IS NULL
     ORDER BY received_at DESC
   `;
-  return rows as WebhookKeyPointsRow[];
+  return decryptRows(rows as WebhookKeyPointsRow[]);
 }
 
 /**
@@ -96,7 +131,7 @@ export async function getRecentWebhookKeyPoints(
     ORDER BY received_at DESC
     LIMIT ${limit}
   `;
-  return rows as WebhookKeyPointsRow[];
+  return decryptRows(rows as WebhookKeyPointsRow[]);
 }
 
 /**
@@ -110,30 +145,39 @@ export async function webhookExists(webhookId: string): Promise<boolean> {
 }
 
 /**
- * Search meetings by text using PostgreSQL full-text search
- * Searches across meeting title, raw_content (transcript), and key points
+ * Search meetings by text.
+ *
+ * NOTE: With encrypted columns, PostgreSQL full-text search (tsvector) cannot
+ * operate on ciphertext. Instead we fetch recent meetings, decrypt, and filter
+ * application-side. For large datasets, vector/embedding search should be used.
  */
 export async function searchMeetings(
   searchText: string,
   userId: string,
   limit: number = 10
 ): Promise<WebhookKeyPointsRow[]> {
+  // Fetch a broader set of meetings and filter in-app after decryption
   const rows = await sql`
-    SELECT *,
-      ts_rank(
-        to_tsvector('english', COALESCE(meeting_title, '') || ' ' || COALESCE(raw_content, '') || ' ' || COALESCE(content::text, '')),
-        plainto_tsquery('english', ${searchText})
-      ) as rank
+    SELECT *
     FROM webhook_key_points
-    WHERE
-      user_id = ${userId}
-      AND deleted_at IS NULL
-      AND to_tsvector('english', COALESCE(meeting_title, '') || ' ' || COALESCE(raw_content, '') || ' ' || COALESCE(content::text, ''))
-      @@ plainto_tsquery('english', ${searchText})
-    ORDER BY rank DESC, received_at DESC
-    LIMIT ${limit}
+    WHERE user_id = ${userId} AND deleted_at IS NULL
+    ORDER BY received_at DESC
+    LIMIT 200
   `;
-  return rows as WebhookKeyPointsRow[];
+
+  const decrypted = decryptRows(rows as WebhookKeyPointsRow[]);
+  const lower = searchText.toLowerCase();
+
+  const matched = decrypted.filter((row) => {
+    const title = (row.meeting_title as string | null)?.toLowerCase() || "";
+    const content = (row.raw_content as string | null)?.toLowerCase() || "";
+    const keyPoints = typeof row.content === "string"
+      ? row.content.toLowerCase()
+      : JSON.stringify(row.content || "").toLowerCase();
+    return title.includes(lower) || content.includes(lower) || keyPoints.includes(lower);
+  });
+
+  return matched.slice(0, limit);
 }
 
 /**
@@ -150,13 +194,30 @@ export async function getAllMeetingsSummary(
       meeting_title,
       meeting_start_date,
       speakers,
-      LEFT(raw_content, 500) as content_preview
+      raw_content
     FROM webhook_key_points
     WHERE user_id = ${userId} AND deleted_at IS NULL
     ORDER BY meeting_start_date DESC
     LIMIT ${limit}
   `;
-  return rows as { id: number; meeting_id: string; meeting_title: string | null; meeting_start_date: Date | null; speakers: string[]; content_preview: string }[];
+
+  return (rows as Record<string, unknown>[]).map((row) => {
+    const decryptedTitle = typeof row.meeting_title === "string" && isEncrypted(row.meeting_title)
+      ? decryptNullable(row.meeting_title)
+      : row.meeting_title as string | null;
+    const decryptedContent = typeof row.raw_content === "string" && isEncrypted(row.raw_content)
+      ? decryptNullable(row.raw_content)
+      : row.raw_content as string | null;
+
+    return {
+      id: row.id as number,
+      meeting_id: row.meeting_id as string,
+      meeting_title: decryptedTitle,
+      meeting_start_date: row.meeting_start_date as Date | null,
+      speakers: row.speakers as string[],
+      content_preview: (decryptedContent || "").slice(0, 500),
+    };
+  });
 }
 
 /**
@@ -169,7 +230,8 @@ export async function getMeetingById(
   const rows = await sql`
     SELECT * FROM webhook_key_points WHERE id = ${id} AND user_id = ${userId} AND deleted_at IS NULL
   `;
-  return (rows[0] as WebhookKeyPointsRow) || null;
+  if (!rows[0]) return null;
+  return decryptRow(rows[0] as WebhookKeyPointsRow);
 }
 
 /**
@@ -220,30 +282,37 @@ export async function permanentlyDeleteMeeting(
 }
 
 /**
- * Simple keyword search (case-insensitive ILIKE)
- * Fallback when full-text search returns no results
+ * Simple keyword search (application-side filtering after decryption).
+ * Replaces the previous ILIKE approach since encrypted columns cannot
+ * be searched with SQL pattern matching.
  */
 export async function searchMeetingsSimple(
   searchText: string,
   userId: string,
   limit: number = 10
 ): Promise<WebhookKeyPointsRow[]> {
-  const searchPattern = `%${searchText}%`;
+  // Fetch all non-deleted meetings for this user
   const rows = await sql`
     SELECT *
     FROM webhook_key_points
-    WHERE
-      user_id = ${userId}
-      AND deleted_at IS NULL
-      AND (
-        meeting_title ILIKE ${searchPattern}
-        OR raw_content ILIKE ${searchPattern}
-        OR content::text ILIKE ${searchPattern}
-      )
+    WHERE user_id = ${userId} AND deleted_at IS NULL
     ORDER BY received_at DESC
-    LIMIT ${limit}
+    LIMIT 200
   `;
-  return rows as WebhookKeyPointsRow[];
+
+  const decrypted = decryptRows(rows as WebhookKeyPointsRow[]);
+  const lower = searchText.toLowerCase();
+
+  const matched = decrypted.filter((row) => {
+    const title = (row.meeting_title as string | null)?.toLowerCase() || "";
+    const content = (row.raw_content as string | null)?.toLowerCase() || "";
+    const keyPoints = typeof row.content === "string"
+      ? row.content.toLowerCase()
+      : JSON.stringify(row.content || "").toLowerCase();
+    return title.includes(lower) || content.includes(lower) || keyPoints.includes(lower);
+  });
+
+  return matched.slice(0, limit);
 }
 
 /**
@@ -264,26 +333,27 @@ export interface MeetingFilters {
 /**
  * Get filtered meetings with total count for pagination/display.
  * All filters are combined with AND logic, applied server-side.
+ *
+ * NOTE: The keyword filter is applied application-side after decryption
+ * since encrypted text columns can't use ILIKE in SQL.
  */
 export async function getFilteredMeetings(
   userId: string,
   filters: MeetingFilters,
   limit: number = 100
 ): Promise<{ meetings: WebhookKeyPointsRow[]; total: number }> {
-  // Use a single SQL query with IS NULL checks so all params are always provided
-  // and unused filters are short-circuited by the database.
   const dateFrom = filters.dateFrom || null;
   const dateTo = filters.dateTo || null;
   const durationMin = filters.durationMin ?? null;
   const durationMax = filters.durationMax ?? null;
   const hasTranscript = filters.hasTranscript ?? null;
   const hasActionItems = filters.hasActionItems ?? null;
-  const keyword = filters.keyword ? `%${filters.keyword}%` : null;
   const participantsJson = filters.participants && filters.participants.length > 0
     ? JSON.stringify(filters.participants)
     : null;
   const actionItemStatus = filters.actionItemStatus || null;
 
+  // Fetch with all SQL-compatible filters (exclude keyword which needs decryption)
   const rows = await sql`
     SELECT w.*, COUNT(*) OVER() AS total_count
     FROM webhook_key_points w
@@ -297,11 +367,6 @@ export async function getFilteredMeetings(
         (${hasTranscript}::boolean = true AND w.raw_content IS NOT NULL AND w.raw_content != '') OR
         (${hasTranscript}::boolean = false AND (w.raw_content IS NULL OR w.raw_content = ''))
       )
-      AND (${keyword}::text IS NULL OR (
-        w.meeting_title ILIKE ${keyword}
-        OR w.content::text ILIKE ${keyword}
-        OR w.raw_content ILIKE ${keyword}
-      ))
       AND (${participantsJson}::jsonb IS NULL OR (
         EXISTS (
           SELECT 1 FROM jsonb_array_elements(w.speakers) AS s
@@ -331,9 +396,28 @@ export async function getFilteredMeetings(
     LIMIT ${limit}
   `;
 
-  const total = rows.length > 0 ? Number((rows[0] as Record<string, unknown>).total_count) : 0;
+  let decrypted = decryptRows(rows as WebhookKeyPointsRow[]);
+
+  // Apply keyword filter application-side on decrypted text
+  if (filters.keyword) {
+    const lower = filters.keyword.toLowerCase();
+    decrypted = decrypted.filter((row) => {
+      const title = (row.meeting_title as string | null)?.toLowerCase() || "";
+      const content = (row.raw_content as string | null)?.toLowerCase() || "";
+      const keyPoints = typeof row.content === "string"
+        ? row.content.toLowerCase()
+        : JSON.stringify(row.content || "").toLowerCase();
+      return title.includes(lower) || content.includes(lower) || keyPoints.includes(lower);
+    });
+  }
+
+  // Recalculate total after keyword filter
+  const total = filters.keyword
+    ? decrypted.length
+    : (rows.length > 0 ? Number((rows[0] as Record<string, unknown>).total_count) : 0);
+
   return {
-    meetings: rows as WebhookKeyPointsRow[],
+    meetings: decrypted,
     total,
   };
 }
@@ -341,6 +425,7 @@ export async function getFilteredMeetings(
 /**
  * Get all unique participants/speakers across all meetings for a user.
  * Used to populate the participant filter dropdown.
+ * Note: speakers are stored in JSONB (not encrypted), so SQL query is unchanged.
  */
 export async function getAllParticipants(
   userId: string

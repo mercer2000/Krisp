@@ -4,6 +4,11 @@ import { db } from "@/lib/db";
 import { actionItems, webhookKeyPoints } from "@/lib/db/schema";
 import { eq, desc, and, sql, isNull } from "drizzle-orm";
 import { createActionItemSchema } from "@/lib/validators/schemas";
+import {
+  encryptFields,
+  decryptFields,
+  ACTION_ITEM_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
 
 export async function GET(request: NextRequest) {
   try {
@@ -53,7 +58,17 @@ export async function GET(request: NextRequest) {
       .where(and(...conditions))
       .orderBy(desc(actionItems.createdAt));
 
-    return NextResponse.json({ actionItems: items });
+    // Decrypt action item fields and meeting title
+    const decrypted = items.map((item) => {
+      const dec = decryptFields(item as Record<string, unknown>, ACTION_ITEM_ENCRYPTED_FIELDS);
+      // Also decrypt the meeting title sub-select
+      if (typeof dec.meetingTitle === "string") {
+        dec.meetingTitle = decryptFields({ meetingTitle: dec.meetingTitle } as Record<string, unknown>, ["meetingTitle"]).meetingTitle;
+      }
+      return dec;
+    });
+
+    return NextResponse.json({ actionItems: decrypted });
   } catch (error) {
     console.error("Error fetching action items:", error);
     return NextResponse.json(
@@ -85,18 +100,21 @@ export async function POST(request: NextRequest) {
 
     const [item] = await db
       .insert(actionItems)
-      .values({
-        userId,
-        title,
-        description: description ?? null,
-        assignee: assignee ?? null,
-        priority: priority ?? "medium",
-        dueDate: dueDate ?? null,
-        meetingId: meetingId ?? null,
-      })
+      .values(
+        encryptFields({
+          userId,
+          title,
+          description: description ?? null,
+          assignee: assignee ?? null,
+          priority: priority ?? "medium",
+          dueDate: dueDate ?? null,
+          meetingId: meetingId ?? null,
+        }, ACTION_ITEM_ENCRYPTED_FIELDS)
+      )
       .returning();
 
-    return NextResponse.json({ actionItem: item }, { status: 201 });
+    const decrypted = decryptFields(item as Record<string, unknown>, ACTION_ITEM_ENCRYPTED_FIELDS);
+    return NextResponse.json({ actionItem: decrypted }, { status: 201 });
   } catch (error) {
     console.error("Error creating action item:", error);
     return NextResponse.json(

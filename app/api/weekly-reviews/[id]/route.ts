@@ -4,6 +4,10 @@ import { db } from "@/lib/db";
 import { weeklyReviews } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { sendWeeklyReviewEmail } from "@/lib/weekly-review/email";
+import {
+  decryptFields,
+  WEEKLY_REVIEW_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
 
 export async function GET(
   _request: NextRequest,
@@ -26,7 +30,8 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ review });
+    const decrypted = decryptFields(review as Record<string, unknown>, WEEKLY_REVIEW_ENCRYPTED_FIELDS);
+    return NextResponse.json({ review: decrypted });
   } catch (error) {
     console.error("Error fetching weekly review:", error);
     return NextResponse.json(

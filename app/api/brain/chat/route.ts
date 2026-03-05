@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import {
   brainChatSessions,
   brainChatMessages,
+  brainThoughts,
   webhookKeyPoints,
   emails,
   decisions,
@@ -11,7 +12,22 @@ import {
 } from "@/lib/db/schema";
 import { eq, desc, and, isNull } from "drizzle-orm";
 import { chatCompletion, TokenLimitError } from "@/lib/ai/client";
+import { dispatchWebhooks } from "@/lib/webhooks/dispatch";
+import {
+  encryptFields,
+  decryptFields,
+  decryptRows,
+  WEBHOOK_ENCRYPTED_FIELDS,
+  EMAIL_ENCRYPTED_FIELDS,
+  DECISION_ENCRYPTED_FIELDS,
+  ACTION_ITEM_ENCRYPTED_FIELDS,
+  BRAIN_CHAT_MESSAGE_ENCRYPTED_FIELDS,
+  BRAIN_CHAT_SESSION_ENCRYPTED_FIELDS,
+  BRAIN_THOUGHT_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
 import { classifyIntent } from "@/lib/brain/intentParser";
+import { resolvePrompt } from "@/lib/ai/resolvePrompt";
+import { PROMPT_BRAIN_CHAT_API } from "@/lib/ai/prompts";
 import {
   getUserBoardContext,
   executeCreateCard,
@@ -39,6 +55,7 @@ const MAX_CONTEXT_MEETINGS = 5;
 const MAX_CONTEXT_EMAILS = 10;
 const MAX_CONTEXT_DECISIONS = 10;
 const MAX_CONTEXT_ACTION_ITEMS = 10;
+const MAX_CONTEXT_BRAIN_THOUGHTS = 10;
 const MAX_HISTORY_MESSAGES = 50;
 const PENDING_ACTION_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -73,17 +90,25 @@ export async function POST(request: NextRequest) {
         message.length > 60 ? message.slice(0, 57) + "..." : message;
       const [newSession] = await db
         .insert(brainChatSessions)
-        .values({ userId, title })
+        .values(encryptFields({ userId, title }, BRAIN_CHAT_SESSION_ENCRYPTED_FIELDS))
         .returning();
       activeSessionId = newSession.id;
     }
 
-    // Save the user message
-    await db.insert(brainChatMessages).values({
+    // Save the user message (encrypted)
+    await db.insert(brainChatMessages).values(
+      encryptFields({
+        sessionId: activeSessionId,
+        role: "user" as const,
+        content: message.trim(),
+      }, BRAIN_CHAT_MESSAGE_ENCRYPTED_FIELDS)
+    );
+
+    // Fire outbound webhook for thought captured (non-blocking)
+    dispatchWebhooks(userId, "thought.captured", activeSessionId, {
+      message: message.trim().slice(0, 500),
       sessionId: activeSessionId,
-      role: "user",
-      content: message.trim(),
-    });
+    }).catch(() => {});
 
     // Fetch conversation history for context (most recent first, then reverse for chronological order)
     const historyDesc = await db
@@ -92,7 +117,7 @@ export async function POST(request: NextRequest) {
       .where(eq(brainChatMessages.sessionId, activeSessionId))
       .orderBy(desc(brainChatMessages.createdAt))
       .limit(MAX_HISTORY_MESSAGES);
-    const history = historyDesc.reverse();
+    const history = decryptRows(historyDesc, BRAIN_CHAT_MESSAGE_ENCRYPTED_FIELDS).reverse();
 
     // ── Intent Classification ───────────────────────────
     const boardContext = await getUserBoardContext(userId);
@@ -126,7 +151,8 @@ export async function POST(request: NextRequest) {
         role: m.role,
         content: m.content,
       })),
-      pendingAction
+      pendingAction,
+      userId
     );
 
     let answer: string;
@@ -225,15 +251,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Save the assistant response
+    // Save the assistant response (encrypted)
     const [assistantMsg] = await db
       .insert(brainChatMessages)
-      .values({
-        sessionId: activeSessionId,
-        role: "assistant",
-        content: answer,
-        sourcesUsed,
-      })
+      .values(
+        encryptFields({
+          sessionId: activeSessionId,
+          role: "assistant" as const,
+          content: answer,
+          sourcesUsed,
+        }, BRAIN_CHAT_MESSAGE_ENCRYPTED_FIELDS)
+      )
       .returning();
 
     // Update session timestamp
@@ -277,7 +305,7 @@ async function handleBrainQuery(
   message: string,
   history: Array<{ role: string; content: string }>
 ): Promise<{ answer: string; sourcesUsed: string[] }> {
-  const [meetings, userEmails, userDecisions, userActionItems] =
+  const [meetings, userEmails, userDecisions, userActionItems, userThoughts] =
     await Promise.all([
       db
         .select({
@@ -349,15 +377,38 @@ async function handleBrainQuery(
         )
         .orderBy(desc(actionItems.createdAt))
         .limit(MAX_CONTEXT_ACTION_ITEMS),
+
+      db
+        .select({
+          id: brainThoughts.id,
+          content: brainThoughts.content,
+          source: brainThoughts.source,
+          topic: brainThoughts.topic,
+          tags: brainThoughts.tags,
+          sourceUrl: brainThoughts.sourceUrl,
+          sourceDomain: brainThoughts.sourceDomain,
+          createdAt: brainThoughts.createdAt,
+        })
+        .from(brainThoughts)
+        .where(eq(brainThoughts.userId, userId))
+        .orderBy(desc(brainThoughts.createdAt))
+        .limit(MAX_CONTEXT_BRAIN_THOUGHTS),
     ]);
+
+  // Decrypt sensitive fields from each data source
+  const decMeetings = decryptRows(meetings as Record<string, unknown>[], WEBHOOK_ENCRYPTED_FIELDS) as typeof meetings;
+  const decEmails = decryptRows(userEmails as Record<string, unknown>[], EMAIL_ENCRYPTED_FIELDS) as typeof userEmails;
+  const decDecisions = decryptRows(userDecisions as Record<string, unknown>[], DECISION_ENCRYPTED_FIELDS) as typeof userDecisions;
+  const decActionItems = decryptRows(userActionItems as Record<string, unknown>[], ACTION_ITEM_ENCRYPTED_FIELDS) as typeof userActionItems;
+  const decThoughts = decryptRows(userThoughts as Record<string, unknown>[], BRAIN_THOUGHT_ENCRYPTED_FIELDS) as typeof userThoughts;
 
   // Build context string
   const contextParts: string[] = [];
   const sourcesUsed: string[] = [];
 
-  if (meetings.length > 0) {
+  if (decMeetings.length > 0) {
     sourcesUsed.push("meetings");
-    const meetingCtx = meetings
+    const meetingCtx = decMeetings
       .map((m, i) => {
         const keyPoints = Array.isArray(m.content)
           ? (m.content as Array<{ description?: string; text?: string }>)
@@ -388,12 +439,12 @@ Key Points: ${keyPoints}
 Transcript: ${transcript}`;
       })
       .join("\n---\n");
-    contextParts.push(`## Meetings (${meetings.length} recent)\n${meetingCtx}`);
+    contextParts.push(`## Meetings (${decMeetings.length} recent)\n${meetingCtx}`);
   }
 
-  if (userEmails.length > 0) {
+  if (decEmails.length > 0) {
     sourcesUsed.push("emails");
-    const emailCtx = userEmails
+    const emailCtx = decEmails
       .map(
         (e, i) =>
           `Email ${i + 1}: "${e.subject || "(no subject)"}" from ${
@@ -405,12 +456,12 @@ Transcript: ${transcript}`;
           })\n${(e.bodyPlainText || "").slice(0, 500)}`
       )
       .join("\n---\n");
-    contextParts.push(`## Emails (${userEmails.length} recent)\n${emailCtx}`);
+    contextParts.push(`## Emails (${decEmails.length} recent)\n${emailCtx}`);
   }
 
-  if (userDecisions.length > 0) {
+  if (decDecisions.length > 0) {
     sourcesUsed.push("decisions");
-    const decisionCtx = userDecisions
+    const decisionCtx = decDecisions
       .map(
         (d, i) =>
           `Decision ${i + 1} [${d.status}/${d.category}]: "${d.statement}"${
@@ -419,13 +470,13 @@ Transcript: ${transcript}`;
       )
       .join("\n---\n");
     contextParts.push(
-      `## Decisions (${userDecisions.length} recent)\n${decisionCtx}`
+      `## Decisions (${decDecisions.length} recent)\n${decisionCtx}`
     );
   }
 
-  if (userActionItems.length > 0) {
+  if (decActionItems.length > 0) {
     sourcesUsed.push("action_items");
-    const actionCtx = userActionItems
+    const actionCtx = decActionItems
       .map(
         (a, i) =>
           `Action ${i + 1} [${a.status}/${a.priority}]: "${a.title}"${
@@ -436,7 +487,28 @@ Transcript: ${transcript}`;
       )
       .join("\n---\n");
     contextParts.push(
-      `## Action Items (${userActionItems.length} recent)\n${actionCtx}`
+      `## Action Items (${decActionItems.length} recent)\n${actionCtx}`
+    );
+  }
+
+  if (decThoughts.length > 0) {
+    sourcesUsed.push("brain_thoughts");
+    const thoughtCtx = decThoughts
+      .map((t, i) => {
+        const sourceLabel = t.source === "web_clip"
+          ? `Web Clip from ${t.sourceDomain || "unknown"}`
+          : `${t.source || "manual"} note`;
+        const urlLine = t.sourceUrl ? `\nSource: ${t.sourceUrl}` : "";
+        const tagsLine = Array.isArray(t.tags) && (t.tags as string[]).length > 0
+          ? `\nTags: ${(t.tags as string[]).join(", ")}`
+          : "";
+        return `Thought ${i + 1} [${sourceLabel}] (${
+          t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "?"
+        }): ${t.topic ? `[${t.topic}] ` : ""}${(t.content || "").slice(0, 500)}${urlLine}${tagsLine}`;
+      })
+      .join("\n---\n");
+    contextParts.push(
+      `## Brain Thoughts (${decThoughts.length} recent)\n${thoughtCtx}`
     );
   }
 
@@ -451,18 +523,7 @@ Transcript: ${transcript}`;
     .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
     .join("\n\n");
 
-  const systemPrompt = `You are a knowledgeable AI assistant for the user's "Second Brain" — a personal knowledge management system. You have access to the user's meetings, emails, decisions, and action items.
-
-Your job is to:
-- Answer questions about the user's data accurately
-- Help them find information across meetings, emails, and decisions
-- Identify patterns, connections, and insights across their data
-- Summarize information when asked
-- Be honest when you don't have enough data to answer
-
-Always cite sources when referencing specific meetings, emails, or decisions (e.g., "In your meeting 'Weekly Standup' on Jan 15...").
-
-Keep your responses concise and helpful. Use markdown formatting for readability.`;
+  const systemPrompt = await resolvePrompt(PROMPT_BRAIN_CHAT_API, userId);
 
   const prompt = `${systemPrompt}
 

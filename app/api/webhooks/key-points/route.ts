@@ -9,6 +9,7 @@ import { users, webhookSecrets } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { timingSafeEqual } from "crypto";
 import { extractActionItemsForMeeting } from "@/lib/actions/extractActionItems";
+import { dispatchWebhooks } from "@/lib/webhooks/dispatch";
 
 const SUPPORTED_EVENTS: WebhookEventType[] = [
   "key_points_generated",
@@ -140,6 +141,14 @@ export async function POST(request: NextRequest) {
 
     // Insert the webhook data with user association
     const result = await insertWebhookKeyPoints(payload, userId);
+
+    // Fire outbound webhooks (non-blocking)
+    dispatchWebhooks(userId, "meeting.ingested", result.id, {
+      meetingTitle: payload.data?.meeting?.title || null,
+      meetingId: payload.data?.meeting?.id || null,
+      webhookId: payload.id,
+      eventType: payload.event,
+    }).catch(() => {});
 
     // Auto-extract action items in the background (non-blocking)
     // Uses the user's default board for Kanban card creation

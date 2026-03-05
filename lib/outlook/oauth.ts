@@ -21,16 +21,16 @@ interface MicrosoftTokenResponse {
   scope: string;
 }
 
-const MS_TOKEN_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
-const MS_AUTH_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize";
+const MS_TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
+const MS_AUTH_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize";
 
 /**
  * Build the Microsoft OAuth authorization URL for personal accounts.
  */
 export function buildOutlookAuthUrl(redirectUri: string, state: string): string {
-  const clientId = process.env.OUTLOOK_CLIENT_ID;
+  const clientId = process.env.OAUTH_OUTLOOK_CLIENT_ID;
   if (!clientId) {
-    throw new Error("OUTLOOK_CLIENT_ID must be configured");
+    throw new Error("OAUTH_OUTLOOK_CLIENT_ID must be configured");
   }
 
   const params = new URLSearchParams({
@@ -53,10 +53,10 @@ export async function exchangeOutlookCode(
   code: string,
   redirectUri: string
 ): Promise<MicrosoftTokenResponse> {
-  const clientId = process.env.OUTLOOK_CLIENT_ID;
-  const clientSecret = process.env.OUTLOOK_CLIENT_SECRET;
+  const clientId = process.env.OAUTH_OUTLOOK_CLIENT_ID;
+  const clientSecret = process.env.OAUTH_OUTLOOK_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
-    throw new Error("OUTLOOK_CLIENT_ID and OUTLOOK_CLIENT_SECRET must be configured");
+    throw new Error("OAUTH_OUTLOOK_CLIENT_ID and OAUTH_OUTLOOK_CLIENT_SECRET must be configured");
   }
 
   const response = await fetch(MS_TOKEN_URL, {
@@ -85,10 +85,10 @@ export async function exchangeOutlookCode(
 export async function refreshOutlookToken(
   refreshToken: string
 ): Promise<MicrosoftTokenResponse> {
-  const clientId = process.env.OUTLOOK_CLIENT_ID;
-  const clientSecret = process.env.OUTLOOK_CLIENT_SECRET;
+  const clientId = process.env.OAUTH_OUTLOOK_CLIENT_ID;
+  const clientSecret = process.env.OAUTH_OUTLOOK_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
-    throw new Error("OUTLOOK_CLIENT_ID and OUTLOOK_CLIENT_SECRET must be configured");
+    throw new Error("OAUTH_OUTLOOK_CLIENT_ID and OAUTH_OUTLOOK_CLIENT_SECRET must be configured");
   }
 
   const response = await fetch(MS_TOKEN_URL, {

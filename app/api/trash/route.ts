@@ -5,6 +5,12 @@ import { cards, columns, boards, actionItems } from "@/lib/db/schema";
 import { eq, isNotNull, and, desc } from "drizzle-orm";
 import sql from "@/lib/krisp/db";
 import type { TrashItem } from "@/types";
+import {
+  decryptFields,
+  CARD_ENCRYPTED_FIELDS,
+  ACTION_ITEM_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
+import { decryptNullable } from "@/lib/encryption";
 
 const RETENTION_DAYS = 30;
 
@@ -69,31 +75,37 @@ export async function GET() {
       ]);
 
     const items: TrashItem[] = [
-      ...deletedCards.map((c) => ({
-        id: c.id,
-        type: "card" as const,
-        title: c.title,
-        deletedAt: c.deletedAt!.toISOString(),
-        daysRemaining: daysRemaining(c.deletedAt!),
-      })),
-      ...deletedActionItems.map((a) => ({
-        id: a.id,
-        type: "action_item" as const,
-        title: a.title,
-        deletedAt: a.deletedAt!.toISOString(),
-        daysRemaining: daysRemaining(a.deletedAt!),
-      })),
+      ...deletedCards.map((c) => {
+        const dec = decryptFields(c as Record<string, unknown>, CARD_ENCRYPTED_FIELDS) as typeof c;
+        return {
+          id: dec.id,
+          type: "card" as const,
+          title: dec.title,
+          deletedAt: dec.deletedAt!.toISOString(),
+          daysRemaining: daysRemaining(dec.deletedAt!),
+        };
+      }),
+      ...deletedActionItems.map((a) => {
+        const dec = decryptFields(a as Record<string, unknown>, ACTION_ITEM_ENCRYPTED_FIELDS) as typeof a;
+        return {
+          id: dec.id,
+          type: "action_item" as const,
+          title: dec.title,
+          deletedAt: dec.deletedAt!.toISOString(),
+          daysRemaining: daysRemaining(dec.deletedAt!),
+        };
+      }),
       ...(deletedMeetings as Array<{ id: number; title: string; deleted_at: string }>).map((m) => ({
         id: m.id,
         type: "meeting" as const,
-        title: m.title || "Untitled Meeting",
+        title: decryptNullable(m.title) || "Untitled Meeting",
         deletedAt: new Date(m.deleted_at).toISOString(),
         daysRemaining: daysRemaining(new Date(m.deleted_at)),
       })),
       ...(deletedEmails as Array<{ id: number; title: string; deleted_at: string }>).map((e) => ({
         id: e.id,
         type: "email" as const,
-        title: e.title || "(No subject)",
+        title: decryptNullable(e.title) || "(No subject)",
         deletedAt: new Date(e.deleted_at).toISOString(),
         daysRemaining: daysRemaining(new Date(e.deleted_at)),
       })),

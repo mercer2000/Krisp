@@ -3,6 +3,15 @@ import { actionItems, boards, columns, cards, cardTags } from "@/lib/db/schema";
 import { getMeetingById } from "@/lib/krisp/webhookKeyPoints";
 import { eq, and, asc, max, isNull } from "drizzle-orm";
 import { chatCompletion } from "@/lib/ai/client";
+import { resolvePrompt } from "@/lib/ai/resolvePrompt";
+import { PROMPT_ACTION_ITEMS_MEETING } from "@/lib/ai/prompts";
+import {
+  encryptFields,
+  decryptFields,
+  decryptRows,
+  ACTION_ITEM_ENCRYPTED_FIELDS,
+  CARD_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
 
 export type ExtractionSource = "auto_webhook" | "manual";
 
@@ -56,7 +65,8 @@ export async function extractActionItemsForMeeting(
           isNull(actionItems.deletedAt)
         )
       );
-    return { actionItems: items, cardsCreated: 0 };
+    const decItems = decryptRows(items as Record<string, unknown>[], ACTION_ITEM_ENCRYPTED_FIELDS) as typeof items;
+    return { actionItems: decItems, cardsCreated: 0 };
   }
 
   const meeting = await getMeetingById(meetingId, userId);
@@ -87,7 +97,9 @@ export async function extractActionItemsForMeeting(
   const transcript = meeting.raw_content || "";
   const today = new Date().toISOString().split("T")[0];
 
-  const prompt = `Analyze this meeting and extract specific, actionable tasks that were discussed or assigned.
+  const instructions = await resolvePrompt(PROMPT_ACTION_ITEMS_MEETING, userId);
+
+  const prompt = `${instructions}
 
 Meeting: "${meeting.meeting_title || "Untitled"}"
 Date: ${meeting.meeting_start_date ? new Date(meeting.meeting_start_date).toLocaleDateString() : "Unknown"}
@@ -99,18 +111,7 @@ ${keyPoints.map((kp: string, i: number) => `${i + 1}. ${kp}`).join("\n")}
 Transcript (excerpt):
 ${transcript.slice(0, 8000)}
 
-Today's date: ${today}
-
-Extract action items as a JSON array. For each item include:
-- "title": concise task title (max 100 chars)
-- "description": detailed description of what needs to be done
-- "assignee": name of the person responsible (from participants list, or null if unclear)
-- "priority": "low", "medium", "high", or "urgent" based on context
-- "dueDate": suggested due date as YYYY-MM-DD string (infer from context, or set 1 week from today if no deadline mentioned), or null
-
-Only include clear, specific action items. Do not include vague discussion points.
-If no action items are found, return an empty array [].
-Respond with ONLY a valid JSON array, no other text.`;
+Today's date: ${today}`;
 
   const text = await chatCompletion(prompt, { maxTokens: 2000 });
 
@@ -132,18 +133,21 @@ Respond with ONLY a valid JSON array, no other text.`;
   for (const item of extracted) {
     const [inserted] = await db
       .insert(actionItems)
-      .values({
-        userId,
-        meetingId,
-        title: item.title.slice(0, 500),
-        description: item.description || null,
-        assignee: item.assignee || null,
-        extractionSource: source,
-        priority: item.priority || "medium",
-        dueDate: item.dueDate || null,
-      })
+      .values(
+        encryptFields({
+          userId,
+          meetingId,
+          title: item.title.slice(0, 500),
+          description: item.description || null,
+          assignee: item.assignee || null,
+          extractionSource: source,
+          priority: item.priority || "medium",
+          dueDate: item.dueDate || null,
+        }, ACTION_ITEM_ENCRYPTED_FIELDS)
+      )
       .returning();
-    insertedItems.push(inserted);
+    // Decrypt for in-memory use (e.g., creating cards)
+    insertedItems.push(decryptFields(inserted as Record<string, unknown>, ACTION_ITEM_ENCRYPTED_FIELDS) as typeof inserted);
   }
 
   // Create Kanban cards if a board is specified
@@ -204,14 +208,16 @@ export async function createCardsForActionItems(
 
     const [card] = await db
       .insert(cards)
-      .values({
-        columnId: firstCol.id,
-        title: item.title.slice(0, 255),
-        description: item.description || null,
-        position: nextPosition,
-        priority: item.priority || "medium",
-        dueDate: item.dueDate || null,
-      })
+      .values(
+        encryptFields({
+          columnId: firstCol.id,
+          title: item.title.slice(0, 255),
+          description: item.description || null,
+          position: nextPosition,
+          priority: item.priority || "medium",
+          dueDate: item.dueDate || null,
+        }, CARD_ENCRYPTED_FIELDS)
+      )
       .returning();
 
     // Add a "Meeting" tag for traceability

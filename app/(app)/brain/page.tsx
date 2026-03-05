@@ -133,6 +133,8 @@ const SOURCE_COLORS: Record<string, string> = {
     "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
   kanban:
     "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+  brain_thoughts:
+    "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
 };
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -141,10 +143,28 @@ const SOURCE_LABELS: Record<string, string> = {
   decisions: "Decisions",
   action_items: "Action Items",
   kanban: "Kanban",
+  brain_thoughts: "Brain Thoughts",
 };
+
+// ── Types for Knowledge Feed ────────────────────────
+interface BrainThought {
+  id: string;
+  content: string;
+  source: string;
+  author: string | null;
+  topic: string | null;
+  sentiment: string | null;
+  tags: string[] | null;
+  sourceUrl: string | null;
+  sourceDomain: string | null;
+  sourceTimestamp: string | null;
+  truncated: boolean;
+  createdAt: string;
+}
 
 // ── Main Component ──────────────────────────────────
 export default function BrainChatPage() {
+  const [activeTab, setActiveTab] = useState<"chat" | "knowledge">("chat");
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -155,6 +175,12 @@ export default function BrainChatPage() {
   const [showSidebar, setShowSidebar] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Knowledge feed state
+  const [thoughts, setThoughts] = useState<BrainThought[]>([]);
+  const [thoughtsTotal, setThoughtsTotal] = useState(0);
+  const [loadingThoughts, setLoadingThoughts] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState<string>("");
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -168,8 +194,32 @@ export default function BrainChatPage() {
 
   // Auto-focus input when page loads
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (activeTab === "chat") inputRef.current?.focus();
+  }, [activeTab]);
+
+  // Fetch thoughts when knowledge tab is active or filter changes
+  useEffect(() => {
+    if (activeTab === "knowledge") {
+      fetchThoughts();
+    }
+  }, [activeTab, sourceFilter]);
+
+  const fetchThoughts = async () => {
+    setLoadingThoughts(true);
+    try {
+      const params = new URLSearchParams({ limit: "50", offset: "0" });
+      if (sourceFilter) params.set("source", sourceFilter);
+      const res = await fetch(`/api/brain/thoughts?${params}`);
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setThoughts(data.thoughts);
+      setThoughtsTotal(data.total);
+    } catch {
+      console.error("Failed to load thoughts");
+    } finally {
+      setLoadingThoughts(false);
+    }
+  };
 
   const fetchSessions = async () => {
     try {
@@ -288,8 +338,8 @@ export default function BrainChatPage() {
 
   return (
     <div className="flex h-full bg-[var(--background)]">
-      {/* Sidebar: session list */}
-      {showSidebar && (
+      {/* Sidebar: session list (only shown on chat tab) */}
+      {activeTab === "chat" && showSidebar && (
         <aside className="flex w-[260px] flex-shrink-0 flex-col border-r border-[var(--border)] bg-[var(--card)]">
           <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
             <h2 className="text-sm font-bold text-[var(--foreground)]">
@@ -352,27 +402,50 @@ export default function BrainChatPage() {
 
       {/* Main chat area */}
       <div className="flex flex-1 flex-col">
-        {/* Header */}
-        <header className="flex items-center gap-3 border-b border-[var(--border)] px-4 py-3">
-          <button
-            onClick={() => setShowSidebar(!showSidebar)}
-            className="rounded-lg p-1.5 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
-            title={showSidebar ? "Hide sidebar" : "Show sidebar"}
-          >
-            <SidebarIcon size={18} />
-          </button>
-          <div className="flex-1">
-            <h1 className="text-lg font-bold text-[var(--foreground)]">
-              Brain Chat
-            </h1>
-            <p className="text-xs text-[var(--muted-foreground)]">
-              Ask questions about your data or manage Kanban tasks via
-              chat
-            </p>
+        {/* Header with tabs */}
+        <header className="border-b border-[var(--border)]">
+          <div className="flex items-center gap-3 px-4 py-3">
+            {activeTab === "chat" && (
+              <button
+                onClick={() => setShowSidebar(!showSidebar)}
+                className="rounded-lg p-1.5 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
+                title={showSidebar ? "Hide sidebar" : "Show sidebar"}
+              >
+                <SidebarIcon size={18} />
+              </button>
+            )}
+            <div className="flex-1">
+              <h1 className="text-lg font-bold text-[var(--foreground)]">
+                Brain
+              </h1>
+            </div>
+          </div>
+          <div className="flex gap-0 px-4">
+            <button
+              onClick={() => setActiveTab("chat")}
+              className={`border-b-2 px-4 pb-2 text-sm font-medium transition-colors ${
+                activeTab === "chat"
+                  ? "border-[var(--primary)] text-[var(--primary)]"
+                  : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              Chat
+            </button>
+            <button
+              onClick={() => setActiveTab("knowledge")}
+              className={`border-b-2 px-4 pb-2 text-sm font-medium transition-colors ${
+                activeTab === "knowledge"
+                  ? "border-[var(--primary)] text-[var(--primary)]"
+                  : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              Knowledge
+            </button>
           </div>
         </header>
 
-        {/* Messages */}
+        {activeTab === "chat" && (<>
+        {/* Chat tab — Messages */}
         <div className="flex-1 overflow-auto">
           {messages.length === 0 && !loadingMessages ? (
             <div className="flex h-full flex-col items-center justify-center px-6">
@@ -521,6 +594,165 @@ export default function BrainChatPage() {
             &quot;create a task&quot; or ask about your meetings
           </p>
         </div>
+        </>)}
+
+        {/* Knowledge tab */}
+        {activeTab === "knowledge" && (
+          <div className="flex-1 overflow-auto">
+            {/* Filter bar */}
+            <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-[var(--border)] bg-[var(--background)] px-6 py-3">
+              <span className="text-xs font-medium text-[var(--muted-foreground)]">
+                Filter:
+              </span>
+              {[
+                { value: "", label: "All" },
+                { value: "web_clip", label: "Web Clips" },
+                { value: "zapier", label: "Zapier" },
+                { value: "manual", label: "Manual" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setSourceFilter(opt.value)}
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                    sourceFilter === opt.value
+                      ? "bg-[var(--primary)] text-white"
+                      : "bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+              <span className="ml-auto text-xs text-[var(--muted-foreground)]">
+                {thoughtsTotal} {thoughtsTotal === 1 ? "entry" : "entries"}
+              </span>
+            </div>
+
+            {loadingThoughts ? (
+              <div className="flex items-center justify-center py-20">
+                <LoadingDots />
+              </div>
+            ) : thoughts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 px-6">
+                <div className="mb-4 text-[var(--muted-foreground)] opacity-30">
+                  <GlobeIcon size={48} />
+                </div>
+                <h2 className="text-lg font-bold text-[var(--foreground)]">
+                  No knowledge entries yet
+                </h2>
+                <p className="mt-2 max-w-md text-center text-sm text-[var(--muted-foreground)]">
+                  Use the Krisp Web Clipper extension to save web pages, or
+                  connect Zapier to capture knowledge automatically.
+                </p>
+              </div>
+            ) : (
+              <div className="mx-auto max-w-3xl space-y-3 px-6 py-4">
+                {thoughts.map((t) => (
+                  <ThoughtCard key={t.id} thought={t} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Thought Card Component ──────────────────────────
+
+function ThoughtCard({ thought }: { thought: BrainThought }) {
+  // Extract a display title from content (first line)
+  const lines = (thought.content || "").split("\n");
+  const title = lines[0]?.slice(0, 120) || "Untitled";
+
+  // Get preview text (skip title and source line)
+  const bodyLines = lines.slice(1).filter((l) => !l.startsWith("Source: "));
+  const preview = bodyLines.join("\n").trim().slice(0, 200);
+
+  const sourceLabel =
+    thought.source === "web_clip"
+      ? "Web Clip"
+      : thought.source === "zapier"
+        ? "Zapier"
+        : "Manual";
+
+  const date = thought.createdAt
+    ? new Date(thought.createdAt).toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : "";
+
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 transition-colors hover:border-[var(--primary)]/30">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--accent)]">
+          {thought.source === "web_clip" ? (
+            <GlobeIcon size={16} />
+          ) : thought.source === "zapier" ? (
+            <ZapIcon size={16} />
+          ) : (
+            <EditIcon size={16} />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${
+              thought.source === "web_clip"
+                ? "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400"
+                : thought.source === "zapier"
+                  ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                  : "bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400"
+            }`}>
+              {sourceLabel}
+            </span>
+            {thought.topic && (
+              <span className="text-xs text-[var(--muted-foreground)]">
+                {thought.topic}
+              </span>
+            )}
+            <span className="ml-auto text-[10px] text-[var(--muted-foreground)]">
+              {date}
+            </span>
+          </div>
+
+          <h3 className="mt-1 text-sm font-semibold text-[var(--foreground)] leading-snug">
+            {title}
+          </h3>
+
+          {thought.sourceUrl && (
+            <a
+              href={thought.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 block truncate text-xs text-[var(--primary)] hover:underline"
+            >
+              {thought.sourceDomain || thought.sourceUrl}
+            </a>
+          )}
+
+          {preview && (
+            <p className="mt-1.5 text-xs leading-relaxed text-[var(--muted-foreground)] line-clamp-3">
+              {preview}
+            </p>
+          )}
+
+          {Array.isArray(thought.tags) && thought.tags.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {(thought.tags as string[]).map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] text-[var(--muted-foreground)]"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -656,6 +888,60 @@ function BrainSmallIcon({ size = 16 }: { size?: number }) {
       <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z" />
       <path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z" />
       <path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4" />
+    </svg>
+  );
+}
+
+function GlobeIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="2" y1="12" x2="22" y2="12" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
+  );
+}
+
+function ZapIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  );
+}
+
+function EditIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
     </svg>
   );
 }

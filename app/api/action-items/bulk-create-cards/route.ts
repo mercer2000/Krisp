@@ -3,6 +3,10 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { boards, columns, cards, cardTags, actionItems } from "@/lib/db/schema";
 import { eq, and, asc, max } from "drizzle-orm";
+import {
+  encryptFields,
+  CARD_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
 
 interface CardInput {
   actionItemId: string;
@@ -71,14 +75,16 @@ export async function POST(request: NextRequest) {
     for (const input of cardInputs) {
       const [card] = await db
         .insert(cards)
-        .values({
-          columnId,
-          title: input.title.slice(0, 255),
-          description: input.description || null,
-          position: nextPosition,
-          priority: input.priority || "medium",
-          dueDate: input.dueDate || null,
-        })
+        .values(
+          encryptFields({
+            columnId,
+            title: input.title.slice(0, 255),
+            description: input.description || null,
+            position: nextPosition,
+            priority: input.priority || "medium",
+            dueDate: input.dueDate || null,
+          }, CARD_ENCRYPTED_FIELDS)
+        )
         .returning();
 
       // Add "Meeting" tag

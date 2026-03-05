@@ -7,7 +7,7 @@ import {
   users,
   brainChatSessions,
 } from "@/lib/db/schema";
-import { eq, and, asc, isNull, isNotNull, max, ilike, desc } from "drizzle-orm";
+import { eq, and, asc, isNull, isNotNull, max, desc } from "drizzle-orm";
 import type {
   ActionResult,
   BoardContext,
@@ -19,6 +19,12 @@ import type {
   QueryCardsData,
   PendingAction,
 } from "./types";
+import {
+  encryptFields,
+  decryptFields,
+  decryptRows,
+  CARD_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
 
 // ── Board Context ───────────────────────────────────
 
@@ -174,7 +180,8 @@ async function findCardsByReference(
     ? isNotNull(cards.deletedAt)
     : isNull(cards.deletedAt);
 
-  const results = await db
+  // Fetch all matching cards, then filter application-side (titles are encrypted)
+  const allResults = await db
     .select({
       id: cards.id,
       title: cards.title,
@@ -192,10 +199,19 @@ async function findCardsByReference(
       and(
         eq(boards.userId, userId),
         deletedFilter,
-        ilike(cards.title, `%${cardRef}%`)
       )
     )
-    .limit(10);
+    .limit(200);
+
+  // Decrypt titles and filter by reference
+  const lower = cardRef.toLowerCase();
+  const results = allResults
+    .map((r) => {
+      const dec = decryptFields(r as Record<string, unknown>, CARD_ENCRYPTED_FIELDS);
+      return dec as typeof r;
+    })
+    .filter((r) => r.title.toLowerCase().includes(lower))
+    .slice(0, 10);
 
   return results;
 }
@@ -264,17 +280,19 @@ export async function executeCreateCard(
     )
     .limit(1);
 
-  // Insert the card
+  // Insert the card (encrypted)
   const [newCard] = await db
     .insert(cards)
-    .values({
-      columnId: targetCol.id,
-      title: data.title,
-      description: data.description ?? null,
-      position: nextPosition,
-      dueDate: data.dueDate ?? null,
-      priority: data.priority ?? "medium",
-    })
+    .values(
+      encryptFields({
+        columnId: targetCol.id,
+        title: data.title,
+        description: data.description ?? null,
+        position: nextPosition,
+        dueDate: data.dueDate ?? null,
+        priority: data.priority ?? "medium",
+      }, CARD_ENCRYPTED_FIELDS)
+    )
     .returning();
 
   // Add tags if provided
@@ -446,7 +464,7 @@ export async function executeUpdateCard(
     return { success: true, message: "No changes specified." };
   }
 
-  await db.update(cards).set(updates).where(eq(cards.id, card.id));
+  await db.update(cards).set(encryptFields(updates, CARD_ENCRYPTED_FIELDS)).where(eq(cards.id, card.id));
 
   return {
     success: true,
@@ -646,7 +664,11 @@ export async function executeQueryCards(
   let totalCards = 0;
 
   for (const col of filteredColumns) {
-    let colCards = col.cards;
+    // Decrypt card titles/descriptions
+    let colCards = col.cards.map((c) => {
+      const dec = decryptFields(c as Record<string, unknown>, CARD_ENCRYPTED_FIELDS);
+      return dec as typeof c;
+    });
 
     if (data.priority) {
       colCards = colCards.filter((c) => c.priority === data.priority);

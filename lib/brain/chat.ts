@@ -6,9 +6,12 @@ import {
   emails,
   decisions,
   actionItems,
+  brainThoughts,
 } from "@/lib/db/schema";
 import { eq, desc, and, isNull } from "drizzle-orm";
 import { chatCompletion } from "@/lib/ai/client";
+import { resolvePrompt } from "@/lib/ai/resolvePrompt";
+import { PROMPT_BRAIN_CHAT } from "@/lib/ai/prompts";
 import {
   encryptFields,
   decryptFields,
@@ -19,12 +22,14 @@ import {
   ACTION_ITEM_ENCRYPTED_FIELDS,
   BRAIN_CHAT_MESSAGE_ENCRYPTED_FIELDS,
   BRAIN_CHAT_SESSION_ENCRYPTED_FIELDS,
+  BRAIN_THOUGHT_ENCRYPTED_FIELDS,
 } from "@/lib/db/encryption-helpers";
 
 const MAX_CONTEXT_MEETINGS = 5;
 const MAX_CONTEXT_EMAILS = 10;
 const MAX_CONTEXT_DECISIONS = 10;
 const MAX_CONTEXT_ACTION_ITEMS = 10;
+const MAX_CONTEXT_THOUGHTS = 10;
 const MAX_HISTORY_MESSAGES = 50;
 
 /**
@@ -77,7 +82,7 @@ export async function processBrainChat(
   const history = decryptRows(historyDesc, BRAIN_CHAT_MESSAGE_ENCRYPTED_FIELDS).reverse();
 
   // Gather context from the user's second brain
-  const [meetings, userEmails, userDecisions, userActionItems] =
+  const [meetings, userEmails, userDecisions, userActionItems, userThoughts] =
     await Promise.all([
       db
         .select({
@@ -147,6 +152,21 @@ export async function processBrainChat(
         )
         .orderBy(desc(actionItems.createdAt))
         .limit(MAX_CONTEXT_ACTION_ITEMS),
+
+      db
+        .select({
+          id: brainThoughts.id,
+          content: brainThoughts.content,
+          source: brainThoughts.source,
+          author: brainThoughts.author,
+          topic: brainThoughts.topic,
+          tags: brainThoughts.tags,
+          createdAt: brainThoughts.createdAt,
+        })
+        .from(brainThoughts)
+        .where(eq(brainThoughts.userId, userId))
+        .orderBy(desc(brainThoughts.createdAt))
+        .limit(MAX_CONTEXT_THOUGHTS),
     ]);
 
   // Decrypt sensitive fields from each data source
@@ -154,6 +174,7 @@ export async function processBrainChat(
   const decEmails = decryptRows(userEmails as Record<string, unknown>[], EMAIL_ENCRYPTED_FIELDS) as typeof userEmails;
   const decDecisions = decryptRows(userDecisions as Record<string, unknown>[], DECISION_ENCRYPTED_FIELDS) as typeof userDecisions;
   const decActionItems = decryptRows(userActionItems as Record<string, unknown>[], ACTION_ITEM_ENCRYPTED_FIELDS) as typeof userActionItems;
+  const decThoughts = decryptRows(userThoughts as Record<string, unknown>[], BRAIN_THOUGHT_ENCRYPTED_FIELDS) as typeof userThoughts;
 
   // Build context string
   const contextParts: string[] = [];
@@ -251,6 +272,25 @@ Transcript: ${transcript}`;
     );
   }
 
+  if (decThoughts.length > 0) {
+    sourcesUsed.push("thoughts");
+    const thoughtCtx = decThoughts
+      .map(
+        (t, i) =>
+          `Thought ${i + 1} [${t.source}${t.topic ? `/${t.topic}` : ""}]: "${(t.content || "").slice(0, 500)}"${
+            t.author ? ` (from: ${t.author})` : ""
+          }${Array.isArray(t.tags) && (t.tags as string[]).length > 0 ? ` tags: ${(t.tags as string[]).join(", ")}` : ""} (${
+            t.createdAt
+              ? new Date(t.createdAt).toLocaleDateString()
+              : "?"
+          })`
+      )
+      .join("\n---\n");
+    contextParts.push(
+      `## Thoughts / Notes (${decThoughts.length} recent)\n${thoughtCtx}`
+    );
+  }
+
   const contextBlock =
     contextParts.length > 0
       ? contextParts.join("\n\n")
@@ -262,18 +302,7 @@ Transcript: ${transcript}`;
     .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
     .join("\n\n");
 
-  const systemPrompt = `You are a knowledgeable AI assistant for the user's "Second Brain" — a personal knowledge management system. You have access to the user's meetings, emails, decisions, and action items.
-
-Your job is to:
-- Answer questions about the user's data accurately
-- Help them find information across meetings, emails, and decisions
-- Identify patterns, connections, and insights across their data
-- Summarize information when asked
-- Be honest when you don't have enough data to answer
-
-Always cite sources when referencing specific meetings, emails, or decisions (e.g., "In your meeting 'Weekly Standup' on Jan 15...").
-
-Keep your responses concise and helpful. Use markdown formatting for readability.`;
+  const systemPrompt = await resolvePrompt(PROMPT_BRAIN_CHAT, userId);
 
   const prompt = `${systemPrompt}
 

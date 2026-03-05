@@ -80,6 +80,18 @@ const NAV_ITEMS = [
     icon: IntegrationsIcon,
   },
   {
+    key: "prompts",
+    label: "AI Prompts",
+    href: "/admin/prompts",
+    icon: AIPromptsIcon,
+  },
+  {
+    key: "extensions",
+    label: "Extensions",
+    href: "/admin/extensions",
+    icon: ExtensionsIcon,
+  },
+  {
     key: "trash",
     label: "Trash",
     href: "/trash",
@@ -327,6 +339,49 @@ function IntegrationsIcon({ size = 20 }: { size?: number }) {
   );
 }
 
+function AIPromptsIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 8V4H8" />
+      <rect width="16" height="12" x="4" y="8" rx="2" />
+      <path d="M2 14h2" />
+      <path d="M20 14h2" />
+      <path d="M15 13v2" />
+      <path d="M9 13v2" />
+    </svg>
+  );
+}
+
+function ExtensionsIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M15 2H9a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1Z" />
+      <path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2" />
+      <path d="m9 14 2 2 4-4" />
+    </svg>
+  );
+}
+
 function TrashNavIcon({ size = 20 }: { size?: number }) {
   return (
     <svg
@@ -448,6 +503,8 @@ export function SideNav() {
     if (href === "/weekly-reviews") return pathname.startsWith("/weekly-reviews");
     if (href === "/analytics") return pathname.startsWith("/analytics");
     if (href === "/admin/integrations") return pathname.startsWith("/admin/integrations");
+    if (href === "/admin/prompts") return pathname.startsWith("/admin/prompts");
+    if (href === "/admin/extensions") return pathname.startsWith("/admin/extensions");
     if (href === "/trash") return pathname === "/trash";
     return pathname === href;
   };

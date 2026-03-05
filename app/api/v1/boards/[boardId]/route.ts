@@ -4,6 +4,10 @@ import { getRequiredUser } from "@/lib/auth/getRequiredUser";
 import { updateBoardSchema } from "@/lib/validators/schemas";
 import { eq, and, asc, isNull } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  decryptFields,
+  CARD_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
 
 export async function GET(
   _request: NextRequest,
@@ -35,7 +39,18 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    return NextResponse.json(board);
+    // Decrypt card titles/descriptions
+    const decryptedBoard = {
+      ...board,
+      columns: board.columns.map((col) => ({
+        ...col,
+        cards: col.cards.map((card) =>
+          decryptFields(card as Record<string, unknown>, CARD_ENCRYPTED_FIELDS) as typeof card
+        ),
+      })),
+    };
+
+    return NextResponse.json(decryptedBoard);
   } catch (error) {
     if (error instanceof Response) throw error;
     return NextResponse.json(

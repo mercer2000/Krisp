@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion } from "@/lib/ai/client";
+import { resolvePrompt } from "@/lib/ai/resolvePrompt";
+import { PROMPT_SEARCH_OPTIMIZER, PROMPT_SEARCH_ANSWER } from "@/lib/ai/prompts";
 import { auth } from "@/auth";
 import {
   searchMeetings,
@@ -48,7 +50,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 1: Use LLM to extract search terms from natural language query
-    const searchTerms = await extractSearchTerms(query);
+    const searchTerms = await extractSearchTerms(query, userId);
 
     // Step 2: Search the database for relevant meetings (scoped to user)
     let meetings = await searchMeetings(searchTerms, userId, 10);
@@ -91,7 +93,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 4: Use LLM to generate an answer based on the query and all available meeting data
-    const answer = await generateAnswer(query, allMeetings);
+    const answer = await generateAnswer(query, allMeetings, userId);
 
     return NextResponse.json({
       meetings: allMeetings,
@@ -161,12 +163,10 @@ export async function GET(request: NextRequest) {
 /**
  * Extract search terms from natural language query using Claude
  */
-async function extractSearchTerms(query: string): Promise<string> {
+async function extractSearchTerms(query: string, userId: string): Promise<string> {
   try {
-    const prompt = `You are a search query optimizer. Extract the key search terms from this question about meeting transcripts.
-Return only the essential keywords that would be useful for searching meeting transcripts.
-Do not include common words like "meeting", "transcript", "find", "search", etc.
-Return just the search terms, nothing else.
+    const basePrompt = await resolvePrompt(PROMPT_SEARCH_OPTIMIZER, userId);
+    const prompt = `${basePrompt}
 
 Question: ${query}`;
 
@@ -183,7 +183,8 @@ Question: ${query}`;
  */
 async function generateAnswer(
   query: string,
-  meetings: WebhookKeyPointsRow[]
+  meetings: WebhookKeyPointsRow[],
+  userId: string
 ): Promise<string> {
   try {
     // Prepare meeting context for the LLM
@@ -201,11 +202,8 @@ Transcript excerpt: ${m.raw_content?.slice(0, 1000) || "No transcript available"
 ---`;
     }).join("\n");
 
-    const prompt = `You are a helpful assistant that answers questions about meeting transcripts.
-You have access to meeting data including titles, dates, speakers, key points, and transcripts.
-Provide concise, helpful answers based on the meeting data provided.
-If you can't find the answer in the provided data, say so clearly.
-When referencing meetings, mention the meeting title and date.
+    const basePrompt = await resolvePrompt(PROMPT_SEARCH_ANSWER, userId);
+    const prompt = `${basePrompt}
 
 Based on the following meeting data, answer this question: "${query}"
 

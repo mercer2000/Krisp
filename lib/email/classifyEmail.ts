@@ -1,4 +1,6 @@
 import { chatCompletion } from "@/lib/ai/client";
+import { resolvePrompt } from "@/lib/ai/resolvePrompt";
+import { PROMPT_EMAIL_CLASSIFY } from "@/lib/ai/prompts";
 import {
   ensureSystemLabels,
   assignLabelsToEmail,
@@ -34,7 +36,11 @@ export async function classifyEmail(
   const allLabels = await ensureSystemLabels(tenantId);
   const labelNames = allLabels.map((l) => l.name);
 
-  const prompt = `Classify this email into one or more categories. Choose ONLY from these labels:
+  const instructions = await resolvePrompt(PROMPT_EMAIL_CLASSIFY, tenantId);
+
+  const prompt = `${instructions}
+
+Available labels:
 ${labelNames.map((n) => `- "${n}"`).join("\n")}
 
 Email:
@@ -42,20 +48,7 @@ From: ${email.sender}
 To: ${email.recipients.join(", ")}
 Subject: ${email.subject || "(No subject)"}
 Body:
-${(email.bodyPlainText || "").slice(0, 3000)}
-
-Respond with ONLY a valid JSON object with this exact structure:
-{
-  "labels": ["Label Name 1", "Label Name 2"],
-  "confidence": {"Label Name 1": 90, "Label Name 2": 75}
-}
-
-Rules:
-- Only use labels from the list above
-- confidence is a number 0-100
-- An email can have multiple labels (e.g. a meeting request that is also action required)
-- Only include labels with confidence >= 60
-- If no label fits well, return {"labels": [], "confidence": {}}`;
+${(email.bodyPlainText || "").slice(0, 3000)}`;
 
   const text = await chatCompletion(prompt, { maxTokens: 500 });
 

@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { autoProcessEmailActions } from "@/lib/actions/autoProcessEmailActions";
+import { dispatchWebhooks } from "@/lib/webhooks/dispatch";
 
 const EMAIL_WEBHOOK_SECRET = process.env.EMAIL_WEBHOOK_SECRET;
 
@@ -106,6 +107,13 @@ export async function POST(
 
     // Insert the email
     const result = await insertEmail(payload, tenantId);
+
+    // Fire outbound webhooks (non-blocking)
+    dispatchWebhooks(tenantId, "email.received", result.id, {
+      sender: payload.from,
+      subject: payload.subject || null,
+      messageId: payload.messageId,
+    }).catch(() => {});
 
     // Auto-extract action items and create Kanban cards in background
     after(async () => {

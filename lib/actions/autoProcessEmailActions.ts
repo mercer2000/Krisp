@@ -9,6 +9,11 @@ import {
 } from "@/lib/db/schema";
 import { eq, and, asc, max } from "drizzle-orm";
 import { extractActionsFromEmail } from "./extractEmailActions";
+import {
+  encryptFields,
+  ACTION_ITEM_ENCRYPTED_FIELDS,
+  CARD_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
 
 interface EmailData {
   sender: string;
@@ -100,18 +105,20 @@ export async function autoProcessEmailActions(
 
   for (const action of extracted) {
     try {
-      // Create the action item
+      // Create the action item (encrypted)
       const [item] = await db
         .insert(actionItems)
-        .values({
-          userId: tenantId,
-          title: action.title,
-          description: action.description || null,
-          assignee: action.assignee || null,
-          extractionSource: "email",
-          priority: action.priority || "medium",
-          dueDate: action.dueDate || null,
-        })
+        .values(
+          encryptFields({
+            userId: tenantId,
+            title: action.title,
+            description: action.description || null,
+            assignee: action.assignee || null,
+            extractionSource: "email",
+            priority: action.priority || "medium",
+            dueDate: action.dueDate || null,
+          }, ACTION_ITEM_ENCRYPTED_FIELDS)
+        )
         .returning();
 
       actionItemsCreated++;
@@ -124,17 +131,19 @@ export async function autoProcessEmailActions(
 
       const nextPosition = (posResult?.maxPosition ?? 0) + 1024;
 
-      // Create Kanban card
+      // Create Kanban card (encrypted)
       const [card] = await db
         .insert(cards)
-        .values({
-          columnId: firstCol.id,
-          title: action.title.slice(0, 255),
-          description: action.description || null,
-          position: nextPosition,
-          priority: action.priority || "medium",
-          dueDate: action.dueDate || null,
-        })
+        .values(
+          encryptFields({
+            columnId: firstCol.id,
+            title: action.title.slice(0, 255),
+            description: action.description || null,
+            position: nextPosition,
+            priority: action.priority || "medium",
+            dueDate: action.dueDate || null,
+          }, CARD_ENCRYPTED_FIELDS)
+        )
         .returning();
 
       // Add "Email" tag for traceability

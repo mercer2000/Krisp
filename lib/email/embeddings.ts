@@ -1,10 +1,28 @@
 import OpenAI from "openai";
 import sql from "./db";
+import { decryptNullable, isEncrypted } from "@/lib/encryption";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const EMBEDDING_MODEL = process.env.OPENAI_EMBEDDING_MODEL || "text-embedding-3-small";
 const BATCH_SIZE = Number(process.env.EMBEDDING_BATCH_SIZE) || 100;
+
+// Columns that need decryption when read from the emails table
+const ENCRYPTED_COLS = ["sender", "subject", "body_plain_text"] as const;
+
+/**
+ * Decrypt encrypted columns on a row read from the emails table.
+ */
+function decryptEmailRow<T extends Record<string, unknown>>(row: T): T {
+  const result = { ...row };
+  for (const col of ENCRYPTED_COLS) {
+    const val = result[col];
+    if (typeof val === "string" && isEncrypted(val)) {
+      (result as Record<string, unknown>)[col] = decryptNullable(val);
+    }
+  }
+  return result;
+}
 
 /**
  * Prepare email text for embedding by concatenating subject, sender, and body.
@@ -54,10 +72,11 @@ async function generateEmbeddingsBatch(texts: string[]): Promise<number[][]> {
 }
 
 /**
- * Process unembedded emails: fetch emails with NULL embedding, generate
- * embeddings via OpenAI, and store them back in the database.
+ * Process unembedded emails: fetch emails with NULL embedding, decrypt,
+ * generate embeddings via OpenAI from plaintext, and store them back.
  *
- * Returns the number of emails processed.
+ * Pipeline order: read ciphertext → decrypt → generate embedding → store embedding.
+ * The encrypted text columns stay encrypted; only the embedding column is updated.
  */
 export async function processUnembeddedEmails(tenantId: string): Promise<number> {
   const rows = await sql`
@@ -71,13 +90,15 @@ export async function processUnembeddedEmails(tenantId: string): Promise<number>
 
   if (rows.length === 0) return 0;
 
-  const texts = rows.map((row) =>
-    prepareEmailText({
-      subject: row.subject as string | null,
-      sender: row.sender as string,
-      body_plain_text: row.body_plain_text as string | null,
-    })
-  );
+  // Decrypt before preparing text for embedding generation
+  const texts = rows.map((row) => {
+    const decrypted = decryptEmailRow(row as Record<string, unknown>);
+    return prepareEmailText({
+      subject: decrypted.subject as string | null,
+      sender: decrypted.sender as string,
+      body_plain_text: decrypted.body_plain_text as string | null,
+    });
+  });
 
   const embeddings = await generateEmbeddingsBatch(texts);
 
@@ -116,6 +137,7 @@ export async function getEmbeddingStatus(tenantId: string): Promise<{
 
 /**
  * Perform vector similarity search on emails.
+ * Decrypts sender/subject/preview before returning.
  */
 export async function vectorSearch(
   tenantId: string,
@@ -139,7 +161,7 @@ export async function vectorSearch(
     SELECT
       id, sender, subject, received_at, recipients,
       attachments_metadata,
-      LEFT(body_plain_text, 200) AS preview,
+      body_plain_text,
       web_link,
       1 - (embedding <=> ${embeddingStr}::vector) AS similarity
     FROM emails
@@ -149,21 +171,30 @@ export async function vectorSearch(
     ORDER BY embedding <=> ${embeddingStr}::vector
     LIMIT ${limit}
   `;
-  return rows as Array<{
-    id: number;
-    sender: string;
-    subject: string | null;
-    received_at: string;
-    recipients: string[];
-    attachments_metadata: unknown[];
-    preview: string | null;
-    web_link: string | null;
-    similarity: number;
-  }>;
+
+  return (rows as Record<string, unknown>[]).map((row) => {
+    const dr = decryptEmailRow(row);
+    return {
+      id: dr.id as number,
+      sender: dr.sender as string,
+      subject: dr.subject as string | null,
+      received_at: dr.received_at as string,
+      recipients: dr.recipients as string[],
+      attachments_metadata: dr.attachments_metadata as unknown[],
+      preview: dr.body_plain_text
+        ? (dr.body_plain_text as string).slice(0, 200)
+        : null,
+      web_link: dr.web_link as string | null,
+      similarity: dr.similarity as number,
+    };
+  });
 }
 
 /**
- * Perform keyword search on emails (existing ILIKE approach).
+ * Perform keyword search on emails (application-side filtering).
+ *
+ * NOTE: With encrypted columns, ILIKE cannot match on ciphertext.
+ * We fetch recent emails, decrypt, and filter in-app.
  */
 export async function keywordSearch(
   tenantId: string,
@@ -185,16 +216,18 @@ export async function keywordSearch(
     SELECT
       id, sender, subject, received_at, recipients,
       attachments_metadata,
-      LEFT(body_plain_text, 200) AS preview,
+      body_plain_text,
       web_link
     FROM emails
     WHERE
       tenant_id = ${tenantId}
-      AND (sender ILIKE '%' || ${query} || '%' OR subject ILIKE '%' || ${query} || '%')
+      AND deleted_at IS NULL
     ORDER BY received_at DESC
-    LIMIT ${limit}
+    LIMIT 200
   `;
-  return rows as Array<{
+
+  const lower = query.toLowerCase();
+  const results: Array<{
     id: number;
     sender: string;
     subject: string | null;
@@ -203,7 +236,31 @@ export async function keywordSearch(
     attachments_metadata: unknown[];
     preview: string | null;
     web_link: string | null;
-  }>;
+  }> = [];
+
+  for (const row of rows as Record<string, unknown>[]) {
+    const dr = decryptEmailRow(row);
+    const sender = (dr.sender as string).toLowerCase();
+    const subject = (dr.subject as string | null)?.toLowerCase() || "";
+
+    if (sender.includes(lower) || subject.includes(lower)) {
+      results.push({
+        id: dr.id as number,
+        sender: dr.sender as string,
+        subject: dr.subject as string | null,
+        received_at: dr.received_at as string,
+        recipients: dr.recipients as string[],
+        attachments_metadata: dr.attachments_metadata as unknown[],
+        preview: dr.body_plain_text
+          ? (dr.body_plain_text as string).slice(0, 200)
+          : null,
+        web_link: dr.web_link as string | null,
+      });
+      if (results.length >= limit) break;
+    }
+  }
+
+  return results;
 }
 
 /**

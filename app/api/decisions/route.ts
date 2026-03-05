@@ -2,8 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { decisions } from "@/lib/db/schema";
-import { eq, desc, and, sql, isNull, ilike } from "drizzle-orm";
+import { eq, desc, and, sql, isNull } from "drizzle-orm";
 import { createDecisionSchema } from "@/lib/validators/schemas";
+import {
+  encryptFields,
+  decryptFields,
+  decryptRows,
+  DECISION_ENCRYPTED_FIELDS,
+  WEBHOOK_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,6 +25,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get("category");
     const q = searchParams.get("q");
 
+    // Build conditions without keyword filter (applied app-side after decryption)
     const conditions = [eq(decisions.userId, userId), isNull(decisions.deletedAt)];
     if (status) {
       conditions.push(
@@ -28,9 +36,6 @@ export async function GET(request: NextRequest) {
       conditions.push(
         eq(decisions.category, category as "technical" | "process" | "budget" | "strategic" | "other")
       );
-    }
-    if (q) {
-      conditions.push(ilike(decisions.statement, `%${q}%`));
     }
 
     const items = await db
@@ -61,7 +66,25 @@ export async function GET(request: NextRequest) {
       .where(and(...conditions))
       .orderBy(desc(decisions.createdAt));
 
-    return NextResponse.json({ decisions: items });
+    // Decrypt decision fields and meeting title
+    let decrypted = items.map((item) => {
+      const dec = decryptFields(item as Record<string, unknown>, DECISION_ENCRYPTED_FIELDS);
+      // Also decrypt the meeting title sub-select
+      if (typeof dec.meetingTitle === "string") {
+        dec.meetingTitle = decryptFields({ meetingTitle: dec.meetingTitle } as Record<string, unknown>, ["meetingTitle"]).meetingTitle;
+      }
+      return dec;
+    }) as typeof items;
+
+    // Apply keyword filter application-side on decrypted statement
+    if (q) {
+      const lower = q.toLowerCase();
+      decrypted = decrypted.filter((d) =>
+        (d.statement as string).toLowerCase().includes(lower)
+      );
+    }
+
+    return NextResponse.json({ decisions: decrypted });
   } catch (error) {
     console.error("Error fetching decisions:", error);
     return NextResponse.json(
@@ -93,21 +116,24 @@ export async function POST(request: NextRequest) {
 
     const [item] = await db
       .insert(decisions)
-      .values({
-        userId,
-        statement,
-        context: context ?? null,
-        rationale: rationale ?? null,
-        participants: participants ?? [],
-        category: category ?? "other",
-        priority: priority ?? "medium",
-        meetingId: meetingId ?? null,
-        emailId: emailId ?? null,
-        decisionDate: decisionDate ? new Date(decisionDate) : null,
-      })
+      .values(
+        encryptFields({
+          userId,
+          statement,
+          context: context ?? null,
+          rationale: rationale ?? null,
+          participants: participants ?? [],
+          category: category ?? "other",
+          priority: priority ?? "medium",
+          meetingId: meetingId ?? null,
+          emailId: emailId ?? null,
+          decisionDate: decisionDate ? new Date(decisionDate) : null,
+        }, DECISION_ENCRYPTED_FIELDS)
+      )
       .returning();
 
-    return NextResponse.json({ decision: item }, { status: 201 });
+    const decrypted = decryptFields(item as Record<string, unknown>, DECISION_ENCRYPTED_FIELDS);
+    return NextResponse.json({ decision: decrypted }, { status: 201 });
   } catch (error) {
     console.error("Error creating decision:", error);
     return NextResponse.json(

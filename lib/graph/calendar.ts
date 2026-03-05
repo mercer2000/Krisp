@@ -1,6 +1,11 @@
 import { db } from "@/lib/db";
 import { calendarEvents, calendarSyncState } from "@/lib/db/schema";
 import { eq, and, gte, lte, desc, asc } from "drizzle-orm";
+import {
+  encryptFields,
+  decryptRows,
+  CALENDAR_EVENT_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
 
 export interface GraphCalendarEvent {
   id: string;
@@ -160,31 +165,32 @@ export async function syncCalendarEvents(
   for (const event of events) {
     try {
       const mapped = mapGraphEvent(event, tenantId, credentialId);
+      const encrypted = encryptFields(mapped, CALENDAR_EVENT_ENCRYPTED_FIELDS);
       await db
         .insert(calendarEvents)
-        .values(mapped)
+        .values(encrypted)
         .onConflictDoUpdate({
           target: [calendarEvents.tenantId, calendarEvents.graphEventId],
           set: {
-            subject: mapped.subject,
-            bodyPreview: mapped.bodyPreview,
-            bodyHtml: mapped.bodyHtml,
-            startDateTime: mapped.startDateTime,
-            endDateTime: mapped.endDateTime,
-            isAllDay: mapped.isAllDay,
-            location: mapped.location,
-            organizerEmail: mapped.organizerEmail,
-            organizerName: mapped.organizerName,
-            attendees: mapped.attendees,
-            webLink: mapped.webLink,
-            isCancelled: mapped.isCancelled,
-            showAs: mapped.showAs,
-            importance: mapped.importance,
-            isRecurring: mapped.isRecurring,
-            seriesMasterId: mapped.seriesMasterId,
-            rawPayload: mapped.rawPayload,
-            lastSyncedAt: mapped.lastSyncedAt,
-            updatedAt: mapped.updatedAt,
+            subject: encrypted.subject,
+            bodyPreview: encrypted.bodyPreview,
+            bodyHtml: encrypted.bodyHtml,
+            startDateTime: encrypted.startDateTime,
+            endDateTime: encrypted.endDateTime,
+            isAllDay: encrypted.isAllDay,
+            location: encrypted.location,
+            organizerEmail: encrypted.organizerEmail,
+            organizerName: encrypted.organizerName,
+            attendees: encrypted.attendees,
+            webLink: encrypted.webLink,
+            isCancelled: encrypted.isCancelled,
+            showAs: encrypted.showAs,
+            importance: encrypted.importance,
+            isRecurring: encrypted.isRecurring,
+            seriesMasterId: encrypted.seriesMasterId,
+            rawPayload: encrypted.rawPayload,
+            lastSyncedAt: encrypted.lastSyncedAt,
+            updatedAt: encrypted.updatedAt,
           },
         });
       synced++;
@@ -226,7 +232,7 @@ export async function getUpcomingEvents(
   limit = 10
 ) {
   const now = new Date();
-  return db
+  const rows = await db
     .select()
     .from(calendarEvents)
     .where(
@@ -238,6 +244,7 @@ export async function getUpcomingEvents(
     )
     .orderBy(asc(calendarEvents.startDateTime))
     .limit(limit);
+  return decryptRows(rows as Record<string, unknown>[], CALENDAR_EVENT_ENCRYPTED_FIELDS) as typeof rows;
 }
 
 /**
@@ -248,7 +255,7 @@ export async function getCalendarEventsInRange(
   start: Date,
   end: Date
 ) {
-  return db
+  const rows = await db
     .select()
     .from(calendarEvents)
     .where(
@@ -259,6 +266,7 @@ export async function getCalendarEventsInRange(
       )
     )
     .orderBy(asc(calendarEvents.startDateTime));
+  return decryptRows(rows as Record<string, unknown>[], CALENDAR_EVENT_ENCRYPTED_FIELDS) as typeof rows;
 }
 
 /**

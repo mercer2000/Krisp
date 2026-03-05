@@ -1,8 +1,12 @@
 import { db } from "@/lib/db";
 import { boards, columns, cards } from "@/lib/db/schema";
 import { getRequiredUser } from "@/lib/auth/getRequiredUser";
-import { eq, and, ilike, or } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  decryptFields,
+  CARD_ENCRYPTED_FIELDS,
+} from "@/lib/db/encryption-helpers";
 
 export async function GET(
   request: NextRequest,
@@ -32,10 +36,9 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // Search cards in board by title and description
-    const searchPattern = `%${query}%`;
-
-    const matchingCards = await db
+    // Fetch all non-archived cards in board, then filter application-side
+    // (title/description are encrypted so ILIKE cannot be used)
+    const allCards = await db
       .select({
         id: cards.id,
         title: cards.title,
@@ -52,12 +55,17 @@ export async function GET(
         and(
           eq(columns.boardId, boardId),
           eq(cards.archived, false),
-          or(
-            ilike(cards.title, searchPattern),
-            ilike(cards.description, searchPattern),
-          ),
         ),
       );
+
+    const lower = query.toLowerCase();
+    const matchingCards = allCards
+      .map((c) => decryptFields(c as Record<string, unknown>, CARD_ENCRYPTED_FIELDS) as typeof c)
+      .filter((c) => {
+        const title = (c.title || "").toLowerCase();
+        const desc = (c.description || "").toLowerCase();
+        return title.includes(lower) || desc.includes(lower);
+      });
 
     return NextResponse.json(matchingCards);
   } catch (error) {

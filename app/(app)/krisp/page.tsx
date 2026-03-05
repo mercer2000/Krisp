@@ -182,6 +182,36 @@ function KrispPageInner() {
     return `${hours}h ${remainingMins}m`;
   };
 
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<number | null>(null);
+
+  const handleDeleteClick = (e: React.MouseEvent, meetingId: number) => {
+    e.stopPropagation();
+    setConfirmingDeleteId(meetingId);
+  };
+
+  const handleDeleteConfirm = async (e: React.MouseEvent, meetingId: number) => {
+    e.stopPropagation();
+    setDeletingId(meetingId);
+    try {
+      const res = await fetch(`/api/meetings/${meetingId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      setMeetings((prev) => prev.filter((m) => m.id !== meetingId));
+      setTotalCount((c) => c - 1);
+      setUnfilteredTotal((c) => c - 1);
+    } catch {
+      alert("Failed to delete meeting. Please try again.");
+    } finally {
+      setDeletingId(null);
+      setConfirmingDeleteId(null);
+    }
+  };
+
+  const handleDeleteCancel = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConfirmingDeleteId(null);
+  };
+
   const getActionItems = (meeting: Meeting): string[] => {
     if (!Array.isArray(meeting.content)) return [];
     return meeting.content
@@ -479,10 +509,60 @@ function KrispPageInner() {
                     <div
                       key={meeting.id}
                       onClick={() => setOpenMeetingId(meeting.id)}
-                      className="p-5 bg-[var(--card)] border border-[var(--border)] rounded-lg hover:border-[var(--muted-foreground)] transition-colors flex flex-col cursor-pointer"
+                      className="group relative p-5 bg-[var(--card)] border border-[var(--border)] rounded-lg hover:border-[var(--muted-foreground)] transition-colors flex flex-col cursor-pointer"
                     >
+                      {/* Delete confirmation overlay */}
+                      {confirmingDeleteId === meeting.id && (
+                        <div
+                          className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-lg bg-[var(--card)]/95 backdrop-blur-sm border border-[var(--destructive)]/30"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <p className="text-sm font-medium text-[var(--foreground)]">Delete this meeting?</p>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteConfirm(e, meeting.id)}
+                              disabled={deletingId === meeting.id}
+                              className="px-4 py-1.5 text-sm font-medium rounded-md bg-[var(--destructive)] text-white hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-1.5"
+                            >
+                              {deletingId === meeting.id ? (
+                                <>
+                                  <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                  </svg>
+                                  Deleting...
+                                </>
+                              ) : (
+                                "Delete"
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleDeleteCancel}
+                              disabled={deletingId === meeting.id}
+                              className="px-4 py-1.5 text-sm font-medium rounded-md border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--secondary)] transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Delete button */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteClick(e, meeting.id)}
+                        className="absolute top-3 right-3 p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-[var(--destructive)]/10 text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-all"
+                        title="Delete meeting"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+
                       {/* Title */}
-                      <h3 className="font-medium text-[var(--foreground)] leading-snug line-clamp-2">
+                      <h3 className="font-medium text-[var(--foreground)] leading-snug line-clamp-2 pr-8">
                         {meeting.meeting_title || "Untitled Meeting"}
                       </h3>
 
