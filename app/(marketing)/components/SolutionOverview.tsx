@@ -67,18 +67,13 @@ export function SolutionOverview() {
           ))}
         </div>
 
-        {/* Connecting arrow */}
-        <div className="flex justify-center mb-12">
-          <svg className="w-6 h-12 text-slate-700" fill="none" viewBox="0 0 24 48" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 0v40m0 0-6-6m6 6 6-6" />
-          </svg>
-        </div>
-
-        {/* Unified dashboard screenshot */}
-        <div className="rounded-xl border-2 border-dashed border-slate-700 bg-slate-900/30 aspect-[16/9] flex items-center justify-center">
-          <span className="text-slate-600 text-lg font-medium">
-            Screenshot: Unified Dashboard
-          </span>
+        {/* Brain visualization */}
+        <div className="mt-4">
+          <img
+            src="/images/landing-brain.png"
+            alt="AI brain connecting meetings, emails, decisions, and tasks into one intelligent system"
+            className="w-full rounded-xl"
+          />
         </div>
       </div>
     </section>
