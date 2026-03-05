@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { brainChatSessions } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
+import { decryptRows, BRAIN_CHAT_SESSION_ENCRYPTED_FIELDS } from "@/lib/db/encryption-helpers";
 
 /**
  * GET /api/brain/sessions
@@ -27,7 +28,7 @@ export async function GET() {
       .where(eq(brainChatSessions.userId, userId))
       .orderBy(desc(brainChatSessions.updatedAt));
 
-    return NextResponse.json({ sessions });
+    return NextResponse.json({ sessions: decryptRows(sessions, BRAIN_CHAT_SESSION_ENCRYPTED_FIELDS) });
   } catch (error) {
     console.error("Error fetching brain sessions:", error);
     return NextResponse.json(
