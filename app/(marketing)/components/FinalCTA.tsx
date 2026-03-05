@@ -3,10 +3,12 @@ export function FinalCTA() {
     <section id="book-demo" className="px-6 py-24 sm:py-32 border-t border-slate-800/50">
       <div className="mx-auto max-w-3xl text-center">
         <h2 className="text-3xl sm:text-4xl font-bold text-white">
-          Ready to stop losing context?
+          Stop trusting your memory.
+          <br />
+          Start using your second brain.
         </h2>
         <p className="mt-4 text-lg text-slate-400">
-          See how Second Noggin can be your executive second brain.
+          See how SecondNoggin keeps you in control of every meeting, decision, and task.
         </p>
         <div className="mt-10">
           <a
