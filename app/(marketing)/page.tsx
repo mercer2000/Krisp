@@ -1,6 +1,6 @@
 import { NavHeader } from "./components/NavHeader";
 import { Hero } from "./components/Hero";
-import { ProblemStatement } from "./components/ProblemStatement";
+import { ProblemTriptych } from "./components/ProblemTriptych";
 import { FeatureShowcase } from "./components/FeatureShowcase";
 import { HowItWorks } from "./components/HowItWorks";
 import { Integrations } from "./components/Integrations";
@@ -20,7 +20,7 @@ export default function LandingPage() {
       <NavHeader />
       <main>
         <Hero />
-        <ProblemStatement />
+        <ProblemTriptych />
         <FeatureShowcase />
         <HowItWorks />
         <Integrations />
