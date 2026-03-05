@@ -9,7 +9,7 @@ import {
   decisions,
   actionItems,
 } from "@/lib/db/schema";
-import { eq, desc, and, isNull, asc } from "drizzle-orm";
+import { eq, desc, and, isNull } from "drizzle-orm";
 import { chatCompletion, TokenLimitError } from "@/lib/ai/client";
 import { classifyIntent } from "@/lib/brain/intentParser";
 import {
@@ -39,7 +39,7 @@ const MAX_CONTEXT_MEETINGS = 5;
 const MAX_CONTEXT_EMAILS = 8;
 const MAX_CONTEXT_DECISIONS = 10;
 const MAX_CONTEXT_ACTION_ITEMS = 10;
-const MAX_HISTORY_MESSAGES = 10;
+const MAX_HISTORY_MESSAGES = 50;
 const PENDING_ACTION_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 
 /**
@@ -85,13 +85,14 @@ export async function POST(request: NextRequest) {
       content: message.trim(),
     });
 
-    // Fetch conversation history for context
-    const history = await db
+    // Fetch conversation history for context (most recent first, then reverse for chronological order)
+    const historyDesc = await db
       .select({ role: brainChatMessages.role, content: brainChatMessages.content })
       .from(brainChatMessages)
       .where(eq(brainChatMessages.sessionId, activeSessionId))
-      .orderBy(asc(brainChatMessages.createdAt))
+      .orderBy(desc(brainChatMessages.createdAt))
       .limit(MAX_HISTORY_MESSAGES);
+    const history = historyDesc.reverse();
 
     // ── Intent Classification ───────────────────────────
     const boardContext = await getUserBoardContext(userId);

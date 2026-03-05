@@ -7,14 +7,14 @@ import {
   decisions,
   actionItems,
 } from "@/lib/db/schema";
-import { eq, desc, and, isNull, asc } from "drizzle-orm";
+import { eq, desc, and, isNull } from "drizzle-orm";
 import { chatCompletion } from "@/lib/ai/client";
 
 const MAX_CONTEXT_MEETINGS = 5;
 const MAX_CONTEXT_EMAILS = 8;
 const MAX_CONTEXT_DECISIONS = 10;
 const MAX_CONTEXT_ACTION_ITEMS = 10;
-const MAX_HISTORY_MESSAGES = 10;
+const MAX_HISTORY_MESSAGES = 50;
 
 /**
  * Process a Brain AI chat message for a given user.
@@ -51,16 +51,17 @@ export async function processBrainChat(
     content: message.trim(),
   });
 
-  // Fetch conversation history for context
-  const history = await db
+  // Fetch conversation history for context (most recent first, then reverse for chronological order)
+  const historyDesc = await db
     .select({
       role: brainChatMessages.role,
       content: brainChatMessages.content,
     })
     .from(brainChatMessages)
     .where(eq(brainChatMessages.sessionId, activeSessionId))
-    .orderBy(asc(brainChatMessages.createdAt))
+    .orderBy(desc(brainChatMessages.createdAt))
     .limit(MAX_HISTORY_MESSAGES);
+  const history = historyDesc.reverse();
 
   // Gather context from the user's second brain
   const [meetings, userEmails, userDecisions, userActionItems] =
