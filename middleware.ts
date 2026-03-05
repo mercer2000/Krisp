@@ -3,17 +3,18 @@ import { NextResponse } from "next/server";
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
-  const isAuthRoute =
+  const isPublicRoute =
+    req.nextUrl.pathname === "/" ||
     req.nextUrl.pathname.startsWith("/login") ||
     req.nextUrl.pathname.startsWith("/register") ||
     req.nextUrl.pathname.startsWith("/forgot-password") ||
     req.nextUrl.pathname.startsWith("/reset-password");
 
-  if (!isLoggedIn && !isAuthRoute) {
+  if (!isLoggedIn && !isPublicRoute) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  if (isLoggedIn && isAuthRoute) {
+  if (isLoggedIn && isPublicRoute) {
     return NextResponse.redirect(new URL("/boards", req.url));
   }
 });
