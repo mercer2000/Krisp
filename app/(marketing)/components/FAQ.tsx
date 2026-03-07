@@ -6,7 +6,7 @@ const faqs = [
   {
     question: "How does it capture my meetings?",
     answer:
-      "SecondNoggin integrates with Krisp and Zoom. Meetings are automatically transcribed, and AI extracts key points, decisions, and action items.",
+      "MyOpenBrain integrates with Krisp and Zoom. Meetings are automatically transcribed, and AI extracts key points, decisions, and action items.",
   },
   {
     question: "Is my data private and secure?",
@@ -21,12 +21,12 @@ const faqs = [
   {
     question: "How long does setup take?",
     answer:
-      "Most users are up and running in under 10 minutes. Connect your calendar and email, and SecondNoggin starts working immediately.",
+      "Most users are up and running in under 10 minutes. Connect your calendar and email, and MyOpenBrain starts working immediately.",
   },
   {
     question: "How is this different from Notion / Otter / Fireflies?",
     answer:
-      "Those tools do one thing well. SecondNoggin unifies meetings, emails, decisions, and tasks into one searchable system with AI that works across all your data.",
+      "Those tools do one thing well. MyOpenBrain unifies meetings, emails, decisions, and tasks into one searchable system with AI that works across all your data.",
   },
   {
     question: "Can I export my data?",
@@ -36,7 +36,7 @@ const faqs = [
   {
     question: "Does my whole team need to use it?",
     answer:
-      "No. SecondNoggin works for individuals. Team features are available but not required.",
+      "No. MyOpenBrain works for individuals. Team features are available but not required.",
   },
 ];
 

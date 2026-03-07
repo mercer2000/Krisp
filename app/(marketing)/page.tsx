@@ -11,7 +11,7 @@ import { FinalCTA } from "./components/FinalCTA";
 import { Footer } from "./components/Footer";
 
 export const metadata = {
-  title: "SecondNoggin — Your AI second brain for work",
+  title: "MyOpenBrain — Your AI second brain for work",
   description:
     "Meetings, emails, decisions, and tasks — captured by AI, searchable in seconds. Your entire work context in one place.",
 };
