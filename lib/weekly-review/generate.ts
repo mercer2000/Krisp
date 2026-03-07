@@ -194,7 +194,7 @@ ${decisionSummaries || "No decisions this week."}
 ## Open Action Items (all time)
 ${unresolvedItems.map((a) => `- [${a.status}] "${a.title}" (${a.priority}${a.dueDate ? `, due ${a.dueDate}` : ""}${a.assignee ? `, assigned to ${a.assignee}` : ""})`).join("\n") || "No open action items."}`;
 
-  const text = await chatCompletion(prompt, { maxTokens: 4096 });
+  const text = await chatCompletion(prompt, { maxTokens: 4096, userId });
 
   try {
     return JSON.parse(text) as {

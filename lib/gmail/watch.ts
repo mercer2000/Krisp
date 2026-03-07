@@ -429,6 +429,21 @@ export async function getActiveWatch(tenantId: string) {
 }
 
 /**
+ * Get all active watch subscriptions for a tenant (for multi-account listing).
+ */
+export async function getActiveWatches(tenantId: string) {
+  return db
+    .select()
+    .from(gmailWatchSubscriptions)
+    .where(
+      and(
+        eq(gmailWatchSubscriptions.tenantId, tenantId),
+        eq(gmailWatchSubscriptions.active, true)
+      )
+    );
+}
+
+/**
  * Update the historyId for a watch subscription after processing.
  */
 export async function updateWatchHistoryId(

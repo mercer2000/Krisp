@@ -17,6 +17,7 @@ export function useUpcomingEvents(limit = 5) {
   return useQuery<{ events: CalendarEvent[] }>({
     queryKey: ["calendar", "upcoming", limit],
     queryFn: () => fetchJSON(`/api/calendar/upcoming?limit=${limit}`),
+    refetchInterval: 5 * 60 * 1000, // poll every 5 minutes
   });
 }
 
@@ -73,5 +74,73 @@ export function useSyncState() {
   }>({
     queryKey: ["calendar", "syncState"],
     queryFn: () => fetchJSON("/api/calendar/sync"),
+  });
+}
+
+export interface OutlookAccount {
+  id: string;
+  outlookEmail: string;
+  lastSyncAt?: string | null;
+}
+
+export function useOutlookCalendarStatus() {
+  return useQuery<{
+    connected: boolean;
+    accounts: OutlookAccount[];
+  }>({
+    queryKey: ["calendar", "outlookStatus"],
+    queryFn: () => fetchJSON("/api/outlook/calendar"),
+  });
+}
+
+export interface GoogleCalendarAccount {
+  id: string;
+  googleEmail: string;
+  lastSyncAt?: string | null;
+}
+
+export function useGoogleCalendarStatus() {
+  return useQuery<{
+    connected: boolean;
+    accounts: GoogleCalendarAccount[];
+  }>({
+    queryKey: ["calendar", "googleStatus"],
+    queryFn: () => fetchJSON("/api/google/calendar"),
+  });
+}
+
+export function useGoogleCalendarSync() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { accountId?: string; daysBack?: number; daysForward?: number }) =>
+      fetchJSON<{ message: string; synced: number; errors: number }>(
+        "/api/google/calendar",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["calendar"] });
+    },
+  });
+}
+
+export function useOutlookCalendarSync() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { accountId?: string; daysBack?: number; daysForward?: number }) =>
+      fetchJSON<{ message: string; synced: number; errors: number }>(
+        "/api/outlook/calendar",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["calendar"] });
+    },
   });
 }

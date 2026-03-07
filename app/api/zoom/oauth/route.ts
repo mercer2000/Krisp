@@ -1,15 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import {
-  getZoomTokenForTenant,
+  buildZoomAuthUrl,
+  getZoomTokensForTenant,
   deactivateZoomToken,
 } from "@/lib/zoom/oauth";
+import { randomUUID } from "crypto";
 
 /**
  * GET /api/zoom/oauth
- * Returns the current Zoom OAuth connection status for the authenticated user.
+ * Returns the current Zoom OAuth connection status (all accounts),
+ * or initiates the OAuth flow if ?action=connect is provided.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     const userId = session?.user?.id;
@@ -17,26 +20,41 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const token = await getZoomTokenForTenant(userId);
+    const action = request.nextUrl.searchParams.get("action");
 
-    if (!token) {
-      return NextResponse.json({ connected: false });
+    if (action === "connect") {
+      const origin = request.nextUrl.origin;
+      const redirectUri = `${origin}/api/zoom/oauth/callback`;
+      const state = `${userId}:${randomUUID()}`;
+      const authUrl = buildZoomAuthUrl(redirectUri, state);
+      return NextResponse.redirect(authUrl);
     }
 
-    const isExpired = new Date(token.token_expiry) < new Date();
+    const tokens = await getZoomTokensForTenant(userId);
+
+    if (tokens.length === 0) {
+      return NextResponse.json({ connected: false, accounts: [] });
+    }
+
+    const accounts = tokens.map((token) => ({
+      id: token.id,
+      zoomEmail: token.zoom_email,
+      zoomUserId: token.zoom_user_id,
+      tokenExpiry: token.token_expiry,
+      isExpired: new Date(token.token_expiry) < new Date(),
+      lastSyncAt: token.last_sync_at,
+      createdAt: token.created_at,
+      updatedAt: token.updated_at,
+    }));
 
     return NextResponse.json({
       connected: true,
-      zoomAccountId: token.zoom_account_id,
-      tokenExpiry: token.token_expiry,
-      isExpired,
-      createdAt: token.created_at,
-      updatedAt: token.updated_at,
+      accounts,
     });
   } catch (error) {
-    console.error("Error fetching Zoom OAuth status:", error);
+    console.error("Error in Zoom OAuth route:", error);
     return NextResponse.json(
-      { error: "Failed to fetch Zoom connection status" },
+      { error: "Failed to process request" },
       { status: 500 }
     );
   }
@@ -44,9 +62,9 @@ export async function GET() {
 
 /**
  * DELETE /api/zoom/oauth
- * Disconnect the Zoom integration for the authenticated user.
+ * Disconnect a specific Zoom account. Requires ?accountId=<uuid>.
  */
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   try {
     const session = await auth();
     const userId = session?.user?.id;
@@ -54,10 +72,18 @@ export async function DELETE() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await deactivateZoomToken(userId);
+    const accountId = request.nextUrl.searchParams.get("accountId");
+    if (!accountId) {
+      return NextResponse.json(
+        { error: "accountId query parameter is required" },
+        { status: 400 }
+      );
+    }
+
+    await deactivateZoomToken(accountId, userId);
 
     return NextResponse.json({
-      message: "Zoom integration disconnected",
+      message: "Zoom account disconnected",
     });
   } catch (error) {
     console.error("Error disconnecting Zoom:", error);

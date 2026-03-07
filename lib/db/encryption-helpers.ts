@@ -84,6 +84,12 @@ export const WEEKLY_REVIEW_ENCRYPTED_FIELDS = ["synthesisReport"] as const;
 /** brain_thoughts columns that store sensitive plaintext */
 export const BRAIN_THOUGHT_ENCRYPTED_FIELDS = ["content"] as const;
 
+/** daily_briefings columns that store sensitive plaintext */
+export const DAILY_BRIEFING_ENCRYPTED_FIELDS = ["briefingHtml"] as const;
+
+/** email_contacts columns that store sensitive plaintext (email stored plaintext for dedup) */
+export const EMAIL_CONTACT_ENCRYPTED_FIELDS = ["displayName"] as const;
+
 // ── Generic helpers ──────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

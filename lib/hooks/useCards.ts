@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Card, CardTag } from "@/types";
+import type { Card, CardTag, ChecklistItem } from "@/types";
 
 async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
@@ -48,6 +48,7 @@ export function useUpdateCard(boardId: string) {
       dueDate?: string | null;
       colorLabel?: string | null;
       archived?: boolean;
+      checklist?: ChecklistItem[] | null;
     }) =>
       fetchJSON<Card>(`/api/v1/cards/${id}`, {
         method: "PATCH",
@@ -63,6 +64,17 @@ export function useDeleteCard(boardId: string) {
   return useMutation({
     mutationFn: (cardId: string) =>
       fetchJSON(`/api/v1/cards/${cardId}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["board", boardId] }),
+  });
+}
+
+export function useDeleteCards(boardId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (cardIds: string[]) =>
+      Promise.all(
+        cardIds.map((id) => fetchJSON(`/api/v1/cards/${id}`, { method: "DELETE" }))
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["board", boardId] }),
   });
 }

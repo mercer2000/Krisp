@@ -131,7 +131,7 @@ async function extractMetadata(text: string, userId: string): Promise<{
 Content:
 ${text.slice(0, 2000)}`;
 
-    const raw = await chatCompletion(prompt, { maxTokens: 100 });
+    const raw = await chatCompletion(prompt, { maxTokens: 100, userId });
     const cleaned = raw.replace(/```json\n?|\n?```/g, "").trim();
     const parsed = JSON.parse(cleaned);
     return {

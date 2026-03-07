@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getEmailDetail, deleteEmail } from "@/lib/email/emails";
+import { getGmailEmailById } from "@/lib/gmail/emails";
 import { getZoomMessageById } from "@/lib/zoom/messages";
 import { db } from "@/lib/db";
 import { graphSubscriptions } from "@/lib/db/schema";
@@ -29,30 +30,55 @@ export async function GET(
 
     const { id } = await params;
 
-    // UUID IDs are Zoom chat messages
+    // UUID IDs are Gmail emails or Zoom chat messages
     if (UUID_REGEX.test(id)) {
-      const msg = await getZoomMessageById(id, userId);
-      if (!msg) {
-        return NextResponse.json({ error: "Message not found" }, { status: 404 });
+      // Try Gmail first
+      const gmailEmail = await getGmailEmailById(id, userId);
+      if (gmailEmail) {
+        return NextResponse.json({
+          id: gmailEmail.id,
+          tenant_id: gmailEmail.tenant_id,
+          message_id: gmailEmail.gmail_message_id,
+          sender: gmailEmail.sender,
+          recipients: Array.isArray(gmailEmail.recipients) ? gmailEmail.recipients : [],
+          cc: [],
+          bcc: [],
+          subject: gmailEmail.subject,
+          body_plain_text: gmailEmail.body_plain,
+          body_html: gmailEmail.body_html,
+          received_at: gmailEmail.received_at,
+          attachments_metadata: Array.isArray(gmailEmail.attachments) ? gmailEmail.attachments : [],
+          web_link: null,
+          created_at: gmailEmail.ingested_at,
+          updated_at: gmailEmail.updated_at,
+          provider: "gmail",
+        });
       }
-      return NextResponse.json({
-        id: msg.id,
-        tenant_id: msg.tenant_id,
-        message_id: msg.message_id,
-        sender: msg.sender_name || msg.sender_id,
-        recipients: [],
-        cc: [],
-        bcc: [],
-        subject: msg.channel_type === "channel" ? (msg.channel_id ?? "Zoom Channel") : "Direct Message",
-        body_plain_text: msg.message_content,
-        body_html: null,
-        received_at: msg.message_timestamp,
-        attachments_metadata: [],
-        web_link: null,
-        created_at: msg.created_at,
-        updated_at: msg.updated_at,
-        provider: "zoom",
-      });
+
+      // Try Zoom
+      const msg = await getZoomMessageById(id, userId);
+      if (msg) {
+        return NextResponse.json({
+          id: msg.id,
+          tenant_id: msg.tenant_id,
+          message_id: msg.message_id,
+          sender: msg.sender_name || msg.sender_id,
+          recipients: [],
+          cc: [],
+          bcc: [],
+          subject: msg.channel_type === "channel" ? (msg.channel_id ?? "Zoom Channel") : "Direct Message",
+          body_plain_text: msg.message_content,
+          body_html: null,
+          received_at: msg.message_timestamp,
+          attachments_metadata: [],
+          web_link: null,
+          created_at: msg.created_at,
+          updated_at: msg.updated_at,
+          provider: "zoom",
+        });
+      }
+
+      return NextResponse.json({ error: "Message not found" }, { status: 404 });
     }
 
     const emailId = parseInt(id, 10);

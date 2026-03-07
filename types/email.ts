@@ -81,6 +81,9 @@ export interface EmailListItem {
   provider: "outlook" | "gmail" | "zoom";
   labels?: EmailLabelChip[];
   is_newsletter?: boolean;
+  is_spam?: boolean;
+  is_vip?: boolean;
+  unsubscribe_link?: string | null;
 }
 
 // Inbox list response

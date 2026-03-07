@@ -4,6 +4,8 @@ import { users } from "@/lib/db/schema";
 import { registerSchema } from "@/lib/validators/schemas";
 import { eq, or } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+import { createUserKey } from "@/lib/openrouter/keys";
+import { encrypt } from "@/lib/encryption";
 
 export async function POST(request: Request) {
   try {
@@ -49,6 +51,23 @@ export async function POST(request: Request) {
         passwordHash,
       })
       .returning({ id: users.id, username: users.username });
+
+    // Provision a per-user OpenRouter API key (non-blocking for registration)
+    try {
+      if (process.env.OPENROUTER_PROVISIONING_KEY) {
+        const { key, hash } = await createUserKey(newUser.id, displayName);
+        await db
+          .update(users)
+          .set({
+            openrouterApiKey: encrypt(key),
+            openrouterKeyHash: hash,
+          })
+          .where(eq(users.id, newUser.id));
+      }
+    } catch (keyError) {
+      // Log but don't fail registration — user falls back to global key
+      console.error("Failed to provision OpenRouter key:", keyError);
+    }
 
     return NextResponse.json(
       { id: newUser.id, username: newUser.username },

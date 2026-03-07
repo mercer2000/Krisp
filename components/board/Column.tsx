@@ -39,9 +39,11 @@ interface ColumnProps {
   onCardClick: (card: CardType) => void;
   onDeleteCard?: (cardId: string) => void;
   isOver?: boolean;
+  selectedCardIds?: Set<string>;
+  onSelectCard?: (cardId: string, e: React.MouseEvent) => void;
 }
 
-export function Column({ column, boardId, onCardClick, onDeleteCard, isOver }: ColumnProps) {
+export function Column({ column, boardId, onCardClick, onDeleteCard, isOver, selectedCardIds, onSelectCard }: ColumnProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState(column.title);
   const [isAddingCard, setIsAddingCard] = useState(false);
@@ -394,7 +396,15 @@ export function Column({ column, boardId, onCardClick, onDeleteCard, isOver }: C
       <div className="flex min-h-[60px] flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
         <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
           {activeCards.map((card) => (
-            <Card key={card.id} card={card} onClick={() => onCardClick(card)} onDelete={onDeleteCard} />
+            <Card
+              key={card.id}
+              card={card}
+              onClick={() => onCardClick(card)}
+              onDelete={onDeleteCard}
+              isSelected={selectedCardIds?.has(card.id)}
+              hasSelection={(selectedCardIds?.size ?? 0) > 0}
+              onSelect={onSelectCard}
+            />
           ))}
         </SortableContext>
       </div>

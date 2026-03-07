@@ -244,7 +244,7 @@ export function ExtensionsClient({ userId }: { userId: string }) {
                   : "Your browser may not be supported"}
             </p>
             <p className="text-amber-600 dark:text-amber-400 mt-1">
-              The Krisp Web Clipper is a Chrome extension. It works natively in Google Chrome and also in Microsoft Edge
+              The Web Clipper is a Chrome extension. It works natively in Google Chrome and also in Microsoft Edge
               (which supports unpacked Chrome extensions). Other browsers are not currently supported.
             </p>
           </div>

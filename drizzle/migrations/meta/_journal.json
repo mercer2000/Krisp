@@ -155,6 +155,55 @@
       "when": 1772730000000,
       "tag": "0021_add-telegram-active-session",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1772748252573,
+      "tag": "0022_add-row-level-security",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1772870400000,
+      "tag": "0026_multi-outlook-accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1772880000000,
+      "tag": "0027_add-email-outlook-account-id",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1772890000000,
+      "tag": "0028_add-google-oauth-tokens",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1772900000000,
+      "tag": "0032_smart-labels",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1772910000000,
+      "tag": "0034_add-spam-detection",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1772920000000,
+      "tag": "0036_add-card-checklist",
+      "breakpoints": true
     }
   ]
 }

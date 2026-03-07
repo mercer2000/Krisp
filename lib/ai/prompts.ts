@@ -43,6 +43,19 @@ export const PROMPT_ZAPIER_INGEST_META = "zapier_ingest_meta";
 export const PROMPT_SEARCH_OPTIMIZER = "search_optimizer";
 export const PROMPT_SEARCH_ANSWER = "search_answer";
 
+// ── Daily Briefing ──────────────────────────────────────
+
+export const PROMPT_DAILY_BRIEFING = "daily_briefing";
+
+// ── Smart Labels ────────────────────────────────────────
+
+export const PROMPT_SMART_LABEL_CLASSIFY = "smart_label_classify";
+export const PROMPT_SMART_LABEL_DRAFT_REPLY = "smart_label_draft_reply";
+
+// ── Email Forwarding ───────────────────────────────────
+
+export const PROMPT_EMAIL_FORWARD_DRAFT = "email_forward_draft";
+
 // ── Kanban / Project Management ──────────────────────────
 
 export const PROMPT_GENERATE_CARDS = "generate_cards";
@@ -318,6 +331,106 @@ You have access to meeting data including titles, dates, speakers, key points, a
 Provide concise, helpful answers based on the meeting data provided.
 If you can't find the answer in the provided data, say so clearly.
 When referencing meetings, mention the meeting title and date.`,
+  },
+
+  [PROMPT_DAILY_BRIEFING]: {
+    key: PROMPT_DAILY_BRIEFING,
+    name: "Daily Briefing",
+    description: "Generates a personalized morning briefing synthesizing overdue tasks, emails, meetings, and action items.",
+    category: "Daily Briefing",
+    defaultText: `You are a personal productivity assistant. Generate a concise, actionable morning briefing for the user based on the data provided below.
+
+## Instructions
+Write a briefing in HTML format (no wrapping <html>/<body> tags, just the content). Structure it as:
+
+1. **Greeting & Date** — A brief friendly greeting with today's date.
+2. **Priority Alerts** — Any urgent or overdue items that need immediate attention (overdue cards, past-due action items). Use red/orange styling for urgency.
+3. **Today's Schedule** — Meetings and events happening today, with times and key details.
+4. **Email Highlights** — Notable recent emails that may need attention (summarize, don't reproduce full content).
+5. **Open Action Items** — Tasks that are open or in progress, sorted by priority.
+6. **Quick Summary** — A 2-3 sentence overview of what the day looks like.
+
+Rules:
+- Keep it concise and scannable
+- Use bullet points and short paragraphs
+- Highlight truly urgent items
+- If a section has no data, skip it entirely
+- Output clean HTML with inline styles using these colors: urgent=#dc2626, high=#ea580c, medium=#d97706, low=#2563eb, muted=#6b7280, heading=#111827
+- Do NOT include markdown code fences or backticks, return raw HTML only`,
+  },
+
+  [PROMPT_SMART_LABEL_CLASSIFY]: {
+    key: PROMPT_SMART_LABEL_CLASSIFY,
+    name: "Smart Label Classification",
+    description: "Evaluates items against user-defined natural-language label prompts and returns matching labels with confidence scores.",
+    category: "Smart Labels",
+    defaultText: `You are an item classifier. Given an item and a set of user-defined label rules, determine which labels apply.
+
+Each label has a name and a matching prompt describing what kind of items it should match. Evaluate the item against every label prompt independently.
+
+Respond with ONLY a valid JSON object:
+{
+  "matches": [
+    { "label": "Label Name", "confidence": 85 }
+  ]
+}
+
+Rules:
+- confidence is 0-100 reflecting how well the item matches the label prompt
+- Only include labels with confidence >= 70
+- Be conservative: only match when the item clearly satisfies the prompt criteria
+- If no labels match, return {"matches": []}
+- Do NOT invent labels — only use the ones provided`,
+  },
+
+  [PROMPT_SMART_LABEL_DRAFT_REPLY]: {
+    key: PROMPT_SMART_LABEL_DRAFT_REPLY,
+    name: "Smart Label Draft Reply",
+    description: "Generates contextually appropriate email reply drafts based on per-label communication history and active work items.",
+    category: "Smart Labels",
+    defaultText: `You are a professional email reply assistant. Generate a draft reply to the current email that is tonally consistent with how similar emails in this category have been handled.
+
+You will receive two context layers:
+1. LABEL CONTEXT — Recent emails in this category and how they were handled, plus any related active work items. Use these as patterns for tone, vocabulary, and intent — but do not mimic them verbatim.
+2. CURRENT EMAIL — The email you need to reply to.
+
+Guidelines:
+- Write a professional, contextually appropriate reply
+- Match the established communication tone from the context (formal vs casual, brief vs detailed)
+- If Kanban work items are relevant (e.g., delivery dates, project status), incorporate that awareness naturally
+- Keep the reply concise and actionable
+- Do NOT include a subject line — only the reply body
+- Do NOT include email headers or signatures
+- Output the reply text only, no markdown formatting`,
+  },
+
+  [PROMPT_EMAIL_FORWARD_DRAFT]: {
+    key: PROMPT_EMAIL_FORWARD_DRAFT,
+    name: "Email Forward Draft",
+    description: "Analyzes forward intent and generates a concise forwarding preamble for an email being forwarded.",
+    category: "Email Processing",
+    defaultText: `You are a professional email assistant. The user is forwarding an email and you need to:
+1. Classify the likely reason for forwarding
+2. Generate a brief preamble message (1-2 sentences max)
+
+INTENT CATEGORIES (pick the most likely one):
+- delegation: The email contains a task, request, or action that the user wants someone else to handle
+- fyi: The email contains information the recipient should be aware of but no action is needed
+- escalation: The email describes a problem, blocker, or urgent issue that needs attention from someone higher up or more specialized
+- action_request: The user wants the recipient to do something specific related to this email
+- approval: The email contains something that needs sign-off or approval
+- context: The user is providing background context or looping someone into an ongoing conversation
+- follow_up: The email references something the recipient needs to follow up on
+
+GUIDELINES:
+- Write ONLY 1-2 sentences — match the brevity expected in a forwarded email preamble
+- Be specific to the email content, not generic
+- Do NOT include greetings like "Hi" or sign-offs
+- Do NOT reproduce the original email content
+- If the email body is empty or you cannot determine intent, use "fyi" as the default intent and write "Sharing this for your awareness."
+
+OUTPUT FORMAT (respond with exactly this JSON structure, no markdown):
+{"intent": "<category>", "message": "<your 1-2 sentence preamble>"}`,
   },
 
   [PROMPT_GENERATE_CARDS]: {

@@ -126,3 +126,48 @@ export interface ZoomTokenResponse {
   expires_in: number;
   scope: string;
 }
+
+/**
+ * Zoom user-managed OAuth token row (multi-account)
+ */
+export interface ZoomUserOauthTokenRow {
+  id: string;
+  tenant_id: string;
+  zoom_email: string;
+  zoom_user_id: string | null;
+  access_token: string;
+  refresh_token: string;
+  token_expiry: string;
+  active: boolean;
+  last_sync_at: string | null;
+  sync_cursor: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Zoom Team Chat channel
+ */
+export interface ZoomChannel {
+  id: string;
+  name: string;
+  type: number;
+  jid: string;
+}
+
+/**
+ * Zoom Team Chat messages page response
+ */
+export interface ZoomMessagePage {
+  messages: {
+    id: string;
+    message: string;
+    sender: string;
+    sender_display_name?: string;
+    date_time: string;
+    timestamp: number;
+  }[];
+  next_page_token?: string;
+  page_size: number;
+  date: string;
+}

@@ -183,7 +183,7 @@ ${emailsContext}
 ## Open Action Items:
 ${actionItemsContext}`;
 
-    const text = await chatCompletion(prompt, { maxTokens: 2000 });
+    const text = await chatCompletion(prompt, { maxTokens: 2000, userId: user.id });
 
     let suggestions: PrioritySuggestion[];
     try {

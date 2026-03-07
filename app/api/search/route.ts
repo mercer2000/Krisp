@@ -170,7 +170,7 @@ async function extractSearchTerms(query: string, userId: string): Promise<string
 
 Question: ${query}`;
 
-    return (await chatCompletion(prompt, { maxTokens: 100 })) || query;
+    return (await chatCompletion(prompt, { maxTokens: 100, userId })) || query;
   } catch (error) {
     console.error("Error extracting search terms:", error);
     // Fallback to original query if LLM fails
@@ -210,7 +210,7 @@ Based on the following meeting data, answer this question: "${query}"
 Meeting Data:
 ${meetingContext}`;
 
-    return (await chatCompletion(prompt, { maxTokens: 500 })) || "I couldn't generate an answer.";
+    return (await chatCompletion(prompt, { maxTokens: 500, userId })) || "I couldn't generate an answer.";
   } catch (error) {
     console.error("Error generating answer:", error);
     return `Found ${meetings.length} relevant meeting(s). Unable to generate AI summary at this time.`;

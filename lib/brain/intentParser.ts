@@ -64,7 +64,7 @@ ${recentHistory || "(new conversation)"}
 "${userMessage}"`;
 
   try {
-    const raw = await chatCompletion(prompt, { maxTokens: 500 });
+    const raw = await chatCompletion(prompt, { maxTokens: 500, ...(userId ? { userId } : {}) });
 
     // Strip code fences if present
     const cleaned = raw

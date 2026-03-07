@@ -10,14 +10,18 @@ import {
   webhookKeyPoints,
   emails,
   actionItems,
+  dailyBriefings,
+  brainThoughts,
 } from "@/lib/db/schema";
 import { eq, and, gte, lte, isNull, desc, sql, count } from "drizzle-orm";
 import {
   decryptRows,
+  decryptFields,
   CARD_ENCRYPTED_FIELDS,
   WEBHOOK_ENCRYPTED_FIELDS,
   ACTION_ITEM_ENCRYPTED_FIELDS,
   CALENDAR_EVENT_ENCRYPTED_FIELDS,
+  DAILY_BRIEFING_ENCRYPTED_FIELDS,
 } from "@/lib/db/encryption-helpers";
 
 export async function GET() {
@@ -30,6 +34,7 @@ export async function GET() {
 
     const now = new Date();
     const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const todayStr = now.toISOString().split("T")[0];
 
@@ -42,6 +47,22 @@ export async function GET() {
       meetingCountRows,
       emailCountRows,
       actionItemsDueRows,
+      latestBriefingRow,
+      // Analytics: summary counts
+      cardsCompletedWeek,
+      cardsCompletedMonth,
+      meetingsWeek,
+      emailsWeek,
+      thoughtsWeek,
+      thoughtsMonth,
+      actionItemsResolvedWeek,
+      actionItemsResolvedMonth,
+      // Analytics: sparklines
+      dailyCards,
+      dailyMeetings,
+      dailyEmails,
+      dailyThoughts,
+      dailyActionItems,
     ] = await Promise.all([
       // User config
       db
@@ -59,6 +80,7 @@ export async function GET() {
           endDateTime: calendarEvents.endDateTime,
           location: calendarEvents.location,
           isAllDay: calendarEvents.isAllDay,
+          attendees: calendarEvents.attendees,
         })
         .from(calendarEvents)
         .where(
@@ -159,6 +181,220 @@ export async function GET() {
         )
         .orderBy(actionItems.dueDate)
         .limit(5),
+
+      // Latest daily briefing (today or most recent) — table may not exist yet
+      db
+        .select({
+          id: dailyBriefings.id,
+          briefingDate: dailyBriefings.briefingDate,
+          status: dailyBriefings.status,
+          briefingHtml: dailyBriefings.briefingHtml,
+          overdueCardCount: dailyBriefings.overdueCardCount,
+          emailCount: dailyBriefings.emailCount,
+          meetingCount: dailyBriefings.meetingCount,
+          actionItemCount: dailyBriefings.actionItemCount,
+          createdAt: dailyBriefings.createdAt,
+        })
+        .from(dailyBriefings)
+        .where(
+          and(
+            eq(dailyBriefings.userId, userId),
+            isNull(dailyBriefings.deletedAt),
+            eq(dailyBriefings.status, "completed")
+          )
+        )
+        .orderBy(desc(dailyBriefings.briefingDate))
+        .limit(1)
+        .then((rows) => rows[0] ?? null)
+        .catch(() => null),
+
+      // ── Analytics: summary counts ─────────────────────────────────────
+
+      // Cards completed (archived) this week
+      db
+        .select({ value: count() })
+        .from(cards)
+        .innerJoin(columns, eq(cards.columnId, columns.id))
+        .innerJoin(boards, eq(columns.boardId, boards.id))
+        .where(
+          and(
+            eq(boards.userId, userId),
+            eq(cards.archived, true),
+            isNull(cards.deletedAt),
+            gte(cards.updatedAt, sevenDaysAgo)
+          )
+        ),
+
+      // Cards completed this month
+      db
+        .select({ value: count() })
+        .from(cards)
+        .innerJoin(columns, eq(cards.columnId, columns.id))
+        .innerJoin(boards, eq(columns.boardId, boards.id))
+        .where(
+          and(
+            eq(boards.userId, userId),
+            eq(cards.archived, true),
+            isNull(cards.deletedAt),
+            gte(cards.updatedAt, thirtyDaysAgo)
+          )
+        ),
+
+      // Meetings this week
+      db
+        .select({ value: count() })
+        .from(webhookKeyPoints)
+        .where(
+          and(
+            eq(webhookKeyPoints.userId, userId),
+            isNull(webhookKeyPoints.deletedAt),
+            gte(webhookKeyPoints.meetingStartDate, sevenDaysAgo)
+          )
+        ),
+
+      // Emails this week
+      db
+        .select({ value: count() })
+        .from(emails)
+        .where(
+          and(
+            eq(emails.tenantId, userId),
+            isNull(emails.deletedAt),
+            gte(emails.receivedAt, sevenDaysAgo)
+          )
+        ),
+
+      // Thoughts this week
+      db
+        .select({ value: count() })
+        .from(brainThoughts)
+        .where(
+          and(
+            eq(brainThoughts.userId, userId),
+            gte(brainThoughts.createdAt, sevenDaysAgo)
+          )
+        ),
+
+      // Thoughts this month
+      db
+        .select({ value: count() })
+        .from(brainThoughts)
+        .where(
+          and(
+            eq(brainThoughts.userId, userId),
+            gte(brainThoughts.createdAt, thirtyDaysAgo)
+          )
+        ),
+
+      // Action items resolved this week
+      db
+        .select({ value: count() })
+        .from(actionItems)
+        .where(
+          and(
+            eq(actionItems.userId, userId),
+            eq(actionItems.status, "completed"),
+            isNull(actionItems.deletedAt),
+            gte(actionItems.completedAt, sevenDaysAgo)
+          )
+        ),
+
+      // Action items resolved this month
+      db
+        .select({ value: count() })
+        .from(actionItems)
+        .where(
+          and(
+            eq(actionItems.userId, userId),
+            eq(actionItems.status, "completed"),
+            isNull(actionItems.deletedAt),
+            gte(actionItems.completedAt, thirtyDaysAgo)
+          )
+        ),
+
+      // ── Analytics: sparkline data (last 30 days) ──────────────────────
+
+      // Daily cards created
+      db
+        .select({
+          date: sql<string>`DATE(${cards.createdAt})`.as("date"),
+          count: sql<number>`COUNT(*)::int`.as("count"),
+        })
+        .from(cards)
+        .innerJoin(columns, eq(cards.columnId, columns.id))
+        .innerJoin(boards, eq(columns.boardId, boards.id))
+        .where(
+          and(
+            eq(boards.userId, userId),
+            isNull(cards.deletedAt),
+            gte(cards.createdAt, thirtyDaysAgo)
+          )
+        )
+        .groupBy(sql`DATE(${cards.createdAt})`),
+
+      // Daily meetings
+      db
+        .select({
+          date: sql<string>`DATE(${webhookKeyPoints.meetingStartDate})`.as("date"),
+          count: sql<number>`COUNT(*)::int`.as("count"),
+        })
+        .from(webhookKeyPoints)
+        .where(
+          and(
+            eq(webhookKeyPoints.userId, userId),
+            isNull(webhookKeyPoints.deletedAt),
+            gte(webhookKeyPoints.meetingStartDate, thirtyDaysAgo)
+          )
+        )
+        .groupBy(sql`DATE(${webhookKeyPoints.meetingStartDate})`),
+
+      // Daily emails
+      db
+        .select({
+          date: sql<string>`DATE(${emails.receivedAt})`.as("date"),
+          count: sql<number>`COUNT(*)::int`.as("count"),
+        })
+        .from(emails)
+        .where(
+          and(
+            eq(emails.tenantId, userId),
+            isNull(emails.deletedAt),
+            gte(emails.receivedAt, thirtyDaysAgo)
+          )
+        )
+        .groupBy(sql`DATE(${emails.receivedAt})`),
+
+      // Daily thoughts
+      db
+        .select({
+          date: sql<string>`DATE(${brainThoughts.createdAt})`.as("date"),
+          count: sql<number>`COUNT(*)::int`.as("count"),
+        })
+        .from(brainThoughts)
+        .where(
+          and(
+            eq(brainThoughts.userId, userId),
+            gte(brainThoughts.createdAt, thirtyDaysAgo)
+          )
+        )
+        .groupBy(sql`DATE(${brainThoughts.createdAt})`),
+
+      // Daily action items resolved
+      db
+        .select({
+          date: sql<string>`DATE(${actionItems.completedAt})`.as("date"),
+          count: sql<number>`COUNT(*)::int`.as("count"),
+        })
+        .from(actionItems)
+        .where(
+          and(
+            eq(actionItems.userId, userId),
+            eq(actionItems.status, "completed"),
+            isNull(actionItems.deletedAt),
+            gte(actionItems.completedAt, thirtyDaysAgo)
+          )
+        )
+        .groupBy(sql`DATE(${actionItems.completedAt})`),
     ]);
 
     // Decrypt sensitive fields before returning to frontend
@@ -167,21 +403,77 @@ export async function GET() {
     const decRecentMeetings = decryptRows(recentMeetingsRows as Record<string, unknown>[], WEBHOOK_ENCRYPTED_FIELDS) as typeof recentMeetingsRows;
     const decActionItemsDue = decryptRows(actionItemsDueRows as Record<string, unknown>[], ACTION_ITEM_ENCRYPTED_FIELDS) as typeof actionItemsDueRows;
 
+    const decBriefing = latestBriefingRow
+      ? decryptFields(latestBriefingRow as Record<string, unknown>, DAILY_BRIEFING_ENCRYPTED_FIELDS) as typeof latestBriefingRow
+      : null;
+
+    // Build sparkline series (last 30 days, filling gaps with 0)
+    function buildSeries(
+      rows: { date: string; count: number }[],
+      days: number
+    ) {
+      const map = new Map<string, number>();
+      for (const r of rows) map.set(String(r.date), r.count);
+      const series: { date: string; value: number }[] = [];
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        const key = d.toISOString().split("T")[0];
+        series.push({ date: key, value: map.get(key) ?? 0 });
+      }
+      return series;
+    }
+
+    const meetingCountVal = meetingCountRows[0]?.value ?? 0;
+    const emailCountVal = emailCountRows[0]?.value ?? 0;
+
     return NextResponse.json({
       config: userRow?.dashboardConfig ?? null,
       widgets: {
         upcomingEvents: decUpcomingEvents,
         overdueCards: decOverdueCards,
         recentMeetings: decRecentMeetings,
-        meetingCount: meetingCountRows[0]?.value ?? 0,
-        emailCount: emailCountRows[0]?.value ?? 0,
+        meetingCount: meetingCountVal,
+        emailCount: emailCountVal,
         actionItemsDue: decActionItemsDue,
+        dailyBriefing: decBriefing,
+      },
+      analytics: {
+        summary: {
+          cardsCompleted: {
+            week: cardsCompletedWeek[0]?.value ?? 0,
+            month: cardsCompletedMonth[0]?.value ?? 0,
+          },
+          meetingsAttended: {
+            week: meetingsWeek[0]?.value ?? 0,
+            month: meetingCountVal,
+          },
+          emailsProcessed: {
+            week: emailsWeek[0]?.value ?? 0,
+            month: emailCountVal,
+          },
+          thoughtsCaptured: {
+            week: thoughtsWeek[0]?.value ?? 0,
+            month: thoughtsMonth[0]?.value ?? 0,
+          },
+          actionItemsResolved: {
+            week: actionItemsResolvedWeek[0]?.value ?? 0,
+            month: actionItemsResolvedMonth[0]?.value ?? 0,
+          },
+        },
+        sparklines: {
+          cards: buildSeries(dailyCards, 30),
+          meetings: buildSeries(dailyMeetings, 30),
+          emails: buildSeries(dailyEmails, 30),
+          thoughts: buildSeries(dailyThoughts, 30),
+          actionItems: buildSeries(dailyActionItems, 30),
+        },
       },
     });
   } catch (error) {
     console.error("Error fetching dashboard:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to fetch dashboard data" },
+      { error: "Failed to fetch dashboard data", detail: message },
       { status: 500 }
     );
   }

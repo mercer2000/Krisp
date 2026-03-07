@@ -44,6 +44,60 @@ export async function deleteGraphMessage(
 }
 
 /**
+ * Send a new email via Microsoft Graph API.
+ * Used for forwarding emails to external recipients.
+ * Requires Mail.Send permission.
+ */
+export async function sendGraphMail(
+  userMailbox: string,
+  accessToken: string,
+  options: {
+    to: string[];
+    subject: string;
+    bodyHtml: string;
+  }
+): Promise<boolean> {
+  const url = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(userMailbox)}/sendMail`;
+
+  const payload = {
+    message: {
+      subject: options.subject,
+      body: {
+        contentType: "HTML",
+        content: options.bodyHtml,
+      },
+      toRecipients: options.to.map((email) => ({
+        emailAddress: { address: email },
+      })),
+    },
+    saveToSentItems: true,
+  };
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.status === 202 || res.status === 200) return true;
+
+    const body = await res.text().catch(() => "");
+    console.warn(
+      `[Graph] Failed to send mail from ${userMailbox}: ${res.status}`,
+      body
+    );
+    return false;
+  } catch (err) {
+    console.warn(`[Graph] Error sending mail from ${userMailbox}:`, err);
+    return false;
+  }
+}
+
+/**
  * Fetch a single message from the Microsoft Graph API and return it
  * in EmailWebhookPayload format.
  */

@@ -109,7 +109,7 @@ ${transcript.slice(0, 8000)}
 
 Use decisionDate: "${meetingDate}"`;
 
-  const text = await chatCompletion(prompt, { maxTokens: 2500 });
+  const text = await chatCompletion(prompt, { maxTokens: 2500, userId });
 
   let extracted: ExtractedDecision[];
   try {
@@ -204,7 +204,7 @@ ${bodyText.slice(0, 8000)}
 
 Use decisionDate: "${today}"`;
 
-  const text = await chatCompletion(prompt, { maxTokens: 2000 });
+  const text = await chatCompletion(prompt, { maxTokens: 2000, userId });
 
   let extracted: ExtractedDecision[];
   try {

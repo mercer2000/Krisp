@@ -1,12 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   useCalendarEventsInRange,
   useCalendarSync,
   useSyncState,
+  useOutlookCalendarStatus,
+  useOutlookCalendarSync,
+  useGoogleCalendarStatus,
+  useGoogleCalendarSync,
 } from "@/lib/hooks/useCalendar";
 import type { CalendarEvent } from "@/types";
+
+interface CalendarAccount {
+  id: string;
+  email: string;
+  provider: "google" | "outlook" | "graph";
+  lastSyncAt?: string | null;
+}
 
 function getWeekRange() {
   const now = new Date();
@@ -56,9 +67,38 @@ function groupEventsByDate(events: CalendarEvent[]) {
   );
 }
 
-function EventCard({ event }: { event: CalendarEvent }) {
+function GoogleIcon({ size = 12 }: { size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M8 12h8" />
+      <path d="M12 8v8" />
+    </svg>
+  );
+}
+
+function OutlookIcon({ size = 12 }: { size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="20" height="16" x="2" y="4" rx="2" />
+      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+    </svg>
+  );
+}
+
+function ProviderIcon({ provider, size = 12 }: { provider: "google" | "outlook" | "graph"; size?: number }) {
+  return provider === "google" ? <GoogleIcon size={size} /> : <OutlookIcon size={size} />;
+}
+
+/** Determine if an event came from Google Calendar (gcal_ prefix on graphEventId) */
+function isGoogleEvent(event: CalendarEvent): boolean {
+  return event.graphEventId.startsWith("gcal_");
+}
+
+function EventCard({ event, showProviderBadge }: { event: CalendarEvent; showProviderBadge?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const attendeeCount = event.attendees?.length || 0;
+  const isGoogle = isGoogleEvent(event);
 
   return (
     <div
@@ -66,9 +106,23 @@ function EventCard({ event }: { event: CalendarEvent }) {
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-medium text-[var(--foreground)]">
-            {event.subject || "(No subject)"}
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-medium text-[var(--foreground)]">
+              {event.subject || "(No subject)"}
+            </h3>
+            {showProviderBadge && (
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                  isGoogle
+                    ? "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
+                    : "bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400"
+                }`}
+              >
+                <ProviderIcon provider={isGoogle ? "google" : "outlook"} size={10} />
+                {isGoogle ? "Google" : "Outlook"}
+              </span>
+            )}
+          </div>
           <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
             {formatTimeRange(event)}
           </p>
@@ -146,6 +200,9 @@ function EventCard({ event }: { event: CalendarEvent }) {
 
 export default function CalendarPage() {
   const [daysForward, setDaysForward] = useState(7);
+  const [filterAccountId, setFilterAccountId] = useState<string | null>(null);
+  const [filterProvider, setFilterProvider] = useState<"google" | "outlook" | "graph" | null>(null);
+
   const { start } = getWeekRange();
   const end = new Date(start);
   end.setDate(end.getDate() + daysForward);
@@ -156,41 +213,154 @@ export default function CalendarPage() {
     end.toISOString()
   );
 
-  const syncMutation = useCalendarSync();
+  // Graph API sync (Azure AD credentials)
+  const graphSyncMutation = useCalendarSync();
   const { data: syncData } = useSyncState();
 
-  const events = data?.events || [];
-  const grouped = groupEventsByDate(events);
+  // Outlook OAuth sync (personal/work Microsoft accounts)
+  const { data: outlookStatus } = useOutlookCalendarStatus();
+  const outlookSyncMutation = useOutlookCalendarSync();
 
-  const hasCredentials = (syncData?.credentials?.length ?? 0) > 0;
-  const hasSyncState = (syncData?.syncStates?.length ?? 0) > 0;
+  // Google Calendar OAuth sync
+  const { data: googleStatus } = useGoogleCalendarStatus();
+  const googleSyncMutation = useGoogleCalendarSync();
+
+  const allEvents = data?.events || [];
+
+  const hasGraphCredentials = (syncData?.credentials?.length ?? 0) > 0;
+  const hasGraphSyncState = (syncData?.syncStates?.length ?? 0) > 0;
+  const hasOutlookConnection = outlookStatus?.connected === true;
+  const hasGoogleConnection = googleStatus?.connected === true;
+
+  // Build unified account list
+  const calendarAccounts: CalendarAccount[] = useMemo(() => {
+    const accounts: CalendarAccount[] = [];
+    if (googleStatus?.accounts) {
+      for (const a of googleStatus.accounts) {
+        accounts.push({
+          id: a.id,
+          email: a.googleEmail,
+          provider: "google",
+          lastSyncAt: a.lastSyncAt,
+        });
+      }
+    }
+    if (outlookStatus?.accounts) {
+      for (const a of outlookStatus.accounts) {
+        accounts.push({
+          id: a.id,
+          email: a.outlookEmail,
+          provider: "outlook",
+          lastSyncAt: a.lastSyncAt,
+        });
+      }
+    }
+    if (syncData?.syncStates) {
+      for (const s of syncData.syncStates) {
+        accounts.push({
+          id: s.credentialId,
+          email: s.mailbox,
+          provider: "graph",
+          lastSyncAt: s.lastSyncAt,
+        });
+      }
+    }
+    return accounts;
+  }, [googleStatus, outlookStatus, syncData]);
+
+  // Filter events based on selected account/provider
+  const filteredEvents = useMemo(() => {
+    if (!filterAccountId && !filterProvider) return allEvents;
+
+    return allEvents.filter((event) => {
+      if (filterProvider === "google") return isGoogleEvent(event);
+      if (filterProvider === "outlook") return !isGoogleEvent(event) && !event.credentialId;
+      if (filterProvider === "graph") return !!event.credentialId;
+      return true;
+    });
+  }, [allEvents, filterAccountId, filterProvider]);
+
+  const grouped = groupEventsByDate(filteredEvents);
+
+  // User has at least one calendar source configured
+  const hasAnySource = hasGraphCredentials || hasOutlookConnection || hasGoogleConnection;
+  const hasAnySyncReady = hasGraphSyncState || hasOutlookConnection || hasGoogleConnection;
+
+  const isSyncing = graphSyncMutation.isPending || outlookSyncMutation.isPending || googleSyncMutation.isPending;
 
   const handleSync = () => {
-    if (!syncData?.credentials?.length) return;
-    const cred = syncData.credentials[0];
-    // Use the sync state mailbox if available, otherwise prompt is needed
-    const mailbox =
-      syncData.syncStates?.[0]?.mailbox || "";
-
-    if (!mailbox) {
-      alert(
-        "No mailbox configured. Please set up calendar sync from the Integrations page first."
-      );
+    if (filterAccountId && filterProvider) {
+      // Sync only the selected account
+      if (filterProvider === "google") {
+        googleSyncMutation.mutate({ accountId: filterAccountId, daysBack: 7, daysForward });
+      } else if (filterProvider === "outlook") {
+        outlookSyncMutation.mutate({ accountId: filterAccountId, daysBack: 7, daysForward });
+      } else if (filterProvider === "graph" && syncData?.syncStates?.length) {
+        const syncState = syncData.syncStates.find((s) => s.credentialId === filterAccountId);
+        if (syncState) {
+          graphSyncMutation.mutate({
+            credentialId: filterAccountId,
+            mailbox: syncState.mailbox,
+            daysBack: 7,
+            daysForward,
+          });
+        }
+      }
       return;
     }
 
-    syncMutation.mutate({
-      credentialId: cred.id,
-      mailbox,
-      daysBack: 7,
-      daysForward,
-    });
+    // Sync from all available sources
+    if (hasGraphCredentials && hasGraphSyncState && syncData?.credentials?.length) {
+      const cred = syncData.credentials[0];
+      const mailbox = syncData.syncStates?.[0]?.mailbox || "";
+      if (mailbox) {
+        graphSyncMutation.mutate({
+          credentialId: cred.id,
+          mailbox,
+          daysBack: 7,
+          daysForward,
+        });
+      }
+    }
+
+    if (hasOutlookConnection) {
+      outlookSyncMutation.mutate({
+        daysBack: 7,
+        daysForward,
+      });
+    }
+
+    if (hasGoogleConnection) {
+      googleSyncMutation.mutate({
+        daysBack: 7,
+        daysForward,
+      });
+    }
   };
+
+  const syncedCount =
+    (graphSyncMutation.isSuccess ? graphSyncMutation.data.synced : 0) +
+    (outlookSyncMutation.isSuccess ? outlookSyncMutation.data.synced : 0) +
+    (googleSyncMutation.isSuccess ? googleSyncMutation.data.synced : 0);
+  const syncErrors =
+    (graphSyncMutation.isSuccess ? graphSyncMutation.data.errors : 0) +
+    (outlookSyncMutation.isSuccess ? outlookSyncMutation.data.errors : 0) +
+    (googleSyncMutation.isSuccess ? googleSyncMutation.data.errors : 0);
+  const showSyncResult = graphSyncMutation.isSuccess || outlookSyncMutation.isSuccess || googleSyncMutation.isSuccess;
+
+  const showProviderBadges = calendarAccounts.length > 1 && !filterAccountId;
 
   return (
     <div className="mx-auto max-w-3xl p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[var(--foreground)]">Calendar</h1>
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-[var(--foreground)]">Calendar</h1>
+          {filterAccountId && calendarAccounts.length > 0 && (
+            <p className="mt-0.5 text-sm text-[var(--muted-foreground)]">
+              {calendarAccounts.find((a) => a.id === filterAccountId)?.email ?? "Selected account"}
+            </p>
+          )}
+        </div>
         <div className="flex items-center gap-3">
           <select
             value={daysForward}
@@ -201,34 +371,72 @@ export default function CalendarPage() {
             <option value={14}>Next 14 days</option>
             <option value={30}>Next 30 days</option>
           </select>
-          {hasCredentials && hasSyncState && (
+          {hasAnySyncReady && (
             <button
               onClick={handleSync}
-              disabled={syncMutation.isPending}
+              disabled={isSyncing}
               className="rounded-md bg-[var(--primary)] px-3 py-1.5 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
             >
-              {syncMutation.isPending ? "Syncing..." : "Sync Now"}
+              {isSyncing ? "Syncing..." : "Sync Now"}
             </button>
           )}
         </div>
       </div>
 
-      {syncMutation.isSuccess && (
-        <div className="mb-4 rounded-md bg-green-50 p-3 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-400">
-          Synced {syncMutation.data.synced} events.
-          {syncMutation.data.errors > 0 &&
-            ` (${syncMutation.data.errors} errors)`}
+      {/* Account filter chips */}
+      {calendarAccounts.length > 1 && (
+        <div className="mb-4 flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-[var(--muted-foreground)] mr-1">Account:</span>
+          <button
+            onClick={() => { setFilterAccountId(null); setFilterProvider(null); }}
+            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+              !filterAccountId
+                ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
+                : "border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
+            }`}
+          >
+            All accounts
+          </button>
+          {calendarAccounts.map((account) => (
+            <button
+              key={account.id}
+              onClick={() => {
+                if (filterAccountId === account.id) {
+                  setFilterAccountId(null);
+                  setFilterProvider(null);
+                } else {
+                  setFilterAccountId(account.id);
+                  setFilterProvider(account.provider);
+                }
+              }}
+              className={`text-xs px-2.5 py-1 rounded-full border transition-colors flex items-center gap-1.5 ${
+                filterAccountId === account.id
+                  ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
+                  : "border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
+              }`}
+            >
+              <ProviderIcon provider={account.provider} size={12} />
+              {account.email}
+            </button>
+          ))}
         </div>
       )}
 
-      {!hasCredentials && (
+      {showSyncResult && (
+        <div className="mb-4 rounded-md bg-green-50 p-3 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-400">
+          Synced {syncedCount} events.
+          {syncErrors > 0 && ` (${syncErrors} errors)`}
+        </div>
+      )}
+
+      {!hasAnySource && (
         <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-6 text-center">
           <h2 className="mb-2 text-base font-medium text-[var(--foreground)]">
-            Connect your Microsoft 365 Calendar
+            Connect your Calendar
           </h2>
           <p className="mb-4 text-sm text-[var(--muted-foreground)]">
-            Set up Azure AD credentials in Integrations to sync your calendar
-            events.
+            Connect your Google Calendar, Outlook account, or set up Azure AD
+            credentials in Integrations to sync your calendar events.
           </p>
           <a
             href="/admin/integrations"
@@ -239,7 +447,7 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {hasCredentials && !hasSyncState && (
+      {hasGraphCredentials && !hasGraphSyncState && !hasOutlookConnection && !hasGoogleConnection && (
         <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-6 text-center">
           <h2 className="mb-2 text-base font-medium text-[var(--foreground)]">
             Start your first calendar sync
@@ -251,10 +459,31 @@ export default function CalendarPage() {
           <SyncSetupForm
             credentials={syncData?.credentials || []}
             onSync={(credentialId, mailbox) => {
-              syncMutation.mutate({ credentialId, mailbox, daysBack: 7, daysForward: 30 });
+              graphSyncMutation.mutate({ credentialId, mailbox, daysBack: 7, daysForward: 30 });
             }}
-            isPending={syncMutation.isPending}
+            isPending={graphSyncMutation.isPending}
           />
+        </div>
+      )}
+
+      {hasOutlookConnection && !hasGraphCredentials && allEvents.length === 0 && !isLoading && (
+        <div className="mb-4 rounded-lg border border-[var(--border)] bg-[var(--card)] p-6 text-center">
+          <h2 className="mb-2 text-base font-medium text-[var(--foreground)]">
+            Sync your Outlook calendar
+          </h2>
+          <p className="mb-3 text-sm text-[var(--muted-foreground)]">
+            {outlookStatus?.accounts && outlookStatus.accounts.length === 1
+              ? `Your Outlook account (${outlookStatus.accounts[0].outlookEmail}) is connected.`
+              : `${outlookStatus?.accounts?.length ?? 0} Outlook accounts are connected.`}
+            {" "}Click below to sync your calendar events.
+          </p>
+          <button
+            onClick={() => outlookSyncMutation.mutate({ daysBack: 7, daysForward: 30 })}
+            disabled={outlookSyncMutation.isPending}
+            className="rounded-md bg-[#0078D4] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#106ebe] disabled:opacity-50"
+          >
+            {outlookSyncMutation.isPending ? "Syncing..." : "Sync Outlook Calendar"}
+          </button>
         </div>
       )}
 
@@ -278,10 +507,11 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {!isLoading && !error && grouped.length === 0 && hasSyncState && (
+      {!isLoading && !error && grouped.length === 0 && hasAnySyncReady && (
         <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-6 text-center text-sm text-[var(--muted-foreground)]">
-          No events in the selected range. Try syncing or expanding the date
-          range.
+          {filterAccountId
+            ? "No events from this account in the selected range. Try syncing or expanding the date range."
+            : "No events in the selected range. Try syncing or expanding the date range."}
         </div>
       )}
 
@@ -293,7 +523,7 @@ export default function CalendarPage() {
             </h2>
             <div className="space-y-2">
               {dayEvents.map((event) => (
-                <EventCard key={event.id} event={event} />
+                <EventCard key={event.id} event={event} showProviderBadge={showProviderBadges} />
               ))}
             </div>
           </div>

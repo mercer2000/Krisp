@@ -14,6 +14,8 @@ import {
 } from "@/lib/graph/messages";
 import { autoProcessEmailActions } from "@/lib/actions/autoProcessEmailActions";
 import { dispatchWebhooks } from "@/lib/webhooks/dispatch";
+import { classifyItem, buildEmailContent } from "@/lib/smartLabels/classify";
+import smartLabelSql from "@/lib/smartLabels/db";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -265,6 +267,31 @@ export async function POST(
               console.error(
                 `[Graph] Error auto-processing actions for message ${item.messageId}:`,
                 actionErr instanceof Error ? actionErr.message : actionErr
+              );
+            }
+
+            // Smart label classification
+            try {
+              const content = buildEmailContent({
+                sender: fullEmail.from,
+                recipients: fullEmail.to,
+                subject: fullEmail.subject ?? null,
+                bodyPlainText: fullEmail.bodyPlainText ?? null,
+              });
+              // Find the DB row ID by message_id
+              const idRows = await smartLabelSql`
+                SELECT id FROM emails
+                WHERE tenant_id = ${tenantId} AND message_id = ${item.messageId}
+              `;
+              if (idRows[0]) {
+                await classifyItem("email", String(idRows[0].id), tenantId, { content });
+              } else {
+                console.warn(`[Graph] Could not find email ID for message ${item.messageId} during smart label classification`);
+              }
+            } catch (classifyErr) {
+              console.error(
+                `[Graph] Smart label classification failed for message ${item.messageId}:`,
+                classifyErr instanceof Error ? classifyErr.message : classifyErr
               );
             }
           } catch (err) {

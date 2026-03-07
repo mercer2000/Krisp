@@ -113,7 +113,7 @@ ${transcript.slice(0, 8000)}
 
 Today's date: ${today}`;
 
-  const text = await chatCompletion(prompt, { maxTokens: 2000 });
+  const text = await chatCompletion(prompt, { maxTokens: 2000, userId });
 
   let extracted: ExtractedActionItem[];
   try {

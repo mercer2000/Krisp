@@ -85,6 +85,12 @@ export const reorderColumnsSchema = z.object({
   columnIds: z.array(z.string().uuid()),
 });
 
+const checklistItemSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1).max(500),
+  done: z.boolean(),
+});
+
 export const createCardSchema = z.object({
   title: z.string().min(1, "Title is required").max(255),
   description: z.string().optional(),
@@ -95,6 +101,7 @@ export const createCardSchema = z.object({
     .regex(/^#[0-9A-Fa-f]{6}$/)
     .nullable()
     .optional(),
+  checklist: z.array(checklistItemSchema).nullable().optional(),
 });
 
 export const updateCardSchema = z.object({
@@ -108,6 +115,7 @@ export const updateCardSchema = z.object({
     .nullable()
     .optional(),
   archived: z.boolean().optional(),
+  checklist: z.array(checklistItemSchema).nullable().optional(),
 });
 
 export const moveCardSchema = z.object({
@@ -123,6 +131,37 @@ export const createTagSchema = z.object({
   label: z.string().min(1).max(50),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
 });
+
+// ── Smart Labels ──────────────────────────────────────
+export const createSmartLabelSchema = z.object({
+  name: z.string().min(1, "Name is required").max(100),
+  prompt: z.string().min(1, "Prompt is required").max(5000),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+});
+
+export const updateSmartLabelSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  prompt: z.string().min(1).max(5000).optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  active: z.boolean().optional(),
+  autoDraftEnabled: z.boolean().optional(),
+  contextWindowMax: z.number().int().min(1).max(10).optional(),
+});
+
+export const classifySmartLabelsSchema = z.object({
+  itemType: z.enum(["email", "gmail_email", "card", "action_item", "meeting"]),
+  itemId: z.string().min(1),
+});
+
+export const batchClassifySmartLabelsSchema = z.object({
+  itemType: z.enum(["email", "gmail_email", "card", "action_item", "meeting"]),
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+});
+
+export type CreateSmartLabelInput = z.infer<typeof createSmartLabelSchema>;
+export type UpdateSmartLabelInput = z.infer<typeof updateSmartLabelSchema>;
+export type ClassifySmartLabelsInput = z.infer<typeof classifySmartLabelsSchema>;
+export type BatchClassifySmartLabelsInput = z.infer<typeof batchClassifySmartLabelsSchema>;
 
 // ── Email Webhook ─────────────────────────────────────
 export const emailAttachmentSchema = z.object({
@@ -285,7 +324,7 @@ export const emailListQuerySchema = z.object({
   before: z.string().datetime({ offset: true }).optional(),
   accountId: z.string().uuid().optional(),
   provider: z.enum(["outlook", "gmail", "zoom"]).optional(),
-  folder: z.enum(["inbox", "newsletter"]).optional(),
+  folder: z.enum(["inbox", "newsletter", "spam"]).optional(),
 });
 
 export type EmailListQueryInput = z.infer<typeof emailListQuerySchema>;
@@ -329,6 +368,36 @@ export const updateOutboundWebhookSchema = z.object({
 
 export type CreateOutboundWebhookInput = z.infer<typeof createOutboundWebhookSchema>;
 export type UpdateOutboundWebhookInput = z.infer<typeof updateOutboundWebhookSchema>;
+
+// ── VIP Contacts ─────────────────────────────────────
+export const createVipContactSchema = z.object({
+  email: z.string().min(1, "Email is required").max(512),
+  displayName: z.string().max(255).optional(),
+  notifyOnNew: z.boolean().optional(),
+});
+
+export const updateVipContactSchema = z.object({
+  displayName: z.string().max(255).nullable().optional(),
+  notifyOnNew: z.boolean().optional(),
+});
+
+export const batchCheckVipSchema = z.object({
+  senders: z.array(z.string()).min(1).max(200),
+});
+
+export type CreateVipContactInput = z.infer<typeof createVipContactSchema>;
+export type UpdateVipContactInput = z.infer<typeof updateVipContactSchema>;
+export type BatchCheckVipInput = z.infer<typeof batchCheckVipSchema>;
+
+// ── Contacts ────────────────────────────────────────
+export const contactListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  q: z.string().max(200).optional(),
+  sort: z.enum(["frequency", "recent", "name"]).optional(),
+});
+
+export type ContactListQueryInput = z.infer<typeof contactListQuerySchema>;
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;

@@ -61,9 +61,12 @@ interface CardProps {
   card: CardType;
   onClick: () => void;
   onDelete?: (cardId: string) => void;
+  isSelected?: boolean;
+  hasSelection?: boolean;
+  onSelect?: (cardId: string, e: React.MouseEvent) => void;
 }
 
-export function Card({ card, onClick, onDelete }: CardProps) {
+export function Card({ card, onClick, onDelete, isSelected, hasSelection, onSelect }: CardProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const {
     attributes,
@@ -90,6 +93,20 @@ export function Card({ card, onClick, onDelete }: CardProps) {
   const tags = card.tags ?? [];
   const visibleTags = tags.slice(0, 3);
   const extraTagCount = tags.length - 3;
+  const hasMeetingTag = tags.some((t) => t.label.toLowerCase() === "meeting");
+  const checklistItems = card.checklist ?? [];
+  const checklistTotal = checklistItems.length;
+  const checklistDone = checklistItems.filter((i) => i.done).length;
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      onSelect?.(card.id, e);
+      return;
+    }
+    onClick();
+  };
 
   return (
     <div
@@ -97,13 +114,39 @@ export function Card({ card, onClick, onDelete }: CardProps) {
       style={style}
       {...attributes}
       {...listeners}
-      onClick={onClick}
+      onClick={handleClick}
       className={`group relative cursor-grab rounded-lg border bg-white shadow-sm transition-all active:cursor-grabbing dark:bg-slate-800 ${
         isDragging
           ? "opacity-50 shadow-lg ring-2 ring-[var(--primary)] border-[var(--primary)]"
-          : "border-transparent hover:border-blue-500 hover:shadow-md"
+          : isSelected
+            ? "border-blue-500 ring-2 ring-blue-400 shadow-md bg-blue-50/50 dark:bg-blue-900/20"
+            : "border-transparent hover:border-blue-500 hover:shadow-md"
       }`}
     >
+      {/* Selection checkbox (visible on hover or when any card is selected) */}
+      {onSelect && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(card.id, e);
+          }}
+          className={`absolute top-1 left-1 z-10 flex items-center justify-center h-5 w-5 rounded border transition-all ${
+            isSelected
+              ? "bg-blue-500 border-blue-500 text-white"
+              : hasSelection
+                ? "bg-white/90 dark:bg-slate-700/90 border-slate-300 dark:border-slate-500 text-transparent hover:border-blue-400"
+                : "bg-white/90 dark:bg-slate-700/90 border-slate-300 dark:border-slate-500 text-transparent hidden group-hover:flex hover:border-blue-400"
+          }`}
+          title={isSelected ? "Deselect card" : "Select card"}
+        >
+          {isSelected && (
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          )}
+        </button>
+      )}
+
       {/* Quick delete button (top-right, visible on hover) */}
       {onDelete && (
         confirmDelete ? (
@@ -240,6 +283,56 @@ export function Card({ card, onClick, onDelete }: CardProps) {
               </svg>
               0
             </span>
+
+            {/* Checklist completion badge */}
+            {checklistTotal > 0 && (
+              <span
+                className={`inline-flex items-center gap-1 text-xs font-medium ${
+                  checklistDone === checklistTotal
+                    ? "text-green-500"
+                    : "text-[var(--muted-foreground)]"
+                }`}
+                title={`${checklistDone}/${checklistTotal} checklist items done`}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M9 11l3 3L22 4" />
+                  <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+                </svg>
+                {checklistDone}/{checklistTotal}
+              </span>
+            )}
+
+            {/* Meeting source indicator */}
+            {hasMeetingTag && (
+              <span
+                className="inline-flex items-center gap-1 text-xs text-indigo-500"
+                title="From meeting"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </span>
+            )}
           </div>
 
           {/* Assignee avatar placeholder */}

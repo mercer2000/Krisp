@@ -28,6 +28,12 @@ export interface Column {
   createdAt: Date;
 }
 
+export interface ChecklistItem {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
 export interface Card {
   id: string;
   columnId: string;
@@ -37,6 +43,7 @@ export interface Card {
   dueDate: string | null;
   priority: Priority;
   colorLabel: string | null;
+  checklist: ChecklistItem[] | null;
   archived: boolean;
   deletedAt: string | null;
   createdAt: Date;

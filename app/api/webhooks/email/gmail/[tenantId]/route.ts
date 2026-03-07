@@ -10,6 +10,7 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { autoProcessEmailActions } from "@/lib/actions/autoProcessEmailActions";
 import { dispatchWebhooks } from "@/lib/webhooks/dispatch";
+import { classifyItem, buildEmailContent } from "@/lib/smartLabels/classify";
 
 const GMAIL_WEBHOOK_SECRET = process.env.GMAIL_WEBHOOK_SECRET;
 
@@ -191,13 +192,13 @@ async function handlePubSubPush(
 
     if (result.emails && result.emails.length > 0) {
       let stored = 0;
-      const storedEmails: typeof result.emails = [];
+      const storedEmails: (typeof result.emails[0] & { _dbId: string })[] = [];
       for (const emailData of result.emails) {
         try {
           const row = await insertGmailEmail(emailData);
           if (row) {
             stored++;
-            storedEmails.push(emailData);
+            storedEmails.push({ ...emailData, _dbId: String(row.id) });
           }
         } catch (err) {
           // Skip duplicates silently
@@ -223,14 +224,16 @@ async function handlePubSubPush(
         }).catch(() => {});
       }
 
-      // Auto-extract action items from newly stored emails in background
+      // Auto-extract action items + smart label classification in background
       if (storedEmails.length > 0) {
         after(async () => {
           for (const emailData of storedEmails) {
+            const recipients = Array.isArray(emailData.recipients)
+              ? emailData.recipients.map(String)
+              : [];
+
+            // Auto-process action items
             try {
-              const recipients = Array.isArray(emailData.recipients)
-                ? emailData.recipients.map(String)
-                : [];
               await autoProcessEmailActions(tenantId, {
                 sender: emailData.sender,
                 recipients,
@@ -245,6 +248,22 @@ async function handlePubSubPush(
               console.error(
                 `[Gmail Pub/Sub] Error auto-processing actions for ${emailData.gmail_message_id}:`,
                 actionErr instanceof Error ? actionErr.message : actionErr
+              );
+            }
+
+            // Smart label classification
+            try {
+              const content = buildEmailContent({
+                sender: emailData.sender,
+                recipients,
+                subject: emailData.subject ?? null,
+                bodyPlainText: emailData.body_plain ?? null,
+              });
+              await classifyItem("gmail_email", emailData._dbId, tenantId, { content });
+            } catch (classifyErr) {
+              console.error(
+                `[Gmail Pub/Sub] Smart label classification failed for ${emailData.gmail_message_id}:`,
+                classifyErr instanceof Error ? classifyErr.message : classifyErr
               );
             }
           }
@@ -340,7 +359,7 @@ async function handleAppsScriptPayload(
     messageId: payload.messageId,
   }).catch(() => {});
 
-  // Auto-extract action items in background
+  // Auto-extract action items + smart label classification in background
   after(async () => {
     try {
       await autoProcessEmailActions(tenantId, {
@@ -353,6 +372,22 @@ async function handleAppsScriptPayload(
     } catch (err) {
       console.error(
         `[Gmail Apps Script] Error auto-processing actions for ${payload.messageId}:`,
+        err instanceof Error ? err.message : err
+      );
+    }
+
+    // Smart label classification
+    try {
+      const content = buildEmailContent({
+        sender: payload.sender,
+        recipients: recipientsList,
+        subject: payload.subject ?? null,
+        bodyPlainText: payload.bodyPlain ?? null,
+      });
+      await classifyItem("gmail_email", String(result.id), tenantId, { content });
+    } catch (err) {
+      console.error(
+        `[Gmail Apps Script] Smart label classification failed for ${payload.messageId}:`,
         err instanceof Error ? err.message : err
       );
     }

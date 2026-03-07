@@ -71,7 +71,7 @@ ${itemsSummary}
 
 Today's date: ${today}`;
 
-    const text = await chatCompletion(prompt, { maxTokens: 2000 });
+    const text = await chatCompletion(prompt, { maxTokens: 2000, userId });
 
     let parsed: Array<{
       index: number;

@@ -314,7 +314,7 @@ User: ${message.trim()}
 
 Provide a helpful, concise answer based on the available data:`;
 
-  const answer = await chatCompletion(prompt, { maxTokens: 1500 });
+  const answer = await chatCompletion(prompt, { maxTokens: 1500, userId });
 
   // Save the assistant response (encrypted)
   const [assistantMsg] = await db

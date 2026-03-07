@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import {
   buildOutlookAuthUrl,
-  getOutlookTokenForTenant,
+  getOutlookTokensForTenant,
   deactivateOutlookToken,
 } from "@/lib/outlook/oauth";
 import { randomUUID } from "crypto";
 
 /**
  * GET /api/outlook/oauth
- * Returns the current Outlook OAuth connection status, or initiates the OAuth
- * flow if ?action=connect is provided.
+ * Returns the current Outlook OAuth connection status (all accounts),
+ * or initiates the OAuth flow if ?action=connect is provided.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -31,23 +31,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(authUrl);
     }
 
-    // Otherwise, return connection status
-    const token = await getOutlookTokenForTenant(userId);
+    // Otherwise, return connection status for all accounts
+    const tokens = await getOutlookTokensForTenant(userId);
 
-    if (!token) {
-      return NextResponse.json({ connected: false });
+    if (tokens.length === 0) {
+      return NextResponse.json({ connected: false, accounts: [] });
     }
 
-    const isExpired = new Date(token.token_expiry) < new Date();
-
-    return NextResponse.json({
-      connected: true,
+    const accounts = tokens.map((token) => ({
+      id: token.id,
       outlookEmail: token.outlook_email,
       tokenExpiry: token.token_expiry,
-      isExpired,
+      isExpired: new Date(token.token_expiry) < new Date(),
       lastSyncAt: token.last_sync_at,
       createdAt: token.created_at,
       updatedAt: token.updated_at,
+    }));
+
+    return NextResponse.json({
+      connected: true,
+      accounts,
     });
   } catch (error) {
     console.error("Error in Outlook OAuth route:", error);
@@ -60,9 +63,9 @@ export async function GET(request: NextRequest) {
 
 /**
  * DELETE /api/outlook/oauth
- * Disconnect the Outlook integration for the authenticated user.
+ * Disconnect a specific Outlook account. Requires ?accountId=<uuid>.
  */
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   try {
     const session = await auth();
     const userId = session?.user?.id;
@@ -70,10 +73,18 @@ export async function DELETE() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await deactivateOutlookToken(userId);
+    const accountId = request.nextUrl.searchParams.get("accountId");
+    if (!accountId) {
+      return NextResponse.json(
+        { error: "accountId query parameter is required" },
+        { status: 400 }
+      );
+    }
+
+    await deactivateOutlookToken(accountId, userId);
 
     return NextResponse.json({
-      message: "Outlook integration disconnected",
+      message: "Outlook account disconnected",
     });
   } catch (error) {
     console.error("Error disconnecting Outlook:", error);

@@ -61,6 +61,8 @@ export const users = pgTable("users", {
   defaultBoardId: uuid("default_board_id"),
   emailActionBoardId: uuid("email_action_board_id"),
   dashboardConfig: jsonb("dashboard_config"),
+  openrouterApiKey: text("openrouter_api_key"),
+  openrouterKeyHash: varchar("openrouter_key_hash", { length: 255 }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -162,6 +164,7 @@ export const cards = pgTable("cards", {
   dueDate: date("due_date"),
   priority: priorityEnum("priority").default("medium").notNull(),
   colorLabel: varchar("color_label", { length: 7 }),
+  checklist: jsonb("checklist").$type<{ id: string; title: string; done: boolean }[]>(),
   archived: boolean("archived").default(false).notNull(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -411,6 +414,8 @@ export const gmailEmails = pgTable(
     labels: jsonb("labels").notNull().default([]),
     rawPayload: jsonb("raw_payload"),
     isNewsletter: boolean("is_newsletter").default(false).notNull(),
+    isSpam: boolean("is_spam").default(false).notNull(),
+    unsubscribeLink: text("unsubscribe_link"),
     ingestedAt: timestamp("ingested_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -591,6 +596,8 @@ export const emails = pgTable(
       { onDelete: "set null" }
     ),
     isNewsletter: boolean("is_newsletter").default(false).notNull(),
+    isSpam: boolean("is_spam").default(false).notNull(),
+    unsubscribeLink: text("unsubscribe_link"),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -1566,6 +1573,175 @@ export const extensionDownloads = pgTable(
   ]
 );
 
+// ── Smart Labels (AI-Powered Prompt-Driven Labels) ───────
+export const smartLabels = pgTable(
+  "smart_labels",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 100 }).notNull(),
+    prompt: text("prompt").notNull(),
+    color: varchar("color", { length: 7 }).notNull().default("#6366F1"),
+    active: boolean("active").default(true).notNull(),
+    autoDraftEnabled: boolean("auto_draft_enabled").default(false).notNull(),
+    contextWindowMax: integer("context_window_max").default(7).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_smart_labels_tenant_name").on(table.tenantId, table.name),
+    index("idx_smart_labels_tenant").on(table.tenantId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
+    }),
+  ]
+);
+
+export const smartLabelItems = pgTable(
+  "smart_label_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    labelId: uuid("label_id")
+      .notNull()
+      .references(() => smartLabels.id, { onDelete: "cascade" }),
+    itemType: varchar("item_type", { length: 30 }).notNull(), // "email", "card", "action_item", "meeting"
+    itemId: varchar("item_id", { length: 255 }).notNull(), // string or numeric id cast to string
+    confidence: integer("confidence"), // 0-100
+    assignedBy: varchar("assigned_by", { length: 20 })
+      .default("ai")
+      .notNull(), // "ai" | "manual"
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_smart_label_item").on(
+      table.labelId,
+      table.itemType,
+      table.itemId
+    ),
+    index("idx_smart_label_items_label").on(table.labelId),
+    index("idx_smart_label_items_item").on(table.itemType, table.itemId),
+    pgPolicy("smart_label_items_auth_select", {
+      for: "select",
+      to: authenticatedRole,
+      using: sql`label_id IN (SELECT id FROM smart_labels WHERE tenant_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("smart_label_items_auth_insert", {
+      for: "insert",
+      to: authenticatedRole,
+      withCheck: sql`label_id IN (SELECT id FROM smart_labels WHERE tenant_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("smart_label_items_auth_update", {
+      for: "update",
+      to: authenticatedRole,
+      using: sql`label_id IN (SELECT id FROM smart_labels WHERE tenant_id = (select auth.user_id()::uuid))`,
+      withCheck: sql`label_id IN (SELECT id FROM smart_labels WHERE tenant_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("smart_label_items_auth_delete", {
+      for: "delete",
+      to: authenticatedRole,
+      using: sql`label_id IN (SELECT id FROM smart_labels WHERE tenant_id = (select auth.user_id()::uuid))`,
+    }),
+  ]
+);
+
+// ── Smart Label Context Entries (per-label memory/context window) ──
+export const smartLabelContextEntries = pgTable(
+  "smart_label_context_entries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    labelId: uuid("label_id")
+      .notNull()
+      .references(() => smartLabels.id, { onDelete: "cascade" }),
+    emailId: varchar("email_id", { length: 255 }).notNull(),
+    emailType: varchar("email_type", { length: 30 }).notNull(), // "email" | "gmail_email"
+    sender: text("sender").notNull(),
+    subject: text("subject"),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
+    bodyExcerpt: text("body_excerpt"), // truncated ~300 tokens
+    userReplied: boolean("user_replied").default(false).notNull(),
+    replyExcerpt: text("reply_excerpt"), // highest-signal field for tone calibration
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_slce_label").on(table.labelId),
+    index("idx_slce_label_created").on(table.labelId, table.createdAt),
+    pgPolicy("slce_auth_select", {
+      for: "select",
+      to: authenticatedRole,
+      using: sql`label_id IN (SELECT id FROM smart_labels WHERE tenant_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("slce_auth_insert", {
+      for: "insert",
+      to: authenticatedRole,
+      withCheck: sql`label_id IN (SELECT id FROM smart_labels WHERE tenant_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("slce_auth_update", {
+      for: "update",
+      to: authenticatedRole,
+      using: sql`label_id IN (SELECT id FROM smart_labels WHERE tenant_id = (select auth.user_id()::uuid))`,
+      withCheck: sql`label_id IN (SELECT id FROM smart_labels WHERE tenant_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("slce_auth_delete", {
+      for: "delete",
+      to: authenticatedRole,
+      using: sql`label_id IN (SELECT id FROM smart_labels WHERE tenant_id = (select auth.user_id()::uuid))`,
+    }),
+  ]
+);
+
+// ── Email Drafts (AI-generated reply drafts) ──────────
+export const emailDraftStatusEnum = pgEnum("email_draft_status", [
+  "pending_review",
+  "sent",
+  "discarded",
+]);
+
+export const emailDrafts = pgTable(
+  "email_drafts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    emailId: varchar("email_id", { length: 255 }).notNull(),
+    emailType: varchar("email_type", { length: 30 }).notNull(), // "email" | "gmail_email"
+    labelId: uuid("label_id")
+      .references(() => smartLabels.id, { onDelete: "set null" }),
+    draftBody: text("draft_body").notNull(),
+    status: emailDraftStatusEnum("status").default("pending_review").notNull(),
+    discardedAt: timestamp("discarded_at", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_email_drafts_tenant").on(table.tenantId),
+    index("idx_email_drafts_email").on(table.emailId, table.emailType),
+    index("idx_email_drafts_status").on(table.tenantId, table.status),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
+    }),
+  ]
+);
+
 // ── Daily Briefings ────────────────────────────────────
 export const dailyBriefings = pgTable(
   "daily_briefings",
@@ -1597,6 +1773,155 @@ export const dailyBriefings = pgTable(
       role: authenticatedRole,
       read: authUid(table.userId),
       modify: authUid(table.userId),
+    }),
+  ]
+);
+
+// ── VIP Contacts ─────────────────────────────────────
+export const vipContacts = pgTable(
+  "vip_contacts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    email: varchar("email", { length: 512 }).notNull(),
+    domain: varchar("domain", { length: 255 }),
+    displayName: varchar("display_name", { length: 255 }),
+    notifyOnNew: boolean("notify_on_new").default(false).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_vip_contacts_tenant_email").on(table.tenantId, table.email),
+    index("idx_vip_contacts_tenant").on(table.tenantId),
+    index("idx_vip_contacts_domain").on(table.tenantId, table.domain),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
+    }),
+  ]
+);
+
+// ── Thought Links (link brain thoughts to cards, meetings, emails) ──
+export const thoughtLinks = pgTable(
+  "thought_links",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    thoughtId: uuid("thought_id")
+      .notNull()
+      .references(() => brainThoughts.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    linkedEntityType: varchar("linked_entity_type", { length: 30 }).notNull(), // "card" | "meeting" | "email"
+    linkedEntityId: varchar("linked_entity_id", { length: 255 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_thought_link").on(
+      table.thoughtId,
+      table.linkedEntityType,
+      table.linkedEntityId
+    ),
+    index("idx_thought_links_thought").on(table.thoughtId),
+    index("idx_thought_links_user").on(table.userId),
+    index("idx_thought_links_entity").on(table.linkedEntityType, table.linkedEntityId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.userId),
+      modify: authUid(table.userId),
+    }),
+  ]
+);
+
+// ── Thought Reminders ────────────────────────────────
+export const reminderModeEnum = pgEnum("reminder_mode", [
+  "one_time",
+  "spaced_repetition",
+]);
+
+export const reminderStatusEnum = pgEnum("reminder_status", [
+  "pending",
+  "sent",
+  "cancelled",
+]);
+
+export const thoughtReminders = pgTable(
+  "thought_reminders",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    thoughtId: uuid("thought_id")
+      .notNull()
+      .references(() => brainThoughts.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
+    mode: reminderModeEnum("mode").notNull().default("one_time"),
+    status: reminderStatusEnum("status").notNull().default("pending"),
+    repetitionNumber: integer("repetition_number").default(0).notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_thought_reminders_user").on(table.userId),
+    index("idx_thought_reminders_pending").on(table.status, table.scheduledAt),
+    index("idx_thought_reminders_thought").on(table.thoughtId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.userId),
+      modify: authUid(table.userId),
+    }),
+  ]
+);
+
+// ── Email Contacts ───────────────────────────────────
+export const emailContacts = pgTable(
+  "email_contacts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    displayName: text("display_name"),
+    emailCount: integer("email_count").default(0).notNull(),
+    lastEmailAt: timestamp("last_email_at", { withTimezone: true }),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_email_contacts_tenant_email").on(
+      table.tenantId,
+      table.email
+    ),
+    index("idx_email_contacts_tenant").on(table.tenantId),
+    index("idx_email_contacts_email_count").on(table.tenantId, table.emailCount),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
     }),
   ]
 );

@@ -134,13 +134,14 @@ export function QuickFind({ workspaceId, open, onClose }: QuickFindProps) {
   );
 }
 
-// Hook to register Cmd+K globally
+// Hook to register Cmd+Shift+K for workspace page search
+// (Cmd+K is now reserved for the global command palette)
 export function useQuickFind() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "K") {
         e.preventDefault();
         setOpen((prev) => !prev);
       }

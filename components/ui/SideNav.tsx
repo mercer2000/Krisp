@@ -56,6 +56,12 @@ const NAV_ITEMS = [
     icon: InboxIcon,
   },
   {
+    key: "contacts",
+    label: "Contacts",
+    href: "/contacts",
+    icon: ContactsIcon,
+  },
+  {
     key: "krisp",
     label: "Meetings",
     href: "/krisp",
@@ -84,6 +90,12 @@ const NAV_ITEMS = [
     label: "AI Prompts",
     href: "/admin/prompts",
     icon: AIPromptsIcon,
+  },
+  {
+    key: "smart-labels",
+    label: "Smart Labels",
+    href: "/admin/smart-labels",
+    icon: SmartLabelsIcon,
   },
   {
     key: "extensions",
@@ -120,6 +132,27 @@ function DashboardIcon({ size = 20 }: { size?: number }) {
       <rect x="14" y="3" width="7" height="5" rx="1" />
       <rect x="14" y="12" width="7" height="9" rx="1" />
       <rect x="3" y="16" width="7" height="5" rx="1" />
+    </svg>
+  );
+}
+
+function ContactsIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </svg>
   );
 }
@@ -362,6 +395,24 @@ function AIPromptsIcon({ size = 20 }: { size?: number }) {
   );
 }
 
+function SmartLabelsIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+    </svg>
+  );
+}
+
 function ExtensionsIcon({ size = 20 }: { size?: number }) {
   return (
     <svg
@@ -494,6 +545,7 @@ export function SideNav() {
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === "/dashboard";
     if (href === "/inbox") return pathname.startsWith("/inbox");
+    if (href === "/contacts") return pathname.startsWith("/contacts");
     if (href === "/krisp") return pathname === "/krisp";
     if (href === "/calendar") return pathname.startsWith("/calendar");
     if (href === "/boards") return pathname.startsWith("/boards");
@@ -501,9 +553,10 @@ export function SideNav() {
     if (href === "/brain") return pathname.startsWith("/brain");
     if (href === "/decisions") return pathname.startsWith("/decisions");
     if (href === "/weekly-reviews") return pathname.startsWith("/weekly-reviews");
-    if (href === "/analytics") return pathname.startsWith("/analytics");
-    if (href === "/admin/integrations") return pathname.startsWith("/admin/integrations");
+    if (href === "/analytics") return pathname === "/analytics";
+if (href === "/admin/integrations") return pathname.startsWith("/admin/integrations");
     if (href === "/admin/prompts") return pathname.startsWith("/admin/prompts");
+    if (href === "/admin/smart-labels") return pathname.startsWith("/admin/smart-labels");
     if (href === "/admin/extensions") return pathname.startsWith("/admin/extensions");
     if (href === "/trash") return pathname === "/trash";
     return pathname === href;

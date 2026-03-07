@@ -26,7 +26,7 @@ import { AddColumnButton } from "./AddColumnButton";
 import { CardDetailDrawer } from "./CardDetailDrawer";
 import { TrashDropZone, TRASH_ZONE_ID } from "./TrashDropZone";
 import { useReorderColumns } from "@/lib/hooks/useColumns";
-import { useDeleteCard, useMoveCard, useReorderCards } from "@/lib/hooks/useCards";
+import { useDeleteCard, useDeleteCards, useMoveCard, useReorderCards } from "@/lib/hooks/useCards";
 import type { BoardWithColumns, Card as CardType, ColumnWithCards } from "@/types";
 import type { BoardFilters } from "./BoardHeader";
 
@@ -89,6 +89,7 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
   const [dragSourceColumnId, setDragSourceColumnId] = useState<string | null>(null);
   const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
   const [selectedCard, setSelectedCard] = useState<CardType | null>(null);
+  const [selectedCardIds, setSelectedCardIds] = useState<Set<string>>(new Set());
 
   // Local columns state for real-time cross-column drag feedback.
   const [localColumns, setLocalColumns] = useState<ColumnWithCards[]>(() =>
@@ -108,6 +109,7 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
   const moveCard = useMoveCard(board.id);
   const reorderCards = useReorderCards(board.id);
   const deleteCard = useDeleteCard(board.id);
+  const deleteCards = useDeleteCards(board.id);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -157,6 +159,54 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
+  }, []);
+
+  // -- Keyboard: Delete/Backspace to delete selected cards, Escape to clear --
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT") return;
+      if (target.isContentEditable) return;
+
+      if (e.key === "Escape") {
+        setSelectedCardIds(new Set());
+        return;
+      }
+
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedCardIds.size > 0) {
+        e.preventDefault();
+        const count = selectedCardIds.size;
+        const confirmed = window.confirm(
+          `Delete ${count} selected card${count === 1 ? "" : "s"}? This cannot be undone.`
+        );
+        if (confirmed) {
+          const ids = Array.from(selectedCardIds);
+          deleteCards.mutate(ids);
+          setLocalColumns((prev) =>
+            prev.map((col) => ({
+              ...col,
+              cards: col.cards.filter((c) => !selectedCardIds.has(c.id)),
+            }))
+          );
+          setSelectedCardIds(new Set());
+        }
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [selectedCardIds, deleteCards]);
+
+  // -- Card selection handler (Ctrl/Cmd+click or checkbox click) --
+  const handleSelectCard = useCallback((cardId: string) => {
+    setSelectedCardIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(cardId)) {
+        next.delete(cardId);
+      } else {
+        next.add(cardId);
+      }
+      return next;
+    });
   }, []);
 
   // -- Drag Start --
@@ -259,13 +309,25 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
 
     // Drag-to-delete: drop on trash zone
     if (overId === TRASH_ZONE_ID && activeCard) {
-      deleteCard.mutate(activeCard.id);
+      // If the dragged card is part of a selection, delete all selected cards
+      const idsToDelete = selectedCardIds.has(activeCard.id) && selectedCardIds.size > 1
+        ? Array.from(selectedCardIds)
+        : [activeCard.id];
+
+      if (idsToDelete.length > 1) {
+        deleteCards.mutate(idsToDelete);
+      } else {
+        deleteCard.mutate(activeCard.id);
+      }
+
+      const deleteSet = new Set(idsToDelete);
       setLocalColumns((prev) =>
         prev.map((col) => ({
           ...col,
-          cards: col.cards.filter((c) => c.id !== activeCard.id),
+          cards: col.cards.filter((c) => !deleteSet.has(c.id)),
         }))
       );
+      setSelectedCardIds(new Set());
       setActiveCard(null);
       setDragSourceColumnId(null);
       return;
@@ -371,6 +433,8 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
                 onCardClick={handleCardClick}
                 onDeleteCard={handleDeleteCard}
                 isOver={dragOverColumnId === column.id}
+                selectedCardIds={selectedCardIds}
+                onSelectCard={handleSelectCard}
               />
             ))}
           </SortableContext>
@@ -389,8 +453,54 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
           ) : null}
         </DragOverlay>
 
-        <TrashDropZone isVisible={activeCard !== null} />
+        <TrashDropZone
+          isVisible={activeCard !== null}
+          selectedCount={activeCard && selectedCardIds.has(activeCard.id) ? selectedCardIds.size : 1}
+        />
       </DndContext>
+
+      {/* Floating selection toolbar */}
+      {selectedCardIds.size > 0 && !activeCard && (
+        <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 shadow-lg">
+          <span className="text-sm font-medium text-[var(--foreground)]">
+            {selectedCardIds.size} selected
+          </span>
+          <div className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
+          <button
+            onClick={() => {
+              const count = selectedCardIds.size;
+              const confirmed = window.confirm(
+                `Delete ${count} selected card${count === 1 ? "" : "s"}? This cannot be undone.`
+              );
+              if (confirmed) {
+                const ids = Array.from(selectedCardIds);
+                deleteCards.mutate(ids);
+                setLocalColumns((prev) =>
+                  prev.map((col) => ({
+                    ...col,
+                    cards: col.cards.filter((c) => !selectedCardIds.has(c.id)),
+                  }))
+                );
+                setSelectedCardIds(new Set());
+              }
+            }}
+            className="flex items-center gap-1.5 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-600"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 6h18" />
+              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+            </svg>
+            Delete
+          </button>
+          <button
+            onClick={() => setSelectedCardIds(new Set())}
+            className="rounded-lg px-3 py-1.5 text-xs font-medium text-[var(--muted-foreground)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
+          >
+            Clear
+          </button>
+        </div>
+      )}
 
       {/* Card detail slide-over drawer */}
       <CardDetailDrawer

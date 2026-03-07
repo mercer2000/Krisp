@@ -62,6 +62,8 @@ export async function GET(request: NextRequest) {
         provider: "outlook" as const,
         labels: labelsMap[row.id] ?? [],
         is_newsletter: row.is_newsletter,
+        is_spam: row.is_spam,
+        unsubscribe_link: row.unsubscribe_link,
       }));
 
       allItems.push(...outlookItems);
@@ -90,13 +92,15 @@ export async function GET(request: NextRequest) {
         provider: "gmail" as const,
         labels: [],
         is_newsletter: row.is_newsletter,
+        is_spam: row.is_spam,
+        unsubscribe_link: row.unsubscribe_link,
       }));
 
       allItems.push(...gmailItems);
     }
 
-    // Fetch Zoom chat messages
-    if (fetchZoom && folder !== "newsletter") {
+    // Fetch Zoom chat messages (skip for newsletter/spam folders)
+    if (fetchZoom && folder !== "newsletter" && folder !== "spam") {
       const zoomItems = await listZoomMessages(userId, { q, after, before });
       allItems.push(...zoomItems);
     }

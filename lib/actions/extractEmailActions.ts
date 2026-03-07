@@ -48,7 +48,7 @@ ${body.slice(0, 10000)}
 
 Today's date: ${today}`;
 
-  const text = await chatCompletion(prompt, { maxTokens: 2000 });
+  const text = await chatCompletion(prompt, { maxTokens: 2000, ...(userId ? { userId } : {}) });
 
   try {
     const jsonMatch = text.match(/\[[\s\S]*\]/);

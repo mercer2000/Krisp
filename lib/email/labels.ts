@@ -23,6 +23,7 @@ export const SYSTEM_LABELS: { name: string; color: string }[] = [
   { name: "Action Required", color: "#EF4444" },
   { name: "FYI", color: "#3B82F6" },
   { name: "Newsletter", color: "#8B5CF6" },
+  { name: "Spam", color: "#DC2626" },
   { name: "Invoice", color: "#F59E0B" },
   { name: "Meeting Request", color: "#10B981" },
   { name: "Support Ticket", color: "#F97316" },

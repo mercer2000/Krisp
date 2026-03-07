@@ -50,7 +50,7 @@ Subject: ${email.subject || "(No subject)"}
 Body:
 ${(email.bodyPlainText || "").slice(0, 3000)}`;
 
-  const text = await chatCompletion(prompt, { maxTokens: 500 });
+  const text = await chatCompletion(prompt, { maxTokens: 500, userId: tenantId });
 
   let result: ClassificationResult;
   try {

@@ -68,7 +68,8 @@ export async function updateEmailByMessageId(
  */
 export async function insertEmail(
   payload: EmailWebhookPayload,
-  tenantId: string
+  tenantId: string,
+  outlookAccountId?: string
 ): Promise<EmailRow> {
   const rows = await sql`
     INSERT INTO emails (
@@ -84,7 +85,8 @@ export async function insertEmail(
       received_at,
       attachments_metadata,
       web_link,
-      raw_payload
+      raw_payload,
+      outlook_account_id
     ) VALUES (
       ${tenantId},
       ${payload.messageId},
@@ -98,7 +100,8 @@ export async function insertEmail(
       ${new Date(payload.receivedDateTime).toISOString()},
       ${JSON.stringify(payload.attachments ?? [])},
       ${payload.webLink ?? null},
-      ${JSON.stringify(payload)}
+      ${JSON.stringify(payload)},
+      ${outlookAccountId ?? null}
     )
     RETURNING *
   `;
@@ -160,7 +163,7 @@ export async function getEmailById(
  */
 export async function listEmails(
   tenantId: string,
-  opts: { page: number; limit: number; q?: string; after?: string; before?: string }
+  opts: { page: number; limit: number; q?: string; after?: string; before?: string; accountId?: string; folder?: string }
 ): Promise<{ rows: Array<{
   id: number;
   sender: string;
@@ -170,9 +173,17 @@ export async function listEmails(
   attachments_metadata: EmailAttachmentMetadata[];
   preview: string | null;
   web_link: string | null;
+  outlook_account_id: string | null;
+  is_newsletter: boolean;
+  is_spam: boolean;
+  unsubscribe_link: string | null;
 }>; total: number }> {
   const after = opts.after || null;
   const before = opts.before || null;
+  const accountId = opts.accountId || null;
+  // folder filter: "newsletter" = only newsletters, "inbox" = exclude newsletters/spam, "spam" = only spam, undefined = all
+  const showNewsletter = opts.folder === "newsletter" ? true : opts.folder === "inbox" ? false : null;
+  const showSpam = opts.folder === "spam" ? true : opts.folder === "inbox" ? false : null;
 
   // Fetch all matching emails (date-filtered server-side)
   const allRows = await sql`
@@ -181,12 +192,19 @@ export async function listEmails(
       recipients,
       attachments_metadata,
       body_plain_text,
-      web_link
+      web_link,
+      outlook_account_id,
+      is_newsletter,
+      is_spam,
+      unsubscribe_link
     FROM emails
     WHERE tenant_id = ${tenantId}
       AND deleted_at IS NULL
       AND (${after}::timestamptz IS NULL OR received_at >= ${after}::timestamptz)
       AND (${before}::timestamptz IS NULL OR received_at <= ${before}::timestamptz)
+      AND (${accountId}::uuid IS NULL OR outlook_account_id = ${accountId}::uuid)
+      AND (${showNewsletter}::boolean IS NULL OR is_newsletter = ${showNewsletter}::boolean)
+      AND (${showSpam}::boolean IS NULL OR is_spam = ${showSpam}::boolean)
     ORDER BY received_at DESC
   `;
 
@@ -204,6 +222,10 @@ export async function listEmails(
         ? (dr.body_plain_text as string).slice(0, 200)
         : null,
       web_link: dr.web_link as string | null,
+      outlook_account_id: dr.outlook_account_id as string | null,
+      is_newsletter: dr.is_newsletter as boolean,
+      is_spam: dr.is_spam as boolean,
+      unsubscribe_link: dr.unsubscribe_link as string | null,
     };
   });
 

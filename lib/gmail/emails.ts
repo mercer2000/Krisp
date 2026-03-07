@@ -1,6 +1,6 @@
 import sql from "./db";
 import type { GmailEmailRow, GmailEmailInsert } from "@/types/gmail";
-import { encrypt, encryptNullable, decryptNullable } from "@/lib/encryption";
+import { encrypt, encryptNullable, decryptNullable, isEncrypted } from "@/lib/encryption";
 
 /** Encrypted columns in gmail_emails */
 const ENCRYPTED_COLS = ["sender", "subject", "body_plain", "body_html"] as const;
@@ -10,8 +10,9 @@ const ENCRYPTED_COLS = ["sender", "subject", "body_plain", "body_html"] as const
 function decryptGmailRow(row: any): any {
   const result = { ...row };
   for (const col of ENCRYPTED_COLS) {
-    if (col in result && typeof result[col] === "string") {
-      result[col] = decryptNullable(result[col] as string);
+    const val = result[col];
+    if (typeof val === "string" && isEncrypted(val)) {
+      result[col] = decryptNullable(val);
     }
   }
   return result;
@@ -124,4 +125,79 @@ export async function getGmailEmailById(
   `;
   if (!rows[0]) return null;
   return decryptGmailRow(rows[0]) as GmailEmailRow;
+}
+
+/**
+ * List Gmail emails for the unified inbox view with pagination, search, and date filters.
+ * Returns the same shape as the Outlook listEmails function for easy merging.
+ */
+export async function listGmailEmails(
+  tenantId: string,
+  opts: { q?: string; after?: string; before?: string; gmailAccountId?: string; folder?: string }
+): Promise<Array<{
+  id: string;
+  sender: string;
+  subject: string | null;
+  received_at: string;
+  recipients: string[];
+  has_attachments: boolean;
+  preview: string | null;
+  web_link: string | null;
+  gmail_account_id: string | null;
+  is_newsletter: boolean;
+  is_spam: boolean;
+  unsubscribe_link: string | null;
+}>> {
+  const after = opts.after || null;
+  const before = opts.before || null;
+  const showNewsletter = opts.folder === "newsletter" ? true : opts.folder === "inbox" ? false : null;
+  const showSpam = opts.folder === "spam" ? true : opts.folder === "inbox" ? false : null;
+
+  const allRows = await sql`
+    SELECT
+      id, sender, subject, received_at,
+      recipients, attachments, body_plain,
+      tenant_id, is_newsletter, is_spam, unsubscribe_link
+    FROM gmail_emails
+    WHERE tenant_id = ${tenantId}
+      AND (${after}::timestamptz IS NULL OR received_at >= ${after}::timestamptz)
+      AND (${before}::timestamptz IS NULL OR received_at <= ${before}::timestamptz)
+      AND (${showNewsletter}::boolean IS NULL OR is_newsletter = ${showNewsletter}::boolean)
+      AND (${showSpam}::boolean IS NULL OR is_spam = ${showSpam}::boolean)
+    ORDER BY received_at DESC
+  `;
+
+  let decrypted = (allRows as Record<string, unknown>[]).map((row) => {
+    const dr = decryptGmailRow(row);
+    const attachments = dr.attachments;
+    const hasAttachments = Array.isArray(attachments) && attachments.length > 0;
+    return {
+      id: dr.id as string,
+      sender: dr.sender as string,
+      subject: dr.subject as string | null,
+      received_at: dr.received_at as string,
+      recipients: Array.isArray(dr.recipients) ? dr.recipients : [],
+      has_attachments: hasAttachments,
+      preview: dr.body_plain
+        ? (dr.body_plain as string).slice(0, 200)
+        : null,
+      web_link: null as string | null,
+      gmail_account_id: opts.gmailAccountId ?? null,
+      is_newsletter: dr.is_newsletter as boolean,
+      is_spam: dr.is_spam as boolean,
+      unsubscribe_link: dr.unsubscribe_link as string | null,
+    };
+  });
+
+  // Apply keyword filter on decrypted sender/subject
+  if (opts.q) {
+    const lower = opts.q.toLowerCase();
+    decrypted = decrypted.filter(
+      (r) =>
+        r.sender.toLowerCase().includes(lower) ||
+        (r.subject?.toLowerCase().includes(lower) ?? false)
+    );
+  }
+
+  return decrypted;
 }

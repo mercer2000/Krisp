@@ -38,7 +38,7 @@ export function buildOutlookAuthUrl(redirectUri: string, state: string): string 
     response_type: "code",
     redirect_uri: redirectUri,
     response_mode: "query",
-    scope: "openid profile email Mail.Read Mail.ReadWrite offline_access User.Read",
+    scope: "openid profile email Mail.Read Mail.ReadWrite Calendars.Read offline_access User.Read",
     state,
     prompt: "consent",
   });
@@ -99,7 +99,7 @@ export async function refreshOutlookToken(
       client_secret: clientSecret,
       refresh_token: refreshToken,
       grant_type: "refresh_token",
-      scope: "openid profile email Mail.Read Mail.ReadWrite offline_access User.Read",
+      scope: "openid profile email Mail.Read Mail.ReadWrite Calendars.Read offline_access User.Read",
     }),
   });
 
@@ -112,7 +112,37 @@ export async function refreshOutlookToken(
 }
 
 /**
- * Get the active Outlook OAuth token record for a tenant.
+ * Get all active Outlook OAuth token records for a tenant.
+ */
+export async function getOutlookTokensForTenant(
+  tenantId: string
+): Promise<OutlookOauthTokenRow[]> {
+  const rows = await sql`
+    SELECT * FROM outlook_oauth_tokens
+    WHERE tenant_id = ${tenantId} AND active = true
+    ORDER BY created_at ASC
+  `;
+  return rows as OutlookOauthTokenRow[];
+}
+
+/**
+ * Get a single active Outlook OAuth token by its ID and tenant.
+ */
+export async function getOutlookTokenById(
+  accountId: string,
+  tenantId: string
+): Promise<OutlookOauthTokenRow | null> {
+  const rows = await sql`
+    SELECT * FROM outlook_oauth_tokens
+    WHERE id = ${accountId} AND tenant_id = ${tenantId} AND active = true
+    LIMIT 1
+  `;
+  return (rows[0] as OutlookOauthTokenRow) || null;
+}
+
+/**
+ * @deprecated Use getOutlookTokensForTenant for multi-account support.
+ * Get the first active Outlook OAuth token record for a tenant (backwards compat).
  */
 export async function getOutlookTokenForTenant(
   tenantId: string
@@ -126,7 +156,8 @@ export async function getOutlookTokenForTenant(
 }
 
 /**
- * Upsert Outlook OAuth tokens for a tenant.
+ * Upsert Outlook OAuth tokens for a tenant+email combination.
+ * Multiple accounts are allowed per tenant — uniqueness is on (tenant_id, outlook_email).
  */
 export async function upsertOutlookTokens(params: {
   tenantId: string;
@@ -151,9 +182,8 @@ export async function upsertOutlookTokens(params: {
       ${params.tokenExpiry.toISOString()},
       true
     )
-    ON CONFLICT (tenant_id)
+    ON CONFLICT (tenant_id, outlook_email)
     DO UPDATE SET
-      outlook_email = EXCLUDED.outlook_email,
       access_token = EXCLUDED.access_token,
       refresh_token = EXCLUDED.refresh_token,
       token_expiry = EXCLUDED.token_expiry,
@@ -165,9 +195,23 @@ export async function upsertOutlookTokens(params: {
 }
 
 /**
- * Deactivate Outlook OAuth token for a tenant.
+ * Deactivate a specific Outlook OAuth account by its ID.
  */
 export async function deactivateOutlookToken(
+  accountId: string,
+  tenantId: string
+): Promise<void> {
+  await sql`
+    UPDATE outlook_oauth_tokens
+    SET active = false, updated_at = NOW()
+    WHERE id = ${accountId} AND tenant_id = ${tenantId}
+  `;
+}
+
+/**
+ * Deactivate all Outlook OAuth tokens for a tenant.
+ */
+export async function deactivateAllOutlookTokens(
   tenantId: string
 ): Promise<void> {
   await sql`
@@ -178,27 +222,28 @@ export async function deactivateOutlookToken(
 }
 
 /**
- * Update the last_sync_at timestamp for the token.
+ * Update the last_sync_at timestamp for a specific account.
  */
 export async function updateOutlookLastSync(
-  tenantId: string
+  accountId: string
 ): Promise<void> {
   await sql`
     UPDATE outlook_oauth_tokens
     SET last_sync_at = NOW(), updated_at = NOW()
-    WHERE tenant_id = ${tenantId} AND active = true
+    WHERE id = ${accountId} AND active = true
   `;
 }
 
 /**
- * Get a valid access token for a tenant, refreshing if necessary.
+ * Get a valid access token for a specific Outlook account, refreshing if necessary.
  */
 export async function getValidOutlookAccessToken(
+  accountId: string,
   tenantId: string
 ): Promise<string> {
-  const token = await getOutlookTokenForTenant(tenantId);
+  const token = await getOutlookTokenById(accountId, tenantId);
   if (!token) {
-    throw new Error("No active Outlook OAuth token found for this tenant");
+    throw new Error("No active Outlook OAuth token found for this account");
   }
 
   // Check if token expires within 5 minutes
@@ -212,7 +257,7 @@ export async function getValidOutlookAccessToken(
     const refreshed = await refreshOutlookToken(token.refresh_token);
 
     await upsertOutlookTokens({
-      tenantId,
+      tenantId: token.tenant_id,
       outlookEmail: token.outlook_email,
       accessToken: refreshed.access_token,
       refreshToken: refreshed.refresh_token,
@@ -222,7 +267,7 @@ export async function getValidOutlookAccessToken(
     return refreshed.access_token;
   } catch (err) {
     // Refresh token may be revoked — deactivate so user sees they need to reconnect
-    await deactivateOutlookToken(tenantId);
+    await deactivateOutlookToken(accountId, tenantId);
     throw new Error(
       "Outlook token refresh failed. Please reconnect your account. " +
       (err instanceof Error ? err.message : String(err))
