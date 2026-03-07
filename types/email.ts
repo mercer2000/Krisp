@@ -68,7 +68,7 @@ export interface EmailLabelChip {
 
 // Inbox list item (lightweight, excludes body content)
 export interface EmailListItem {
-  id: number;
+  id: number | string;
   sender: string;
   subject: string | null;
   received_at: string;
@@ -76,7 +76,11 @@ export interface EmailListItem {
   has_attachments: boolean;
   preview: string | null;
   web_link: string | null;
+  outlook_account_id: string | null;
+  account_id: string | null;
+  provider: "outlook" | "gmail" | "zoom";
   labels?: EmailLabelChip[];
+  is_newsletter?: boolean;
 }
 
 // Inbox list response

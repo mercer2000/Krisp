@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getEmailDetail, deleteEmail } from "@/lib/email/emails";
+import { getZoomMessageById } from "@/lib/zoom/messages";
 import { db } from "@/lib/db";
 import { graphSubscriptions } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -12,6 +13,8 @@ import {
   extractUserFromResource,
   deleteGraphMessage,
 } from "@/lib/graph/messages";
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(
   _request: NextRequest,
@@ -25,6 +28,33 @@ export async function GET(
     }
 
     const { id } = await params;
+
+    // UUID IDs are Zoom chat messages
+    if (UUID_REGEX.test(id)) {
+      const msg = await getZoomMessageById(id, userId);
+      if (!msg) {
+        return NextResponse.json({ error: "Message not found" }, { status: 404 });
+      }
+      return NextResponse.json({
+        id: msg.id,
+        tenant_id: msg.tenant_id,
+        message_id: msg.message_id,
+        sender: msg.sender_name || msg.sender_id,
+        recipients: [],
+        cc: [],
+        bcc: [],
+        subject: msg.channel_type === "channel" ? (msg.channel_id ?? "Zoom Channel") : "Direct Message",
+        body_plain_text: msg.message_content,
+        body_html: null,
+        received_at: msg.message_timestamp,
+        attachments_metadata: [],
+        web_link: null,
+        created_at: msg.created_at,
+        updated_at: msg.updated_at,
+        provider: "zoom",
+      });
+    }
+
     const emailId = parseInt(id, 10);
     if (isNaN(emailId) || emailId < 1) {
       return NextResponse.json({ error: "Invalid email ID" }, { status: 400 });

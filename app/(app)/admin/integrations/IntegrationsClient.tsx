@@ -51,15 +51,6 @@ const CRISP_EVENTS = [
   { event: "transcript_created", description: "Fired when a full meeting transcript becomes available" },
 ];
 
-const GMAIL_FIELD_MAPPING = [
-  { appsScript: "msg.getId()", payload: "messageId", description: "Unique Gmail message identifier (required for dedup)" },
-  { appsScript: "msg.getFrom()", payload: "sender", description: "Sender email address" },
-  { appsScript: "msg.getTo()", payload: "recipients", description: "Comma-separated recipient addresses" },
-  { appsScript: "msg.getSubject()", payload: "subject", description: "Email subject line" },
-  { appsScript: "msg.getPlainBody()", payload: "bodyPlain", description: "Plain text body" },
-  { appsScript: "msg.getBody()", payload: "bodyHtml", description: "HTML body content" },
-  { appsScript: "msg.getDate().toISOString()", payload: "receivedAt", description: "ISO 8601 timestamp" },
-];
 
 const TABS = [
   {
@@ -91,6 +82,16 @@ const TABS = [
       </svg>
     ),
     color: "#EA4335",
+  },
+  {
+    id: "googlecalendar" as const,
+    label: "Google Calendar",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19.5 3h-3V1.5h-1.5V3h-6V1.5H7.5V3h-3C3.67 3 3 3.67 3 4.5v15c0 .83.67 1.5 1.5 1.5h15c.83 0 1.5-.67 1.5-1.5v-15c0-.83-.67-1.5-1.5-1.5zm0 16.5h-15V8h15v11.5zM7.5 10h3v3h-3v-3zm4.5 0h3v3h-3v-3zm4.5 0h3v3h-3v-3z" />
+      </svg>
+    ),
+    color: "#4285F4",
   },
   {
     id: "zoom" as const,
@@ -875,7 +876,6 @@ function GraphSubscriptionManager({
 interface WatchStatus {
   active: boolean;
   watch: {
-    id: string;
     emailAddress: string;
     historyId: string | null;
     expiration: string | null;
@@ -892,25 +892,26 @@ function GmailWatchManager() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Setup form state
-  const [showSetup, setShowSetup] = useState(false);
-  const [setupForm, setSetupForm] = useState({
-    emailAddress: "",
-    topicName: "",
-    accessToken: "",
-    refreshToken: "",
-  });
-
   const fetchStatus = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch("/api/gmail/watch");
+      const res = await fetch("/api/gmail/oauth");
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
-      setStatus(data);
+      setStatus(data.connected ? {
+        active: true,
+        watch: {
+          emailAddress: data.emailAddress,
+          historyId: data.historyId,
+          expiration: data.expiration,
+          topicName: data.topicName,
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt,
+        },
+      } : { active: false, watch: null });
     } catch {
-      setError("Failed to load watch status");
+      setError("Failed to load Gmail connection status");
     } finally {
       setLoading(false);
     }
@@ -920,31 +921,46 @@ function GmailWatchManager() {
     fetchStatus();
   }, [fetchStatus]);
 
-  const handleSetup = async () => {
-    if (!setupForm.emailAddress || !setupForm.topicName || !setupForm.accessToken || !setupForm.refreshToken) {
-      setError("All fields are required");
-      return;
+  // Check for OAuth callback result in URL params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("gmail_connected") === "true") {
+      setSuccess("Gmail connected successfully!");
+      setTimeout(() => setSuccess(null), 5000);
+      fetchStatus();
+      const url = new URL(window.location.href);
+      url.searchParams.delete("gmail_connected");
+      url.hash = "gmail";
+      window.history.replaceState({}, "", url.toString());
     }
-    setActionLoading("setup");
+    if (params.get("gmail_error")) {
+      setError(`Gmail connection failed: ${params.get("gmail_error")}`);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("gmail_error");
+      url.hash = "gmail";
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [fetchStatus]);
+
+  const handleConnect = () => {
+    window.location.href = "/api/gmail/oauth?action=connect";
+  };
+
+  const handleDisconnect = async () => {
+    setActionLoading("disconnect");
     setError(null);
     setSuccess(null);
     try {
-      const res = await fetch("/api/gmail/watch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(setupForm),
-      });
+      const res = await fetch("/api/gmail/oauth", { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.details || data.error || "Setup failed");
+        throw new Error(data.error || "Failed to disconnect");
       }
-      setSuccess("Gmail watch created successfully");
-      setShowSetup(false);
-      setSetupForm({ emailAddress: "", topicName: "", accessToken: "", refreshToken: "" });
+      setSuccess("Gmail disconnected");
       setTimeout(() => setSuccess(null), 5000);
       await fetchStatus();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to set up watch");
+      setError(err instanceof Error ? err.message : "Failed to disconnect Gmail");
     } finally {
       setActionLoading(null);
     }
@@ -970,26 +986,6 @@ function GmailWatchManager() {
     }
   };
 
-  const handleStop = async () => {
-    setActionLoading("stop");
-    setError(null);
-    setSuccess(null);
-    try {
-      const res = await fetch("/api/gmail/watch", { method: "DELETE" });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.details || data.error || "Stop failed");
-      }
-      setSuccess("Gmail watch stopped");
-      setTimeout(() => setSuccess(null), 5000);
-      await fetchStatus();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to stop watch");
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
   const isExpiringSoon = status?.watch?.expiration
     ? new Date(status.watch.expiration).getTime() - Date.now() < 24 * 60 * 60 * 1000
     : false;
@@ -1001,13 +997,8 @@ function GmailWatchManager() {
   return (
     <div>
       <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
-        Gmail Watch Status
+        Connection Status
       </h3>
-      <p className="text-sm text-[var(--muted-foreground)] mb-3">
-        The Gmail Watch monitors your inbox via Pub/Sub and automatically
-        fetches new emails. Watch subscriptions expire after 7 days and must
-        be renewed.
-      </p>
 
       {error && (
         <div className="mb-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-600">
@@ -1083,11 +1074,11 @@ function GmailWatchManager() {
               {actionLoading === "renew" ? "Renewing..." : "Renew Watch"}
             </button>
             <button
-              onClick={handleStop}
+              onClick={handleDisconnect}
               disabled={actionLoading !== null}
               className="px-4 py-2 text-sm font-medium rounded-md border border-red-500/30 text-red-600 hover:bg-red-500/10 transition-colors disabled:opacity-50"
             >
-              {actionLoading === "stop" ? "Stopping..." : "Stop Watch"}
+              {actionLoading === "disconnect" ? "Disconnecting..." : "Disconnect"}
             </button>
           </div>
         </div>
@@ -1097,117 +1088,55 @@ function GmailWatchManager() {
             <div className="flex items-center gap-2 mb-2">
               <div className="w-2.5 h-2.5 rounded-full bg-gray-400" />
               <span className="text-sm font-medium text-[var(--muted-foreground)]">
-                No Active Watch
+                Not Connected
               </span>
             </div>
             <p className="text-sm text-[var(--muted-foreground)]">
-              Set up a Gmail watch to start receiving real-time email
-              notifications via Pub/Sub. You&apos;ll need OAuth tokens from
-              a Google Cloud project with the Gmail API enabled.
+              Connect your Gmail account to automatically monitor your inbox.
+              The OAuth flow will grant read-only access and set up real-time
+              notifications.
             </p>
           </div>
 
-          {!showSetup ? (
-            <button
-              onClick={() => setShowSetup(true)}
-              className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity"
-            >
-              Set Up Gmail Watch
-            </button>
-          ) : (
-            <div className="space-y-3 p-4 rounded-lg border border-[var(--border)] bg-[var(--card)]">
-              <h4 className="text-sm font-semibold text-[var(--foreground)]">
-                Configure Gmail Watch
-              </h4>
-              <p className="text-xs text-[var(--muted-foreground)]">
-                Provide your Gmail address, Google Cloud Pub/Sub topic name, and
-                OAuth tokens obtained from the Google OAuth consent flow with the{" "}
-                <code className="px-1 py-0.5 rounded bg-[var(--secondary)] text-xs">gmail.readonly</code>{" "}
-                scope.
-              </p>
-              <div>
-                <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                  Gmail Address
-                </label>
-                <input
-                  type="email"
-                  value={setupForm.emailAddress}
-                  onChange={(e) => setSetupForm({ ...setupForm, emailAddress: e.target.value })}
-                  placeholder="user@gmail.com"
-                  className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                  Pub/Sub Topic Name
-                </label>
-                <input
-                  type="text"
-                  value={setupForm.topicName}
-                  onChange={(e) => setSetupForm({ ...setupForm, topicName: e.target.value })}
-                  placeholder="projects/my-project/topics/gmail-inbound"
-                  className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                  Access Token
-                </label>
-                <input
-                  type="password"
-                  value={setupForm.accessToken}
-                  onChange={(e) => setSetupForm({ ...setupForm, accessToken: e.target.value })}
-                  placeholder="ya29.a0..."
-                  className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                  Refresh Token
-                </label>
-                <input
-                  type="password"
-                  value={setupForm.refreshToken}
-                  onChange={(e) => setSetupForm({ ...setupForm, refreshToken: e.target.value })}
-                  placeholder="1//0e..."
-                  className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                />
-              </div>
-              <div className="flex gap-2 pt-1">
-                <button
-                  onClick={handleSetup}
-                  disabled={actionLoading !== null}
-                  className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity disabled:opacity-50"
-                >
-                  {actionLoading === "setup" ? "Creating..." : "Create Watch"}
-                </button>
-                <button
-                  onClick={() => setShowSetup(false)}
-                  className="px-4 py-2 text-sm font-medium rounded-md border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
+          <button
+            onClick={handleConnect}
+            disabled={actionLoading !== null}
+            className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity disabled:opacity-50"
+          >
+            Connect Gmail
+          </button>
         </div>
       )}
     </div>
   );
 }
 
+interface ZoomAccountInfo {
+  id: string;
+  zoomEmail: string;
+  zoomUserId: string | null;
+  tokenExpiry: string;
+  isExpired: boolean;
+  lastSyncAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 function ZoomIntegrationManager() {
   const [status, setStatus] = useState<{
     connected: boolean;
-    zoomAccountId?: string;
-    tokenExpiry?: string;
-    isExpired?: boolean;
-    createdAt?: string;
+    accounts: ZoomAccountInfo[];
   } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [syncingAccounts, setSyncingAccounts] = useState<Set<string>>(new Set());
+  const [disconnectingAccounts, setDisconnectingAccounts] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [syncResults, setSyncResults] = useState<Record<string, {
+    total: number;
+    inserted: number;
+    skipped: number;
+  }>>({});
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -1232,41 +1161,35 @@ function ZoomIntegrationManager() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("zoom_connected") === "true") {
-      setSuccess("Zoom connected successfully!");
+      setSuccess("Zoom account connected successfully!");
       setTimeout(() => setSuccess(null), 5000);
       fetchStatus();
-      // Clean up URL
       const url = new URL(window.location.href);
       url.searchParams.delete("zoom_connected");
+      url.hash = "zoom";
       window.history.replaceState({}, "", url.toString());
     }
     if (params.get("zoom_error")) {
       setError(`Zoom connection failed: ${params.get("zoom_error")}`);
       const url = new URL(window.location.href);
       url.searchParams.delete("zoom_error");
+      url.hash = "zoom";
       window.history.replaceState({}, "", url.toString());
     }
   }, [fetchStatus]);
 
   const handleConnect = () => {
-    const clientId = process.env.NEXT_PUBLIC_ZOOM_CLIENT_ID;
-    if (!clientId) {
-      setError("NEXT_PUBLIC_ZOOM_CLIENT_ID is not configured");
-      return;
-    }
-    const redirectUri = `${window.location.origin}/api/zoom/oauth/callback`;
-    const authUrl = `https://zoom.us/oauth/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}`;
-    window.location.href = authUrl;
+    window.location.href = "/api/zoom/oauth?action=connect";
   };
 
-  const handleDisconnect = async () => {
-    setActionLoading(true);
+  const handleDisconnect = async (accountId: string) => {
+    setDisconnectingAccounts((prev) => new Set(prev).add(accountId));
     setError(null);
     setSuccess(null);
     try {
-      const res = await fetch("/api/zoom/oauth", { method: "DELETE" });
+      const res = await fetch(`/api/zoom/oauth?accountId=${accountId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to disconnect");
-      setSuccess("Zoom disconnected");
+      setSuccess("Zoom account disconnected");
       setTimeout(() => setSuccess(null), 5000);
       await fetchStatus();
     } catch (err) {
@@ -1274,18 +1197,57 @@ function ZoomIntegrationManager() {
         err instanceof Error ? err.message : "Failed to disconnect Zoom"
       );
     } finally {
-      setActionLoading(false);
+      setDisconnectingAccounts((prev) => {
+        const next = new Set(prev);
+        next.delete(accountId);
+        return next;
+      });
     }
   };
+
+  const handleSync = async (accountId: string) => {
+    setSyncingAccounts((prev) => new Set(prev).add(accountId));
+    setError(null);
+    setSyncResults((prev) => {
+      const next = { ...prev };
+      delete next[accountId];
+      return next;
+    });
+    try {
+      const res = await fetch("/api/zoom/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Sync failed");
+      setSyncResults((prev) => ({
+        ...prev,
+        [accountId]: { total: data.total, inserted: data.inserted, skipped: data.skipped },
+      }));
+      setSuccess(`Sync complete: ${data.inserted} new messages imported`);
+      setTimeout(() => setSuccess(null), 5000);
+      await fetchStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sync failed");
+    } finally {
+      setSyncingAccounts((prev) => {
+        const next = new Set(prev);
+        next.delete(accountId);
+        return next;
+      });
+    }
+  };
+
+  const accounts = status?.accounts || [];
 
   return (
     <div>
       <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
-        Connection Status
+        Connected Accounts
       </h3>
       <p className="text-sm text-[var(--muted-foreground)] mb-3">
-        Connect your Zoom account to start capturing chat messages in real-time
-        via Zoom webhooks.
+        Connect one or more Zoom accounts to sync Team Chat messages via API polling.
       </p>
 
       {error && (
@@ -1303,67 +1265,86 @@ function ZoomIntegrationManager() {
         <div className="p-4 rounded-lg bg-[var(--secondary)] border border-[var(--border)] text-sm text-[var(--muted-foreground)]">
           Loading...
         </div>
-      ) : status?.connected ? (
-        <div className="space-y-4">
-          <div className="p-4 rounded-lg border border-[var(--border)] bg-[var(--secondary)]">
-            <div className="flex items-center gap-2 mb-3">
-              <div
-                className={`w-2.5 h-2.5 rounded-full ${
-                  status.isExpired ? "bg-amber-500" : "bg-green-500"
-                }`}
-              />
-              <span className="text-sm font-medium text-[var(--foreground)]">
-                {status.isExpired
-                  ? "Token Expired (will auto-refresh)"
-                  : "Connected"}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              {status.zoomAccountId && (
-                <div>
-                  <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                    Account ID
-                  </span>
-                  <p className="text-[var(--foreground)] mt-0.5 font-mono text-xs">
-                    {status.zoomAccountId}
-                  </p>
-                </div>
-              )}
-              <div>
-                <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                  Connected Since
-                </span>
-                <p className="text-[var(--foreground)] mt-0.5">
-                  {status.createdAt
-                    ? new Date(status.createdAt).toLocaleString()
-                    : "—"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={handleDisconnect}
-            disabled={actionLoading}
-            className="px-4 py-2 text-sm font-medium rounded-md border border-red-500/30 text-red-600 hover:bg-red-500/10 transition-colors disabled:opacity-50"
-          >
-            {actionLoading ? "Disconnecting..." : "Disconnect Zoom"}
-          </button>
-        </div>
       ) : (
         <div className="space-y-4">
-          <div className="p-4 rounded-lg border border-[var(--border)] bg-[var(--secondary)]">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-gray-400" />
-              <span className="text-sm font-medium text-[var(--muted-foreground)]">
-                Not Connected
-              </span>
+          {accounts.length > 0 ? (
+            accounts.map((account) => (
+              <div
+                key={account.id}
+                className="p-4 rounded-lg border border-[var(--border)] bg-[var(--secondary)]"
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <div
+                    className={`w-2.5 h-2.5 rounded-full ${
+                      account.isExpired ? "bg-amber-500" : "bg-green-500"
+                    }`}
+                  />
+                  <span className="text-sm font-medium text-[var(--foreground)]">
+                    {account.zoomEmail}
+                  </span>
+                  {account.isExpired && (
+                    <span className="text-xs text-amber-500">(token expired, will auto-refresh)</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+                  <div>
+                    <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                      Connected Since
+                    </span>
+                    <p className="text-[var(--foreground)] mt-0.5">
+                      {new Date(account.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                      Last Sync
+                    </span>
+                    <p className="text-[var(--foreground)] mt-0.5">
+                      {account.lastSyncAt
+                        ? new Date(account.lastSyncAt).toLocaleString()
+                        : "Never"}
+                    </p>
+                  </div>
+                </div>
+
+                {syncResults[account.id] && (
+                  <div className="mb-3 p-2 rounded bg-blue-500/10 border border-blue-500/20 text-xs text-[var(--foreground)]">
+                    Fetched {syncResults[account.id].total} messages: {syncResults[account.id].inserted} new, {syncResults[account.id].skipped} already existed.
+                  </div>
+                )}
+
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={() => handleSync(account.id)}
+                    disabled={syncingAccounts.has(account.id)}
+                    className="px-3 py-1.5 text-xs font-medium rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {syncingAccounts.has(account.id) ? "Syncing..." : "Sync Now"}
+                  </button>
+                  <button
+                    onClick={() => handleDisconnect(account.id)}
+                    disabled={disconnectingAccounts.has(account.id)}
+                    className="px-3 py-1.5 text-xs font-medium rounded-md border border-red-500/30 text-red-600 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                  >
+                    {disconnectingAccounts.has(account.id) ? "Disconnecting..." : "Disconnect"}
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="p-4 rounded-lg border border-[var(--border)] bg-[var(--secondary)]">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-gray-400" />
+                <span className="text-sm font-medium text-[var(--muted-foreground)]">
+                  No Accounts Connected
+                </span>
+              </div>
+              <p className="text-sm text-[var(--muted-foreground)]">
+                Connect your Zoom account to start syncing chat messages.
+                You will be redirected to Zoom to authorize the app.
+              </p>
             </div>
-            <p className="text-sm text-[var(--muted-foreground)]">
-              Connect your Zoom account to start ingesting chat messages. You
-              will be redirected to Zoom to authorize the app.
-            </p>
-          </div>
+          )}
 
           <button
             onClick={handleConnect}
@@ -1474,25 +1455,282 @@ function DefaultBoardSelector() {
   );
 }
 
+interface GoogleAccountInfo {
+  id: string;
+  googleEmail: string;
+  tokenExpiry: string;
+  isExpired: boolean;
+  lastSyncAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function GoogleCalendarIntegrationManager() {
+  const [status, setStatus] = useState<{
+    connected: boolean;
+    accounts: GoogleAccountInfo[];
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [calendarSyncingAccounts, setCalendarSyncingAccounts] = useState<Set<string>>(new Set());
+  const [disconnectingAccounts, setDisconnectingAccounts] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [calendarSyncResults, setCalendarSyncResults] = useState<Record<string, {
+    synced: number;
+    errors: number;
+  }>>({});
+
+  const fetchStatus = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch("/api/google/oauth");
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      setStatus(data);
+    } catch {
+      setError("Failed to load Google connection status");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStatus();
+  }, [fetchStatus]);
+
+  // Check for OAuth callback result in URL params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("google_connected") === "true") {
+      setSuccess("Google account connected successfully!");
+      setTimeout(() => setSuccess(null), 5000);
+      fetchStatus();
+      const url = new URL(window.location.href);
+      url.searchParams.delete("google_connected");
+      url.hash = "googlecalendar";
+      window.history.replaceState({}, "", url.toString());
+    }
+    if (params.get("google_error")) {
+      setError(`Google connection failed: ${params.get("google_error")}`);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("google_error");
+      url.hash = "googlecalendar";
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [fetchStatus]);
+
+  const handleConnect = () => {
+    window.location.href = "/api/google/oauth?action=connect";
+  };
+
+  const handleDisconnect = async (accountId: string) => {
+    setDisconnectingAccounts((prev) => new Set(prev).add(accountId));
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch(`/api/google/oauth?accountId=${accountId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to disconnect");
+      setSuccess("Google account disconnected");
+      setTimeout(() => setSuccess(null), 5000);
+      await fetchStatus();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to disconnect Google"
+      );
+    } finally {
+      setDisconnectingAccounts((prev) => {
+        const next = new Set(prev);
+        next.delete(accountId);
+        return next;
+      });
+    }
+  };
+
+  const handleCalendarSync = async (accountId: string) => {
+    setCalendarSyncingAccounts((prev) => new Set(prev).add(accountId));
+    setError(null);
+    setCalendarSyncResults((prev) => {
+      const next = { ...prev };
+      delete next[accountId];
+      return next;
+    });
+    try {
+      const res = await fetch("/api/google/calendar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId, daysBack: 7, daysForward: 30 }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Calendar sync failed");
+      setCalendarSyncResults((prev) => ({
+        ...prev,
+        [accountId]: { synced: data.synced, errors: data.errors },
+      }));
+      setSuccess(`Calendar sync complete: ${data.synced} events synced`);
+      setTimeout(() => setSuccess(null), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Calendar sync failed");
+    } finally {
+      setCalendarSyncingAccounts((prev) => {
+        const next = new Set(prev);
+        next.delete(accountId);
+        return next;
+      });
+    }
+  };
+
+  const accounts = status?.accounts || [];
+
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
+        Connected Accounts
+      </h3>
+      <p className="text-sm text-[var(--muted-foreground)] mb-3">
+        Connect one or more Google accounts to sync calendar events. Only read-only
+        calendar access is requested.
+      </p>
+
+      {error && (
+        <div className="mb-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-600">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="mb-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-sm text-green-600">
+          {success}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="p-4 rounded-lg bg-[var(--secondary)] border border-[var(--border)] text-sm text-[var(--muted-foreground)]">
+          Loading...
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {accounts.length > 0 ? (
+            accounts.map((account) => (
+              <div
+                key={account.id}
+                className="p-4 rounded-lg border border-[var(--border)] bg-[var(--secondary)]"
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <div
+                    className={`w-2.5 h-2.5 rounded-full ${
+                      account.isExpired ? "bg-amber-500" : "bg-green-500"
+                    }`}
+                  />
+                  <span className="text-sm font-medium text-[var(--foreground)]">
+                    {account.googleEmail}
+                  </span>
+                  {account.isExpired && (
+                    <span className="text-xs text-amber-500">(token expired, will auto-refresh)</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+                  <div>
+                    <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                      Connected Since
+                    </span>
+                    <p className="text-[var(--foreground)] mt-0.5">
+                      {new Date(account.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                      Last Sync
+                    </span>
+                    <p className="text-[var(--foreground)] mt-0.5">
+                      {account.lastSyncAt
+                        ? new Date(account.lastSyncAt).toLocaleString()
+                        : "Never"}
+                    </p>
+                  </div>
+                </div>
+
+                {calendarSyncResults[account.id] && (
+                  <div className="mb-3 p-2 rounded bg-blue-500/10 border border-blue-500/20 text-xs text-[var(--foreground)]">
+                    Calendar: {calendarSyncResults[account.id].synced} events synced.
+                    {calendarSyncResults[account.id].errors > 0 && ` (${calendarSyncResults[account.id].errors} errors)`}
+                  </div>
+                )}
+
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={() => handleCalendarSync(account.id)}
+                    disabled={calendarSyncingAccounts.has(account.id)}
+                    className="px-3 py-1.5 text-xs font-medium rounded-md bg-[#4285F4] text-white hover:bg-[#3367D6] transition-colors disabled:opacity-50"
+                  >
+                    {calendarSyncingAccounts.has(account.id) ? "Syncing..." : "Sync Calendar"}
+                  </button>
+                  <button
+                    onClick={() => handleDisconnect(account.id)}
+                    disabled={disconnectingAccounts.has(account.id)}
+                    className="px-3 py-1.5 text-xs font-medium rounded-md border border-red-500/30 text-red-600 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                  >
+                    {disconnectingAccounts.has(account.id) ? "Disconnecting..." : "Disconnect"}
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="p-4 rounded-lg border border-[var(--border)] bg-[var(--secondary)]">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-gray-400" />
+                <span className="text-sm font-medium text-[var(--muted-foreground)]">
+                  No Accounts Connected
+                </span>
+              </div>
+              <p className="text-sm text-[var(--muted-foreground)]">
+                Connect your Google account to start syncing calendar events.
+                You will be redirected to Google to authorize the app.
+              </p>
+            </div>
+          )}
+
+          <button
+            onClick={handleConnect}
+            className="px-4 py-2 text-sm font-medium rounded-md bg-[#4285F4] text-white hover:bg-[#3367D6] transition-colors"
+          >
+            {accounts.length > 0 ? "Add Another Account" : "Connect Google Account"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface OutlookAccountInfo {
+  id: string;
+  outlookEmail: string;
+  tokenExpiry: string;
+  isExpired: boolean;
+  lastSyncAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 function OutlookIntegrationManager() {
   const [status, setStatus] = useState<{
     connected: boolean;
-    outlookEmail?: string;
-    tokenExpiry?: string;
-    isExpired?: boolean;
-    lastSyncAt?: string | null;
-    createdAt?: string;
+    accounts: OutlookAccountInfo[];
   } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [syncingAccounts, setSyncingAccounts] = useState<Set<string>>(new Set());
+  const [calendarSyncingAccounts, setCalendarSyncingAccounts] = useState<Set<string>>(new Set());
+  const [disconnectingAccounts, setDisconnectingAccounts] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [syncResult, setSyncResult] = useState<{
+  const [syncResults, setSyncResults] = useState<Record<string, {
     total: number;
     inserted: number;
     skipped: number;
-  } | null>(null);
+  }>>({});
+  const [calendarSyncResults, setCalendarSyncResults] = useState<Record<string, {
+    synced: number;
+    errors: number;
+  }>>({});
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -1517,17 +1755,19 @@ function OutlookIntegrationManager() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("outlook_connected") === "true") {
-      setSuccess("Outlook connected successfully!");
+      setSuccess("Outlook account connected successfully!");
       setTimeout(() => setSuccess(null), 5000);
       fetchStatus();
       const url = new URL(window.location.href);
       url.searchParams.delete("outlook_connected");
+      url.hash = "outlook";
       window.history.replaceState({}, "", url.toString());
     }
     if (params.get("outlook_error")) {
       setError(`Outlook connection failed: ${params.get("outlook_error")}`);
       const url = new URL(window.location.href);
       url.searchParams.delete("outlook_error");
+      url.hash = "outlook";
       window.history.replaceState({}, "", url.toString());
     }
   }, [fetchStatus]);
@@ -1536,14 +1776,14 @@ function OutlookIntegrationManager() {
     window.location.href = "/api/outlook/oauth?action=connect";
   };
 
-  const handleDisconnect = async () => {
-    setActionLoading(true);
+  const handleDisconnect = async (accountId: string) => {
+    setDisconnectingAccounts((prev) => new Set(prev).add(accountId));
     setError(null);
     setSuccess(null);
     try {
-      const res = await fetch("/api/outlook/oauth", { method: "DELETE" });
+      const res = await fetch(`/api/outlook/oauth?accountId=${accountId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to disconnect");
-      setSuccess("Outlook disconnected");
+      setSuccess("Outlook account disconnected");
       setTimeout(() => setSuccess(null), 5000);
       await fetchStatus();
     } catch (err) {
@@ -1551,37 +1791,91 @@ function OutlookIntegrationManager() {
         err instanceof Error ? err.message : "Failed to disconnect Outlook"
       );
     } finally {
-      setActionLoading(false);
+      setDisconnectingAccounts((prev) => {
+        const next = new Set(prev);
+        next.delete(accountId);
+        return next;
+      });
     }
   };
 
-  const handleSync = async () => {
-    setSyncing(true);
+  const handleSync = async (accountId: string) => {
+    setSyncingAccounts((prev) => new Set(prev).add(accountId));
     setError(null);
-    setSyncResult(null);
+    setSyncResults((prev) => {
+      const next = { ...prev };
+      delete next[accountId];
+      return next;
+    });
     try {
-      const res = await fetch("/api/outlook/sync", { method: "POST" });
+      const res = await fetch("/api/outlook/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Sync failed");
-      setSyncResult({ total: data.total, inserted: data.inserted, skipped: data.skipped });
+      setSyncResults((prev) => ({
+        ...prev,
+        [accountId]: { total: data.total, inserted: data.inserted, skipped: data.skipped },
+      }));
       setSuccess(`Sync complete: ${data.inserted} new emails imported`);
       setTimeout(() => setSuccess(null), 5000);
       await fetchStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sync failed");
     } finally {
-      setSyncing(false);
+      setSyncingAccounts((prev) => {
+        const next = new Set(prev);
+        next.delete(accountId);
+        return next;
+      });
     }
   };
+
+  const handleCalendarSync = async (accountId: string) => {
+    setCalendarSyncingAccounts((prev) => new Set(prev).add(accountId));
+    setError(null);
+    setCalendarSyncResults((prev) => {
+      const next = { ...prev };
+      delete next[accountId];
+      return next;
+    });
+    try {
+      const res = await fetch("/api/outlook/calendar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId, daysBack: 7, daysForward: 30 }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Calendar sync failed");
+      setCalendarSyncResults((prev) => ({
+        ...prev,
+        [accountId]: { synced: data.synced, errors: data.errors },
+      }));
+      setSuccess(`Calendar sync complete: ${data.synced} events synced`);
+      setTimeout(() => setSuccess(null), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Calendar sync failed");
+    } finally {
+      setCalendarSyncingAccounts((prev) => {
+        const next = new Set(prev);
+        next.delete(accountId);
+        return next;
+      });
+    }
+  };
+
+  const accounts = status?.accounts || [];
 
   return (
     <div>
       <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
-        Connection Status
+        Connected Accounts
       </h3>
       <p className="text-sm text-[var(--muted-foreground)] mb-3">
-        Connect your personal Microsoft account (Outlook.com, Hotmail, Live) to
-        read emails using delegated OAuth permissions.
+        Connect one or more Microsoft accounts (Outlook.com, Hotmail, Live, Office 365) to
+        sync emails and calendar events using delegated OAuth permissions.
       </p>
 
       {error && (
@@ -1599,96 +1893,107 @@ function OutlookIntegrationManager() {
         <div className="p-4 rounded-lg bg-[var(--secondary)] border border-[var(--border)] text-sm text-[var(--muted-foreground)]">
           Loading...
         </div>
-      ) : status?.connected ? (
-        <div className="space-y-4">
-          <div className="p-4 rounded-lg border border-[var(--border)] bg-[var(--secondary)]">
-            <div className="flex items-center gap-2 mb-3">
-              <div
-                className={`w-2.5 h-2.5 rounded-full ${
-                  status.isExpired ? "bg-amber-500" : "bg-green-500"
-                }`}
-              />
-              <span className="text-sm font-medium text-[var(--foreground)]">
-                {status.isExpired
-                  ? "Token Expired (will auto-refresh)"
-                  : "Connected"}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                  Email
-                </span>
-                <p className="text-[var(--foreground)] mt-0.5">
-                  {status.outlookEmail}
-                </p>
-              </div>
-              <div>
-                <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                  Connected Since
-                </span>
-                <p className="text-[var(--foreground)] mt-0.5">
-                  {status.createdAt
-                    ? new Date(status.createdAt).toLocaleString()
-                    : "—"}
-                </p>
-              </div>
-              <div>
-                <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                  Last Sync
-                </span>
-                <p className="text-[var(--foreground)] mt-0.5">
-                  {status.lastSyncAt
-                    ? new Date(status.lastSyncAt).toLocaleString()
-                    : "Never"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {syncResult && (
-            <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-[var(--foreground)]">
-              Fetched {syncResult.total} messages: {syncResult.inserted} new, {syncResult.skipped} already existed.
-            </div>
-          )}
-
-          <div className="flex gap-2">
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
-              {syncing ? "Syncing..." : "Sync Emails Now"}
-            </button>
-            <button
-              onClick={handleDisconnect}
-              disabled={actionLoading}
-              className="px-4 py-2 text-sm font-medium rounded-md border border-red-500/30 text-red-600 hover:bg-red-500/10 transition-colors disabled:opacity-50"
-            >
-              {actionLoading ? "Disconnecting..." : "Disconnect"}
-            </button>
-          </div>
-        </div>
       ) : (
         <div className="space-y-4">
-          <div className="p-4 rounded-lg border border-[var(--border)] bg-[var(--secondary)]">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-gray-400" />
-              <span className="text-sm font-medium text-[var(--muted-foreground)]">
-                Not Connected
-              </span>
+          {accounts.length > 0 ? (
+            accounts.map((account) => (
+              <div
+                key={account.id}
+                className="p-4 rounded-lg border border-[var(--border)] bg-[var(--secondary)]"
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <div
+                    className={`w-2.5 h-2.5 rounded-full ${
+                      account.isExpired ? "bg-amber-500" : "bg-green-500"
+                    }`}
+                  />
+                  <span className="text-sm font-medium text-[var(--foreground)]">
+                    {account.outlookEmail}
+                  </span>
+                  {account.isExpired && (
+                    <span className="text-xs text-amber-500">(token expired, will auto-refresh)</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+                  <div>
+                    <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                      Connected Since
+                    </span>
+                    <p className="text-[var(--foreground)] mt-0.5">
+                      {new Date(account.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                      Last Sync
+                    </span>
+                    <p className="text-[var(--foreground)] mt-0.5">
+                      {account.lastSyncAt
+                        ? new Date(account.lastSyncAt).toLocaleString()
+                        : "Never"}
+                    </p>
+                  </div>
+                </div>
+
+                {syncResults[account.id] && (
+                  <div className="mb-3 p-2 rounded bg-blue-500/10 border border-blue-500/20 text-xs text-[var(--foreground)]">
+                    Fetched {syncResults[account.id].total} messages: {syncResults[account.id].inserted} new, {syncResults[account.id].skipped} already existed.
+                  </div>
+                )}
+
+                {calendarSyncResults[account.id] && (
+                  <div className="mb-3 p-2 rounded bg-blue-500/10 border border-blue-500/20 text-xs text-[var(--foreground)]">
+                    Calendar: {calendarSyncResults[account.id].synced} events synced.
+                    {calendarSyncResults[account.id].errors > 0 && ` (${calendarSyncResults[account.id].errors} errors)`}
+                  </div>
+                )}
+
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={() => handleSync(account.id)}
+                    disabled={syncingAccounts.has(account.id)}
+                    className="px-3 py-1.5 text-xs font-medium rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {syncingAccounts.has(account.id) ? "Syncing..." : "Sync Emails"}
+                  </button>
+                  <button
+                    onClick={() => handleCalendarSync(account.id)}
+                    disabled={calendarSyncingAccounts.has(account.id)}
+                    className="px-3 py-1.5 text-xs font-medium rounded-md bg-[#0078D4] text-white hover:bg-[#106ebe] transition-colors disabled:opacity-50"
+                  >
+                    {calendarSyncingAccounts.has(account.id) ? "Syncing..." : "Sync Calendar"}
+                  </button>
+                  <button
+                    onClick={() => handleDisconnect(account.id)}
+                    disabled={disconnectingAccounts.has(account.id)}
+                    className="px-3 py-1.5 text-xs font-medium rounded-md border border-red-500/30 text-red-600 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                  >
+                    {disconnectingAccounts.has(account.id) ? "Disconnecting..." : "Disconnect"}
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="p-4 rounded-lg border border-[var(--border)] bg-[var(--secondary)]">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-gray-400" />
+                <span className="text-sm font-medium text-[var(--muted-foreground)]">
+                  No Accounts Connected
+                </span>
+              </div>
+              <p className="text-sm text-[var(--muted-foreground)]">
+                Connect your Outlook account to start importing emails and
+                syncing calendar events. You will be redirected to Microsoft to
+                authorize the app.
+              </p>
             </div>
-            <p className="text-sm text-[var(--muted-foreground)]">
-              Connect your Outlook.com account to start importing emails. You
-              will be redirected to Microsoft to authorize the app.
-            </p>
-          </div>
+          )}
 
           <button
             onClick={handleConnect}
             className="px-4 py-2 text-sm font-medium rounded-md bg-[#0078D4] text-white hover:bg-[#106ebe] transition-colors"
           >
-            Connect Outlook Account
+            {accounts.length > 0 ? "Add Another Account" : "Connect Outlook Account"}
           </button>
         </div>
       )}
@@ -1842,12 +2147,32 @@ function EmailActionBoardSelector() {
 }
 
 export function IntegrationsClient({ tenantId }: { tenantId: string }) {
-  const [activeTab, setActiveTab] = useState<TabId>("microsoft365");
+  const [activeTab, setActiveTabRaw] = useState<TabId>(() => {
+    if (typeof window !== "undefined") {
+      // Restore tab from hash
+      const hash = window.location.hash.replace("#", "");
+      const tab = TABS.find((t) => t.id === hash);
+      if (tab) return tab.id;
+
+      // Auto-select tab based on OAuth callback params
+      const params = new URLSearchParams(window.location.search);
+      if (params.has("gmail_connected") || params.has("gmail_error")) return "gmail";
+      if (params.has("outlook_connected") || params.has("outlook_error")) return "outlook";
+      if (params.has("zoom_connected") || params.has("zoom_error")) return "zoom";
+      if (params.has("google_connected") || params.has("google_error")) return "googlecalendar";
+    }
+    return "microsoft365";
+  });
+
+  const setActiveTab = useCallback((tab: TabId) => {
+    setActiveTabRaw(tab);
+    window.history.replaceState(null, "", `#${tab}`);
+  }, []);
   const [graphCredentials, setGraphCredentials] = useState<GraphCredential[]>([]);
   const origin = typeof window !== "undefined" ? window.location.origin : "https://your-domain.com";
   const webhookUrl = `${origin}/api/webhooks/email/microsoft365/${tenantId}`;
   const graphWebhookUrl = `${origin}/api/webhooks/email/graph/${tenantId}`;
-  const gmailWebhookUrl = `${origin}/api/webhooks/email/gmail/${tenantId}`;
+
   const zoomWebhookUrl = `${origin}/api/webhooks/zoom`;
   const crispWebhookUrl = `${origin}/api/webhooks/key-points?user_id=${tenantId}`;
 
@@ -2695,408 +3020,126 @@ export function IntegrationsClient({ tenantId }: { tenantId: string }) {
                     Gmail / Google Workspace Email
                   </h2>
                   <p className="text-sm text-[var(--muted-foreground)]">
-                    Ingest emails via Google Pub/Sub or Apps Script
+                    Connect your Gmail account via OAuth to monitor your inbox
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Gmail Watch Manager — the primary UX */}
+              <GmailWatchManager />
+
+              <p className="text-sm text-[var(--muted-foreground)]">
+                Clicking <span className="font-medium text-[var(--foreground)]">Connect Gmail</span> will
+                open Google&apos;s sign-in page where you grant read-only access to your inbox.
+                We&apos;ll automatically set up real-time notifications so new emails appear here
+                within seconds. The connection renews every 7 days &mdash; you&apos;ll see a reminder
+                when it&apos;s time.
+              </p>
+            </div>
+          </section>}
+
+          {/* Google Calendar Section */}
+          {activeTab === "googlecalendar" && <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+            <div className="px-6 py-5 border-b border-[var(--border)]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#4285F4] flex items-center justify-center">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                    <path d="M19.5 3h-3V1.5h-1.5V3h-6V1.5H7.5V3h-3C3.67 3 3 3.67 3 4.5v15c0 .83.67 1.5 1.5 1.5h15c.83 0 1.5-.67 1.5-1.5v-15c0-.83-.67-1.5-1.5-1.5zm0 16.5h-15V8h15v11.5zM7.5 10h3v3h-3v-3zm4.5 0h3v3h-3v-3zm4.5 0h3v3h-3v-3z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                    Google Calendar
+                  </h2>
+                  <p className="text-sm text-[var(--muted-foreground)]">
+                    Sync calendar events from Google Calendar via OAuth
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="p-6 space-y-8">
-              {/* Webhook URL */}
+              {/* Description */}
               <div>
-                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
-                  Your Webhook URL
-                </h3>
-                <p className="text-sm text-[var(--muted-foreground)] mb-3">
-                  This is your tenant-specific endpoint. Use it as the Pub/Sub push
-                  subscription URL or the Apps Script POST target.
+                <p className="text-sm text-[var(--muted-foreground)]">
+                  Connect your Google account to sync calendar events from your primary Google Calendar.
+                  Events appear in the Calendar widget and can be correlated with Krisp meetings by
+                  timestamp overlap. Supports multiple connected Google accounts.
                 </p>
-                <div className="flex items-center p-3 rounded-lg bg-[var(--secondary)] border border-[var(--border)]">
-                  <code className="flex-1 text-sm text-[var(--foreground)] break-all">
-                    {gmailWebhookUrl}
-                  </code>
-                  <CopyButton text={gmailWebhookUrl} />
-                </div>
               </div>
 
-              {/* Authentication */}
+              {/* OAuth Connection */}
               <div>
-                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
-                  Authentication
-                </h3>
-                <p className="text-sm text-[var(--muted-foreground)] mb-3">
-                  Requests are authenticated via a <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">?token=</code> query
-                  parameter, <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">X-API-Key</code> header,
-                  or <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">Authorization: Bearer</code> header
-                  matching the <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">GMAIL_WEBHOOK_SECRET</code> environment
-                  variable.
-                </p>
-                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-[var(--foreground)]">
-                  Contact your server administrator for the secret value. It is
-                  defined as the <code className="font-mono">GMAIL_WEBHOOK_SECRET</code> environment
-                  variable.
-                </div>
+                <GoogleCalendarIntegrationManager />
               </div>
 
-              {/* Gmail Watch Manager */}
-              <GmailWatchManager />
-
-              {/* Setup Option A */}
+              {/* How It Works */}
               <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-500/10 text-green-600 border border-green-500/20">
-                    Recommended
-                  </span>
-                  <h3 className="text-sm font-semibold text-[var(--foreground)]">
-                    Setup Option A &mdash; Full Integration (Pub/Sub)
-                  </h3>
-                </div>
-
-                <ol className="space-y-6">
-                  <li className="flex gap-4">
-                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
-                      1
-                    </span>
-                    <div className="flex-1">
-                      <p className="font-medium text-[var(--foreground)]">
-                        Enable the Gmail API
-                      </p>
-                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
-                        Go to{" "}
-                        <span className="font-medium text-[var(--foreground)]">Google Cloud Console</span>{" "}
-                        &rarr; <span className="font-medium text-[var(--foreground)]">APIs &amp; Services</span>{" "}
-                        &rarr; <span className="font-medium text-[var(--foreground)]">Enable APIs</span>{" "}
-                        &rarr; search for &quot;Gmail API&quot; and enable it.
-                      </p>
-                    </div>
-                  </li>
-
-                  <li className="flex gap-4">
-                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
-                      2
-                    </span>
-                    <div className="flex-1">
-                      <p className="font-medium text-[var(--foreground)]">
-                        Create a Pub/Sub Topic
-                      </p>
-                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
-                        In the same Google Cloud project, create a Pub/Sub topic named{" "}
-                        <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">gmail-inbound</code>.
-                      </p>
-                    </div>
-                  </li>
-
-                  <li className="flex gap-4">
-                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
-                      3
-                    </span>
-                    <div className="flex-1">
-                      <p className="font-medium text-[var(--foreground)]">
-                        Create a Push Subscription
-                      </p>
-                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
-                        Create a push subscription on the topic pointing to your webhook URL
-                        with the token appended:
-                      </p>
-                      <div className="flex items-center mt-3 p-2 rounded bg-[var(--secondary)] border border-[var(--border)]">
-                        <code className="text-sm text-[var(--foreground)] break-all">
-                          {gmailWebhookUrl}?token=YOUR_SECRET
-                        </code>
-                      </div>
-                    </div>
-                  </li>
-
-                  <li className="flex gap-4">
-                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
-                      4
-                    </span>
-                    <div className="flex-1">
-                      <p className="font-medium text-[var(--foreground)]">
-                        Grant Publish Rights
-                      </p>
-                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
-                        Grant the <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">Pub/Sub Publisher</code> role
-                        to <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">gmail-api-push@system.gserviceaccount.com</code> on
-                        your Pub/Sub topic.
-                      </p>
-                    </div>
-                  </li>
-
-                  <li className="flex gap-4">
-                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
-                      5
-                    </span>
-                    <div className="flex-1">
-                      <p className="font-medium text-[var(--foreground)]">
-                        Set Up Gmail Watch
-                      </p>
-                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
-                        After completing OAuth authorization, call the Gmail Watch API to start
-                        monitoring the inbox:
-                      </p>
-                      <div className="mt-3">
-                        <CodeBlock>{`POST https://gmail.googleapis.com/gmail/v1/users/me/watch
-{
-  "topicName": "projects/YOUR_PROJECT/topics/gmail-inbound",
-  "labelIds": ["INBOX"],
-  "labelFilterBehavior": "INCLUDE"
-}`}</CodeBlock>
-                      </div>
-                      <p className="text-sm text-[var(--muted-foreground)] mt-3">
-                        Watch subscriptions expire after 7 days. Set up a daily job to renew
-                        watches expiring within 24 hours.
-                      </p>
-                    </div>
-                  </li>
-
-                  <li className="flex gap-4">
-                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
-                      6
-                    </span>
-                    <div className="flex-1">
-                      <p className="font-medium text-[var(--foreground)]">
-                        Test the Integration
-                      </p>
-                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
-                        Send a test email to the monitored Gmail account. The Pub/Sub notification
-                        should arrive at your webhook endpoint within seconds. Check server logs
-                        for confirmation.
-                      </p>
-                    </div>
-                  </li>
-                </ol>
-              </div>
-
-              {/* Setup Option B */}
-              <div className="border-t border-[var(--border)] pt-8">
-                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-4">
-                  Setup Option B &mdash; Apps Script (Simpler)
-                </h3>
-                <p className="text-sm text-[var(--muted-foreground)] mb-4">
-                  For a simpler setup that doesn&apos;t require Pub/Sub or OAuth on your backend,
-                  deploy this Google Apps Script template. It polls Gmail and POSTs directly to
-                  your webhook with a delay of up to 1 minute.
-                </p>
-
-                <ol className="space-y-6">
-                  <li className="flex gap-4">
-                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
-                      1
-                    </span>
-                    <div className="flex-1">
-                      <p className="font-medium text-[var(--foreground)]">
-                        Create an Apps Script Project
-                      </p>
-                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
-                        Open{" "}
-                        <span className="font-medium text-[var(--foreground)]">script.google.com</span>{" "}
-                        while signed into the Gmail account you want to monitor. Create a new project.
-                      </p>
-                    </div>
-                  </li>
-
-                  <li className="flex gap-4">
-                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
-                      2
-                    </span>
-                    <div className="flex-1">
-                      <p className="font-medium text-[var(--foreground)]">
-                        Paste the Script Template
-                      </p>
-                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
-                        Replace the default code with the following, using your webhook URL and
-                        API key:
-                      </p>
-                      <div className="mt-3">
-                        <CodeBlock>{`function checkNewEmails() {
-  var webhookUrl = "${gmailWebhookUrl}";
-  var apiKey = "YOUR_GMAIL_WEBHOOK_SECRET";
-  var lastRun = PropertiesService.getScriptProperties()
-                  .getProperty("lastRun") || "2000/01/01";
-
-  var threads = GmailApp.search("after:" + lastRun + " in:inbox");
-
-  for (var i = 0; i < threads.length; i++) {
-    var messages = threads[i].getMessages();
-    for (var j = 0; j < messages.length; j++) {
-      var msg = messages[j];
-      var payload = {
-        messageId: msg.getId(),
-        sender: msg.getFrom(),
-        recipients: msg.getTo(),
-        subject: msg.getSubject(),
-        bodyPlain: msg.getPlainBody(),
-        bodyHtml: msg.getBody(),
-        receivedAt: msg.getDate().toISOString()
-      };
-
-      UrlFetchApp.fetch(webhookUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": apiKey
-        },
-        payload: JSON.stringify(payload),
-        muteHttpExceptions: true
-      });
-    }
-  }
-
-  PropertiesService.getScriptProperties()
-    .setProperty("lastRun",
-      new Date().toLocaleDateString("en-US"));
-}`}</CodeBlock>
-                      </div>
-                    </div>
-                  </li>
-
-                  <li className="flex gap-4">
-                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
-                      3
-                    </span>
-                    <div className="flex-1">
-                      <p className="font-medium text-[var(--foreground)]">
-                        Run Once Manually
-                      </p>
-                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
-                        Click <span className="font-medium text-[var(--foreground)]">Run</span> to
-                        execute the function once and grant the required Gmail permissions.
-                      </p>
-                    </div>
-                  </li>
-
-                  <li className="flex gap-4">
-                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-semibold">
-                      4
-                    </span>
-                    <div className="flex-1">
-                      <p className="font-medium text-[var(--foreground)]">
-                        Set Up a Time Trigger
-                      </p>
-                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
-                        Go to <span className="font-medium text-[var(--foreground)]">Triggers</span>{" "}
-                        &rarr; <span className="font-medium text-[var(--foreground)]">Add Trigger</span>{" "}
-                        &rarr; set <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">checkNewEmails</code> to
-                        run every 1 minute.
-                      </p>
-                    </div>
-                  </li>
-                </ol>
-              </div>
-
-              {/* Field Mapping Reference */}
-              <div className="border-t border-[var(--border)] pt-8">
                 <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">
-                  Field Mapping Reference (Apps Script)
+                  How It Works
                 </h3>
                 <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-[var(--secondary)]">
                         <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
-                          Apps Script / Gmail Value
+                          Step
                         </th>
                         <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
-                          Webhook Payload Key
-                        </th>
-                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
-                          Description
+                          What Happens
                         </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--border)]">
-                      {GMAIL_FIELD_MAPPING.map((field) => (
-                        <tr key={field.payload}>
-                          <td className="px-4 py-3">
-                            <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">
-                              {field.appsScript}
-                            </code>
-                          </td>
-                          <td className="px-4 py-3">
-                            <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">
-                              {field.payload}
-                            </code>
-                          </td>
-                          <td className="px-4 py-3 text-[var(--muted-foreground)]">
-                            {field.description}
-                          </td>
-                        </tr>
-                      ))}
+                      <tr>
+                        <td className="px-4 py-3 font-medium text-[var(--foreground)]">
+                          Connect
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          You sign in with your Google account and consent to share your calendar.
+                          OAuth tokens are stored securely.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3 font-medium text-[var(--foreground)]">
+                          Calendar Sync
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Click &quot;Sync Calendar&quot; to pull events from the past 7 days to 30 days ahead.
+                          Events are deduplicated and updated on each sync. Meet links are automatically extracted.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3 font-medium text-[var(--foreground)]">
+                          Auto-refresh
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Access tokens expire after ~1 hour. The system automatically refreshes
+                          using your stored refresh token.
+                        </td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
               </div>
 
-              {/* Response Codes */}
+              {/* Important Notes */}
               <div>
                 <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">
-                  Response Codes
+                  Important Notes
                 </h3>
-                <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-[var(--secondary)]">
-                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
-                          Code
-                        </th>
-                        <th className="px-4 py-3 text-left font-medium text-[var(--foreground)]">
-                          Meaning
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--border)]">
-                      <tr>
-                        <td className="px-4 py-3">
-                          <code className="px-1.5 py-0.5 rounded bg-green-500/10 text-green-600 text-xs font-semibold">
-                            200
-                          </code>
-                        </td>
-                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
-                          Success or duplicate &mdash; Pub/Sub will not retry on 200
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-3">
-                          <code className="px-1.5 py-0.5 rounded bg-green-500/10 text-green-600 text-xs font-semibold">
-                            201
-                          </code>
-                        </td>
-                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
-                          Email received and stored successfully (Apps Script path)
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-3">
-                          <code className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 text-xs font-semibold">
-                            400
-                          </code>
-                        </td>
-                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
-                          Payload malformed or tenant resolution failed
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-3">
-                          <code className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-600 text-xs font-semibold">
-                            401
-                          </code>
-                        </td>
-                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
-                          Auth token invalid
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-3">
-                          <code className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-600 text-xs font-semibold">
-                            500
-                          </code>
-                        </td>
-                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
-                          Internal error &mdash; Pub/Sub will retry with exponential backoff
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <div className="space-y-3">
+                  <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-[var(--foreground)]">
+                    <span className="font-medium">Pull-based sync:</span> This integration requires
+                    manual syncs via the &quot;Sync Calendar&quot; button or the Calendar page Sync button.
+                  </div>
+                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-[var(--foreground)]">
+                    <span className="font-medium">Read-only access:</span> The integration uses the
+                    <code className="px-1 py-0.5 rounded bg-[var(--secondary)] text-xs mx-1">calendar.readonly</code>
+                    scope. It can only read your calendar events, never modify them.
+                  </div>
                 </div>
               </div>
             </div>
@@ -3454,7 +3497,7 @@ export function IntegrationsClient({ tenantId }: { tenantId: string }) {
                     Microsoft Outlook
                   </h2>
                   <p className="text-sm text-[var(--muted-foreground)]">
-                    Read emails from personal and work Microsoft accounts via OAuth
+                    Sync emails and calendar from Microsoft accounts via OAuth
                   </p>
                 </div>
               </div>
@@ -3466,7 +3509,8 @@ export function IntegrationsClient({ tenantId }: { tenantId: string }) {
                 <p className="text-sm text-[var(--muted-foreground)]">
                   This integration connects to any Microsoft account — personal (Outlook.com, Hotmail, Live.com)
                   or work/school (Office 365, Exchange Online) — using the Microsoft identity platform v2.0
-                  with delegated OAuth permissions and the authorization code flow.
+                  with delegated OAuth permissions and the authorization code flow. It supports
+                  both email sync and calendar sync.
                 </p>
               </div>
 
@@ -3504,11 +3548,20 @@ export function IntegrationsClient({ tenantId }: { tenantId: string }) {
                       </tr>
                       <tr>
                         <td className="px-4 py-3 font-medium text-[var(--foreground)]">
-                          Sync
+                          Email Sync
                         </td>
                         <td className="px-4 py-3 text-[var(--muted-foreground)]">
                           Click &quot;Sync Emails Now&quot; to pull recent inbox messages. The system
                           deduplicates and only imports new emails.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3 font-medium text-[var(--foreground)]">
+                          Calendar Sync
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">
+                          Click &quot;Sync Calendar Now&quot; to pull calendar events from the past
+                          7 days to 30 days ahead. Events are deduplicated and updated on each sync.
                         </td>
                       </tr>
                       <tr>
@@ -3534,12 +3587,13 @@ export function IntegrationsClient({ tenantId }: { tenantId: string }) {
                   <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-[var(--foreground)]">
                     <span className="font-medium">Pull-based sync:</span> Unlike the Graph API
                     integration which uses push notifications, this integration requires manual or
-                    scheduled syncs via the &quot;Sync Emails Now&quot; button.
+                    scheduled syncs via the &quot;Sync Emails Now&quot; and &quot;Sync Calendar Now&quot; buttons.
                   </div>
                   <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-[var(--foreground)]">
-                    <span className="font-medium">Personal accounts only:</span> This uses
-                    the <code className="px-1 py-0.5 rounded bg-[var(--secondary)] text-xs">/consumers</code> authority
-                    endpoint. For organizational (work/school) accounts, use the Graph API tab instead.
+                    <span className="font-medium">Calendar scope:</span> Calendar sync
+                    uses the <code className="px-1 py-0.5 rounded bg-[var(--secondary)] text-xs">Calendars.Read</code> permission.
+                    If you connected before this feature was added, disconnect and reconnect to
+                    grant the new permission.
                   </div>
                   <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-[var(--foreground)]">
                     <span className="font-medium">Rate limits:</span> Personal Microsoft accounts

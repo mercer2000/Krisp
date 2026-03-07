@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { listEmails } from "@/lib/email/emails";
+import { listGmailEmails } from "@/lib/gmail/emails";
+import { listZoomMessages } from "@/lib/zoom/messages";
 import { getLabelsForEmails } from "@/lib/email/labels";
 import { emailListQuerySchema } from "@/lib/validators/schemas";
 import type { EmailListItem, EmailAttachmentMetadata } from "@/types/email";
@@ -22,24 +24,90 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { page, limit, q, after, before } = parsed.data;
-    const { rows, total } = await listEmails(userId, { page, limit, q, after, before });
+    const { page, limit, q, after, before, accountId, provider, folder } = parsed.data;
 
-    // Batch-fetch labels for all emails in this page
-    const emailIds = rows.map((r) => r.id);
-    const labelsMap = await getLabelsForEmails(emailIds);
+    // Determine which sources to query based on provider filter
+    const fetchOutlook = !provider || provider === "outlook";
+    const fetchGmail = !provider || provider === "gmail";
+    const fetchZoom = !provider || provider === "zoom";
 
-    const data: EmailListItem[] = rows.map((row) => ({
-      id: row.id,
-      sender: row.sender,
-      subject: row.subject,
-      received_at: row.received_at as unknown as string,
-      recipients: Array.isArray(row.recipients) ? row.recipients : [],
-      has_attachments: Array.isArray(row.attachments_metadata) && (row.attachments_metadata as EmailAttachmentMetadata[]).length > 0,
-      preview: row.preview,
-      web_link: row.web_link ?? null,
-      labels: labelsMap[row.id] ?? [],
-    }));
+    let allItems: EmailListItem[] = [];
+
+    // Fetch Outlook emails
+    if (fetchOutlook) {
+      const { rows } = await listEmails(userId, {
+        page: 1,
+        limit: 10000, // Fetch all for merging; we paginate after merge
+        q,
+        after,
+        before,
+        folder,
+      });
+
+      // Batch-fetch labels for Outlook emails
+      const emailIds = rows.map((r) => r.id);
+      const labelsMap = emailIds.length > 0 ? await getLabelsForEmails(emailIds) : {};
+
+      const outlookItems: EmailListItem[] = rows.map((row) => ({
+        id: row.id,
+        sender: row.sender,
+        subject: row.subject,
+        received_at: row.received_at as unknown as string,
+        recipients: Array.isArray(row.recipients) ? row.recipients : [],
+        has_attachments: Array.isArray(row.attachments_metadata) && (row.attachments_metadata as EmailAttachmentMetadata[]).length > 0,
+        preview: row.preview,
+        web_link: row.web_link ?? null,
+        outlook_account_id: row.outlook_account_id ?? null,
+        account_id: row.outlook_account_id ?? null,
+        provider: "outlook" as const,
+        labels: labelsMap[row.id] ?? [],
+        is_newsletter: row.is_newsletter,
+      }));
+
+      allItems.push(...outlookItems);
+    }
+
+    // Fetch Gmail emails
+    if (fetchGmail) {
+      const gmailRows = await listGmailEmails(userId, {
+        q,
+        after,
+        before,
+        folder,
+      });
+
+      const gmailItems: EmailListItem[] = gmailRows.map((row) => ({
+        id: row.id,
+        sender: row.sender,
+        subject: row.subject,
+        received_at: row.received_at as unknown as string,
+        recipients: Array.isArray(row.recipients) ? row.recipients : [],
+        has_attachments: row.has_attachments,
+        preview: row.preview,
+        web_link: row.web_link,
+        outlook_account_id: null,
+        account_id: row.gmail_account_id,
+        provider: "gmail" as const,
+        labels: [],
+        is_newsletter: row.is_newsletter,
+      }));
+
+      allItems.push(...gmailItems);
+    }
+
+    // Fetch Zoom chat messages
+    if (fetchZoom && folder !== "newsletter") {
+      const zoomItems = await listZoomMessages(userId, { q, after, before });
+      allItems.push(...zoomItems);
+    }
+
+    // Sort merged results by received_at descending
+    allItems.sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime());
+
+    // Paginate
+    const total = allItems.length;
+    const offset = (page - 1) * limit;
+    const data = allItems.slice(offset, offset + limit);
 
     return NextResponse.json({ data, total, page, limit });
   } catch (error) {

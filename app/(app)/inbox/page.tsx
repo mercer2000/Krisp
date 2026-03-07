@@ -8,6 +8,45 @@ import type { EmailListItem, EmailListResponse, EmailSearchResponse, EmailSearch
 
 const POLL_INTERVAL = 15_000; // 15 seconds
 
+interface EmailAccount {
+  id: string;
+  email: string;
+  provider: "outlook" | "gmail" | "zoom";
+}
+
+function OutlookIcon({ size = 12 }: { size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="20" height="16" x="2" y="4" rx="2" />
+      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+    </svg>
+  );
+}
+
+function GmailIcon({ size = 12 }: { size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+      <polyline points="22,6 12,13 2,6" />
+    </svg>
+  );
+}
+
+function ZoomIcon({ size = 12 }: { size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15 10l5-3v10l-5-3z" />
+      <rect width="13" height="10" x="1" y="7" rx="2" />
+    </svg>
+  );
+}
+
+function ProviderIcon({ provider, size = 12 }: { provider: "outlook" | "gmail" | "zoom"; size?: number }) {
+  if (provider === "gmail") return <GmailIcon size={size} />;
+  if (provider === "zoom") return <ZoomIcon size={size} />;
+  return <OutlookIcon size={size} />;
+}
+
 interface LabelDef {
   id: string;
   name: string;
@@ -111,8 +150,13 @@ export default function InboxPage() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSemanticSearch, setIsSemanticSearch] = useState(false);
-  const [similarities, setSimilarities] = useState<Record<number, number>>({});
+  const [similarities, setSimilarities] = useState<Record<string | number, number>>({});
   const [embeddingStatus, setEmbeddingStatus] = useState<{ total: number; embedded: number; pending: number } | null>(null);
+
+  // Account state
+  const [accounts, setAccounts] = useState<EmailAccount[]>([]);
+  const [filterAccount, setFilterAccount] = useState<string | null>(null);
+  const [filterProvider, setFilterProvider] = useState<"outlook" | "gmail" | "zoom" | null>(null);
 
   // Label state
   const [allLabels, setAllLabels] = useState<LabelDef[]>([]);
@@ -123,16 +167,28 @@ export default function InboxPage() {
   const [newLabelColor, setNewLabelColor] = useState("#6366F1");
   const [creatingLabel, setCreatingLabel] = useState(false);
 
+  // Newsletter state
+  const [activeFolder, setActiveFolder] = useState<"inbox" | "newsletter" | "all">("inbox");
+  const [detecting, setDetecting] = useState(false);
+  const [showWhitelistManager, setShowWhitelistManager] = useState(false);
+  const [whitelist, setWhitelist] = useState<{ id: string; sender_email: string; created_at: string }[]>([]);
+  const [newWhitelistEmail, setNewWhitelistEmail] = useState("");
+  const [addingWhitelist, setAddingWhitelist] = useState(false);
+
   const hasFetchedOnce = useRef(false);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
-  // Fetch labels on mount
+  // Fetch labels and connected accounts on mount
   useEffect(() => {
     fetch("/api/emails/labels")
       .then((r) => r.json())
       .then((d) => { if (d.data) setAllLabels(d.data); })
+      .catch(() => {});
+    fetch("/api/emails/accounts")
+      .then((r) => r.json())
+      .then((d) => { if (d.accounts) setAccounts(d.accounts); })
       .catch(() => {});
   }, []);
 
@@ -157,7 +213,7 @@ export default function InboxPage() {
         setIsSemanticSearch(true);
         setEmbeddingStatus(data.embedding_status);
 
-        const sims: Record<number, number> = {};
+        const sims: Record<string | number, number> = {};
         for (const item of data.data as EmailSearchItem[]) {
           sims[item.id] = item.similarity;
         }
@@ -169,6 +225,9 @@ export default function InboxPage() {
         if (query) params.set("q", query);
         if (afterDate) params.set("after", new Date(afterDate).toISOString());
         if (beforeDate) params.set("before", new Date(beforeDate).toISOString());
+        if (filterAccount) params.set("accountId", filterAccount);
+        if (filterProvider) params.set("provider", filterProvider);
+        if (activeFolder !== "all") params.set("folder", activeFolder);
 
         const res = await fetch(`/api/emails?${params}`);
         if (!res.ok) throw new Error("Failed to fetch emails");
@@ -188,7 +247,7 @@ export default function InboxPage() {
         hasFetchedOnce.current = true;
       }
     }
-  }, [page, limit, query, afterDate, beforeDate]);
+  }, [page, limit, query, afterDate, beforeDate, filterAccount, filterProvider, activeFolder]);
 
   // Initial fetch + fetch on filter/page changes
   useEffect(() => {
@@ -215,7 +274,7 @@ export default function InboxPage() {
         pollTimer.current = null;
       }
     };
-  }, [page, query, afterDate, beforeDate, fetchEmails]);
+  }, [page, query, afterDate, beforeDate, filterAccount, filterProvider, activeFolder, fetchEmails]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -232,13 +291,16 @@ export default function InboxPage() {
     setQuery("");
     setPage(1);
     setFilterLabel(null);
+    setFilterAccount(null);
+    setFilterProvider(null);
+    setActiveFolder("inbox");
     setIsSemanticSearch(false);
     setSimilarities({});
     setEmbeddingStatus(null);
   };
 
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<number | string | null>(null);
 
   const confirmDelete = async () => {
     if (deleteTarget === null) return;
@@ -296,6 +358,75 @@ export default function InboxPage() {
     }
   };
 
+  // Detect newsletters
+  const handleDetectNewsletters = async () => {
+    setDetecting(true);
+    try {
+      const res = await fetch("/api/emails/newsletter/detect", { method: "POST" });
+      if (!res.ok) throw new Error("Failed to detect newsletters");
+      const data = await res.json();
+      toast({
+        title: "Newsletter detection complete",
+        description: `${data.marked} newsletters detected, ${data.whitelisted} whitelisted senders skipped`,
+        variant: "success",
+      });
+      hasFetchedOnce.current = false;
+      fetchEmails(false);
+    } catch {
+      toast({ title: "Newsletter detection failed", variant: "destructive" });
+    } finally {
+      setDetecting(false);
+    }
+  };
+
+  // Fetch whitelist
+  const fetchWhitelist = async () => {
+    try {
+      const res = await fetch("/api/emails/newsletter/whitelist");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.data) setWhitelist(data.data);
+      }
+    } catch {
+      // silent
+    }
+  };
+
+  // Add to whitelist
+  const handleAddWhitelist = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newWhitelistEmail.trim()) return;
+    setAddingWhitelist(true);
+    try {
+      const res = await fetch("/api/emails/newsletter/whitelist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ senderEmail: newWhitelistEmail.trim() }),
+      });
+      if (!res.ok) throw new Error("Failed to add to whitelist");
+      const { data: entry } = await res.json();
+      setWhitelist((prev) => [...prev, entry]);
+      setNewWhitelistEmail("");
+      toast({ title: "Sender whitelisted", variant: "success" });
+    } catch {
+      toast({ title: "Failed to add to whitelist", variant: "destructive" });
+    } finally {
+      setAddingWhitelist(false);
+    }
+  };
+
+  // Remove from whitelist
+  const handleRemoveWhitelist = async (id: string) => {
+    try {
+      const res = await fetch(`/api/emails/newsletter/whitelist/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to remove");
+      setWhitelist((prev) => prev.filter((w) => w.id !== id));
+      toast({ title: "Sender removed from whitelist", variant: "success" });
+    } catch {
+      toast({ title: "Failed to remove from whitelist", variant: "destructive" });
+    }
+  };
+
   // Create custom label
   const handleCreateLabel = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -339,7 +470,7 @@ export default function InboxPage() {
     }
   };
 
-  const hasActiveFilters = query || afterDate || beforeDate || filterLabel;
+  const hasActiveFilters = query || afterDate || beforeDate || filterLabel || filterAccount;
   const pageNumbers = getPageNumbers(page, totalPages);
 
   // Filter emails by selected label (client-side)
@@ -354,10 +485,15 @@ export default function InboxPage() {
         <div className="flex items-center justify-between px-6 py-4">
           <div>
             <h1 className="text-2xl font-bold text-[var(--foreground)]">
-              Inbox
+              {activeFolder === "newsletter" ? "Newsletters" : "Inbox"}
             </h1>
             <p className="text-sm text-[var(--muted-foreground)] mt-1">
               {total} {total === 1 ? "message" : "messages"}
+              {filterAccount && accounts.length > 0 && (
+                <span className="ml-1">
+                  in {accounts.find((a) => a.id === filterAccount)?.email ?? "selected account"}
+                </span>
+              )}
             </p>
           </div>
 
@@ -384,6 +520,35 @@ export default function InboxPage() {
                     <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" />
                   </svg>
                   Classify
+                </span>
+              )}
+            </button>
+
+            {/* Detect newsletters button */}
+            <button
+              onClick={handleDetectNewsletters}
+              disabled={detecting}
+              className="px-3 py-2 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors disabled:opacity-40"
+              title="Detect newsletter and marketing emails"
+              data-testid="detect-newsletters-button"
+            >
+              {detecting ? (
+                <span className="flex items-center gap-1.5">
+                  <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Detecting...
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-2 2zm0 0a2 2 0 01-2-2v-9c0-1.1.9-2 2-2h2" />
+                    <path d="M18 14h-8" />
+                    <path d="M15 18h-5" />
+                    <path d="M10 6h8v4h-8V6z" />
+                  </svg>
+                  Detect
                 </span>
               )}
             </button>
@@ -446,6 +611,85 @@ export default function InboxPage() {
           </div>
         </div>
 
+        {/* Folder tabs: Inbox / Newsletters / All */}
+        <div className="px-6 pb-2 flex items-center gap-1 border-b border-[var(--border)]" data-testid="folder-tabs">
+          {([
+            { key: "inbox" as const, label: "Inbox" },
+            { key: "newsletter" as const, label: "Newsletters" },
+            { key: "all" as const, label: "All" },
+          ]).map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => {
+                if (activeFolder !== tab.key) {
+                  hasFetchedOnce.current = false;
+                  setActiveFolder(tab.key);
+                  setPage(1);
+                }
+              }}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                activeFolder === tab.key
+                  ? "text-[var(--primary)] border-b-2 border-[var(--primary)]"
+                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              }`}
+              data-testid={`folder-tab-${tab.key}`}
+            >
+              {tab.label}
+            </button>
+          ))}
+          {activeFolder === "newsletter" && (
+            <button
+              onClick={() => { fetchWhitelist(); setShowWhitelistManager(true); }}
+              className="ml-auto text-xs px-2.5 py-1 rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
+              data-testid="manage-whitelist-button"
+            >
+              Whitelist
+            </button>
+          )}
+        </div>
+
+        {/* Account filter chips */}
+        {accounts.length > 1 && (
+          <div className="px-6 pb-2 flex items-center gap-2 flex-wrap" data-testid="account-filter-bar">
+            <span className="text-xs text-[var(--muted-foreground)] mr-1">Account:</span>
+            <button
+              onClick={() => { hasFetchedOnce.current = false; setFilterAccount(null); setFilterProvider(null); setPage(1); }}
+              className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                !filterAccount
+                  ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
+                  : "border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
+              }`}
+            >
+              All accounts
+            </button>
+            {accounts.map((account) => (
+              <button
+                key={account.id}
+                onClick={() => {
+                  hasFetchedOnce.current = false;
+                  if (filterAccount === account.id) {
+                    setFilterAccount(null);
+                    setFilterProvider(null);
+                  } else {
+                    setFilterAccount(account.id);
+                    setFilterProvider(account.provider);
+                  }
+                  setPage(1);
+                }}
+                className={`text-xs px-2.5 py-1 rounded-full border transition-colors flex items-center gap-1.5 ${
+                  filterAccount === account.id
+                    ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
+                    : "border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
+                }`}
+                data-testid={`account-filter-${account.email}`}
+              >
+                <ProviderIcon provider={account.provider} size={12} />
+                {account.email}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Label filter chips */}
         {allLabels.length > 0 && (
           <div className="px-6 pb-3 flex items-center gap-2 flex-wrap" data-testid="label-filter-bar">
@@ -483,7 +727,33 @@ export default function InboxPage() {
 
         {/* Filter panel */}
         {showFilters && (
-          <div className="px-6 pb-4 flex items-end gap-4">
+          <div className="px-6 pb-4 flex items-end gap-4 flex-wrap">
+            {accounts.length > 0 && (
+              <div>
+                <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">
+                  Account
+                </label>
+                <select
+                  value={filterAccount ?? ""}
+                  onChange={(e) => {
+                    hasFetchedOnce.current = false;
+                    const selectedId = e.target.value || null;
+                    const selectedAccount = accounts.find((a) => a.id === selectedId);
+                    setFilterAccount(selectedId);
+                    setFilterProvider(selectedAccount?.provider ?? null);
+                    setPage(1);
+                  }}
+                  className="px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                >
+                  <option value="">All accounts</option>
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.provider === "gmail" ? "[Gmail]" : account.provider === "zoom" ? "[Zoom]" : "[Outlook]"} {account.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">
                 After
@@ -656,12 +926,23 @@ export default function InboxPage() {
                     )}
                   </div>
 
-                  {/* Preview */}
-                  {email.preview && (
-                    <p className="text-xs text-[var(--muted-foreground)] truncate mt-1">
-                      {email.preview}
-                    </p>
-                  )}
+                  {/* Preview + account indicator */}
+                  <div className="flex items-center gap-2 mt-1">
+                    {email.preview && (
+                      <p className="text-xs text-[var(--muted-foreground)] truncate flex-1 min-w-0">
+                        {email.preview}
+                      </p>
+                    )}
+                    {accounts.length > 1 && email.account_id && (
+                      <span
+                        className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--muted-foreground)] flex-shrink-0 truncate max-w-[200px] inline-flex items-center gap-1"
+                        title={accounts.find((a) => a.id === email.account_id)?.email ?? "Unknown account"}
+                      >
+                        <ProviderIcon provider={email.provider} size={10} />
+                        {accounts.find((a) => a.id === email.account_id)?.email ?? "Unknown"}
+                      </span>
+                    )}
+                  </div>
                 </Link>
 
                 {/* Actions */}
@@ -673,7 +954,7 @@ export default function InboxPage() {
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
                       className="p-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
-                      title="Open in Outlook"
+                      title={`Open in ${email.provider === "gmail" ? "Gmail" : email.provider === "zoom" ? "Zoom" : "Outlook"}`}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M15 3h6v6" />
@@ -833,6 +1114,68 @@ export default function InboxPage() {
                 data-testid="create-label-button"
               >
                 {creatingLabel ? "Creating..." : "Create"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </Modal>
+
+      {/* Newsletter Whitelist Manager Modal */}
+      <Modal
+        open={showWhitelistManager}
+        onClose={() => setShowWhitelistManager(false)}
+        title="Newsletter Whitelist"
+      >
+        <div className="space-y-4" data-testid="whitelist-manager-modal">
+          <p className="text-xs text-[var(--muted-foreground)]">
+            Whitelisted senders will never be moved to the Newsletter folder, even if detected as newsletters.
+          </p>
+
+          {/* Existing whitelist entries */}
+          {whitelist.length > 0 ? (
+            <div className="space-y-2 max-h-64 overflow-auto">
+              {whitelist.map((entry) => (
+                <div key={entry.id} className="flex items-center justify-between py-1.5">
+                  <span className="text-sm text-[var(--foreground)] truncate">
+                    {entry.sender_email}
+                  </span>
+                  <button
+                    onClick={() => handleRemoveWhitelist(entry.id)}
+                    className="text-xs text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-colors flex-shrink-0 ml-2"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-[var(--muted-foreground)] py-2">
+              No whitelisted senders yet.
+            </p>
+          )}
+
+          {/* Add to whitelist */}
+          <form onSubmit={handleAddWhitelist} className="border-t border-[var(--border)] pt-4">
+            <p className="text-xs font-medium text-[var(--muted-foreground)] mb-2">
+              Add sender to whitelist
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newWhitelistEmail}
+                onChange={(e) => setNewWhitelistEmail(e.target.value)}
+                placeholder="sender@example.com"
+                maxLength={512}
+                className="flex-1 px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                data-testid="whitelist-email-input"
+              />
+              <button
+                type="submit"
+                disabled={addingWhitelist || !newWhitelistEmail.trim()}
+                className="px-4 py-2 text-sm font-medium bg-[var(--primary)] text-[var(--primary-foreground)] rounded-lg hover:opacity-90 transition-opacity disabled:opacity-40"
+                data-testid="add-whitelist-button"
+              >
+                {addingWhitelist ? "Adding..." : "Add"}
               </button>
             </div>
           </form>

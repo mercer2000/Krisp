@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { hybridSearch, getEmbeddingStatus } from "@/lib/email/embeddings";
+import { zoomHybridSearch, getZoomEmbeddingStatus } from "@/lib/zoom/embeddings";
 import { getLabelsForEmails } from "@/lib/email/labels";
 import { emailSearchQuerySchema } from "@/lib/validators/schemas";
 import type { EmailAttachmentMetadata } from "@/types/email";
@@ -24,13 +25,19 @@ export async function GET(request: NextRequest) {
 
     const { q, limit } = parsed.data;
 
-    const results = await hybridSearch(userId, q, limit);
+    // Run email and Zoom searches in parallel
+    const [emailResults, zoomResults, emailStatus, zoomStatus] = await Promise.all([
+      hybridSearch(userId, q, limit),
+      zoomHybridSearch(userId, q, limit),
+      getEmbeddingStatus(userId),
+      getZoomEmbeddingStatus(userId),
+    ]);
 
-    // Batch-fetch labels for search results
-    const emailIds = results.map((r) => r.id);
-    const labelsMap = await getLabelsForEmails(emailIds);
+    // Batch-fetch labels for email results
+    const emailIds = emailResults.map((r) => r.id);
+    const labelsMap = emailIds.length > 0 ? await getLabelsForEmails(emailIds) : {};
 
-    const data = results.map((row) => ({
+    const emailData = emailResults.map((row) => ({
       id: row.id,
       sender: row.sender,
       subject: row.subject,
@@ -41,12 +48,29 @@ export async function GET(request: NextRequest) {
         (row.attachments_metadata as EmailAttachmentMetadata[]).length > 0,
       preview: row.preview,
       web_link: row.web_link ?? null,
+      outlook_account_id: null,
+      account_id: null,
+      provider: "outlook" as const,
       similarity: Math.round((row.similarity + Number.EPSILON) * 100) / 100,
       labels: labelsMap[row.id] ?? [],
     }));
 
-    // Include embedding status so the UI can show a "building index" banner
-    const status = await getEmbeddingStatus(userId);
+    const zoomData = zoomResults.map((row) => ({
+      ...row,
+      similarity: Math.round((row.similarity + Number.EPSILON) * 100) / 100,
+    }));
+
+    // Merge and sort by similarity descending
+    const data = [...emailData, ...zoomData]
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, limit);
+
+    // Combine embedding statuses
+    const status = {
+      total: emailStatus.total + zoomStatus.total,
+      embedded: emailStatus.embedded + zoomStatus.embedded,
+      pending: emailStatus.pending + zoomStatus.pending,
+    };
 
     return NextResponse.json({
       query: q,

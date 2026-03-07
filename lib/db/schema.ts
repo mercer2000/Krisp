@@ -13,8 +13,19 @@ import {
   uniqueIndex,
   index,
   customType,
+  pgPolicy,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { type AnyPgColumn } from "drizzle-orm/pg-core";
+import type { SQL } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
+import {
+  crudPolicy,
+  authenticatedRole,
+} from "drizzle-orm/neon";
+
+// Custom authUid that casts auth.user_id() to uuid (the default returns text)
+const authUid = (userIdColumn: AnyPgColumn): SQL =>
+  sql`(select auth.user_id()::uuid = ${userIdColumn})`;
 
 // pgvector type for embedding columns (vector(1536) for OpenAI text-embedding-3-small)
 const vector = customType<{ data: number[]; driverData: string }>({
@@ -56,7 +67,13 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
-});
+}, (table) => [
+  crudPolicy({
+    role: authenticatedRole,
+    read: authUid(table.id),
+    modify: authUid(table.id),
+  }),
+]);
 
 export const usersRelations = relations(users, ({ many }) => ({
   boards: many(boards),
@@ -79,7 +96,13 @@ export const boards = pgTable("boards", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
-});
+}, (table) => [
+  crudPolicy({
+    role: authenticatedRole,
+    read: authUid(table.userId),
+    modify: authUid(table.userId),
+  }),
+]);
 
 export const boardsRelations = relations(boards, ({ one, many }) => ({
   user: one(users, { fields: [boards.userId], references: [users.id] }),
@@ -98,7 +121,29 @@ export const columns = pgTable("columns", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
-});
+}, (table) => [
+  pgPolicy("columns_auth_select", {
+    for: "select",
+    to: authenticatedRole,
+    using: sql`board_id IN (SELECT id FROM boards WHERE user_id = (select auth.user_id()::uuid))`,
+  }),
+  pgPolicy("columns_auth_insert", {
+    for: "insert",
+    to: authenticatedRole,
+    withCheck: sql`board_id IN (SELECT id FROM boards WHERE user_id = (select auth.user_id()::uuid))`,
+  }),
+  pgPolicy("columns_auth_update", {
+    for: "update",
+    to: authenticatedRole,
+    using: sql`board_id IN (SELECT id FROM boards WHERE user_id = (select auth.user_id()::uuid))`,
+    withCheck: sql`board_id IN (SELECT id FROM boards WHERE user_id = (select auth.user_id()::uuid))`,
+  }),
+  pgPolicy("columns_auth_delete", {
+    for: "delete",
+    to: authenticatedRole,
+    using: sql`board_id IN (SELECT id FROM boards WHERE user_id = (select auth.user_id()::uuid))`,
+  }),
+]);
 
 export const columnsRelations = relations(columns, ({ one, many }) => ({
   board: one(boards, { fields: [columns.boardId], references: [boards.id] }),
@@ -125,7 +170,29 @@ export const cards = pgTable("cards", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
-});
+}, (table) => [
+  pgPolicy("cards_auth_select", {
+    for: "select",
+    to: authenticatedRole,
+    using: sql`column_id IN (SELECT c.id FROM columns c JOIN boards b ON c.board_id = b.id WHERE b.user_id = (select auth.user_id()::uuid))`,
+  }),
+  pgPolicy("cards_auth_insert", {
+    for: "insert",
+    to: authenticatedRole,
+    withCheck: sql`column_id IN (SELECT c.id FROM columns c JOIN boards b ON c.board_id = b.id WHERE b.user_id = (select auth.user_id()::uuid))`,
+  }),
+  pgPolicy("cards_auth_update", {
+    for: "update",
+    to: authenticatedRole,
+    using: sql`column_id IN (SELECT c.id FROM columns c JOIN boards b ON c.board_id = b.id WHERE b.user_id = (select auth.user_id()::uuid))`,
+    withCheck: sql`column_id IN (SELECT c.id FROM columns c JOIN boards b ON c.board_id = b.id WHERE b.user_id = (select auth.user_id()::uuid))`,
+  }),
+  pgPolicy("cards_auth_delete", {
+    for: "delete",
+    to: authenticatedRole,
+    using: sql`column_id IN (SELECT c.id FROM columns c JOIN boards b ON c.board_id = b.id WHERE b.user_id = (select auth.user_id()::uuid))`,
+  }),
+]);
 
 export const cardsRelations = relations(cards, ({ one, many }) => ({
   column: one(columns, { fields: [cards.columnId], references: [columns.id] }),
@@ -140,7 +207,29 @@ export const cardTags = pgTable("card_tags", {
     .references(() => cards.id, { onDelete: "cascade" }),
   label: varchar("label", { length: 50 }).notNull(),
   color: varchar("color", { length: 7 }).notNull(),
-});
+}, (table) => [
+  pgPolicy("card_tags_auth_select", {
+    for: "select",
+    to: authenticatedRole,
+    using: sql`card_id IN (SELECT ca.id FROM cards ca JOIN columns co ON ca.column_id = co.id JOIN boards b ON co.board_id = b.id WHERE b.user_id = (select auth.user_id()::uuid))`,
+  }),
+  pgPolicy("card_tags_auth_insert", {
+    for: "insert",
+    to: authenticatedRole,
+    withCheck: sql`card_id IN (SELECT ca.id FROM cards ca JOIN columns co ON ca.column_id = co.id JOIN boards b ON co.board_id = b.id WHERE b.user_id = (select auth.user_id()::uuid))`,
+  }),
+  pgPolicy("card_tags_auth_update", {
+    for: "update",
+    to: authenticatedRole,
+    using: sql`card_id IN (SELECT ca.id FROM cards ca JOIN columns co ON ca.column_id = co.id JOIN boards b ON co.board_id = b.id WHERE b.user_id = (select auth.user_id()::uuid))`,
+    withCheck: sql`card_id IN (SELECT ca.id FROM cards ca JOIN columns co ON ca.column_id = co.id JOIN boards b ON co.board_id = b.id WHERE b.user_id = (select auth.user_id()::uuid))`,
+  }),
+  pgPolicy("card_tags_auth_delete", {
+    for: "delete",
+    to: authenticatedRole,
+    using: sql`card_id IN (SELECT ca.id FROM cards ca JOIN columns co ON ca.column_id = co.id JOIN boards b ON co.board_id = b.id WHERE b.user_id = (select auth.user_id()::uuid))`,
+  }),
+]);
 
 export const cardTagsRelations = relations(cardTags, ({ one }) => ({
   card: one(cards, { fields: [cardTags.cardId], references: [cards.id] }),
@@ -198,6 +287,11 @@ export const decisions = pgTable(
     index("idx_decisions_meeting_id").on(table.meetingId),
     index("idx_decisions_status").on(table.userId, table.status),
     index("idx_decisions_category").on(table.userId, table.category),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.userId),
+      modify: authUid(table.userId),
+    }),
   ]
 );
 
@@ -236,7 +330,13 @@ export const actionItems = pgTable("action_items", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
-});
+}, (table) => [
+  crudPolicy({
+    role: authenticatedRole,
+    read: authUid(table.userId),
+    modify: authUid(table.userId),
+  }),
+]);
 
 // ── Webhook Key Points (Krisp Meetings) ───────────────
 export const webhookKeyPoints = pgTable("webhook_key_points", {
@@ -263,7 +363,13 @@ export const webhookKeyPoints = pgTable("webhook_key_points", {
   receivedAt: timestamp("received_at", { withTimezone: true }).defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-});
+}, (table) => [
+  crudPolicy({
+    role: authenticatedRole,
+    read: authUid(table.userId),
+    modify: authUid(table.userId),
+  }),
+]);
 
 // ── Password Reset Tokens ─────────────────────────────
 export const passwordResetTokens = pgTable("password_reset_tokens", {
@@ -277,7 +383,13 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
-});
+}, (table) => [
+  crudPolicy({
+    role: authenticatedRole,
+    read: authUid(table.userId),
+    modify: authUid(table.userId),
+  }),
+]);
 
 // ── Gmail Emails ─────────────────────────────────────
 export const gmailEmails = pgTable(
@@ -298,6 +410,7 @@ export const gmailEmails = pgTable(
     attachments: jsonb("attachments").notNull().default([]),
     labels: jsonb("labels").notNull().default([]),
     rawPayload: jsonb("raw_payload"),
+    isNewsletter: boolean("is_newsletter").default(false).notNull(),
     ingestedAt: timestamp("ingested_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -313,6 +426,11 @@ export const gmailEmails = pgTable(
     index("idx_gmail_emails_tenant_id").on(table.tenantId),
     index("idx_gmail_emails_received_at").on(table.tenantId, table.receivedAt),
     index("idx_gmail_emails_sender").on(table.tenantId, table.sender),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
+    }),
   ]
 );
 
@@ -346,6 +464,11 @@ export const gmailWatchSubscriptions = pgTable(
     ),
     index("idx_gmail_watch_tenant").on(table.tenantId),
     index("idx_gmail_watch_expiration").on(table.expiration),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
+    }),
   ]
 );
 
@@ -365,6 +488,11 @@ export const webhookSecrets = pgTable("webhook_secrets", {
     .notNull(),
 }, (table) => [
   uniqueIndex("uq_webhook_secrets_user_name").on(table.userId, table.name),
+  crudPolicy({
+    role: authenticatedRole,
+    read: authUid(table.userId),
+    modify: authUid(table.userId),
+  }),
 ]);
 
 // ── Graph Credentials (Azure AD App Registration) ────
@@ -388,6 +516,11 @@ export const graphCredentials = pgTable(
   },
   (table) => [
     index("idx_graph_credentials_tenant").on(table.tenantId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
+    }),
   ]
 );
 
@@ -423,6 +556,11 @@ export const graphSubscriptions = pgTable(
     index("idx_graph_subscriptions_tenant").on(table.tenantId),
     index("idx_graph_subscriptions_expiration").on(table.expirationDateTime),
     index("idx_graph_subscriptions_credential").on(table.credentialId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
+    }),
   ]
 );
 
@@ -448,6 +586,11 @@ export const emails = pgTable(
     rawPayload: jsonb("raw_payload").notNull(),
     embedding: vector("embedding"),
     embeddingGeneratedAt: timestamp("embedding_generated_at", { withTimezone: true }),
+    outlookAccountId: uuid("outlook_account_id").references(
+      () => outlookOauthTokens.id,
+      { onDelete: "set null" }
+    ),
+    isNewsletter: boolean("is_newsletter").default(false).notNull(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -464,6 +607,12 @@ export const emails = pgTable(
     index("idx_emails_tenant_id").on(table.tenantId),
     index("idx_emails_received_at").on(table.receivedAt),
     index("idx_emails_tenant_received").on(table.tenantId, table.receivedAt),
+    index("idx_emails_outlook_account").on(table.outlookAccountId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
+    }),
   ]
 );
 
@@ -485,6 +634,11 @@ export const emailLabels = pgTable(
   (table) => [
     uniqueIndex("uq_email_labels_tenant_name").on(table.tenantId, table.name),
     index("idx_email_labels_tenant").on(table.tenantId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
+    }),
   ]
 );
 
@@ -510,6 +664,27 @@ export const emailLabelAssignments = pgTable(
     uniqueIndex("uq_email_label_assignment").on(table.emailId, table.labelId),
     index("idx_email_label_assignments_email").on(table.emailId),
     index("idx_email_label_assignments_label").on(table.labelId),
+    pgPolicy("email_label_assignments_auth_select", {
+      for: "select",
+      to: authenticatedRole,
+      using: sql`email_id IN (SELECT id FROM emails WHERE tenant_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("email_label_assignments_auth_insert", {
+      for: "insert",
+      to: authenticatedRole,
+      withCheck: sql`email_id IN (SELECT id FROM emails WHERE tenant_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("email_label_assignments_auth_update", {
+      for: "update",
+      to: authenticatedRole,
+      using: sql`email_id IN (SELECT id FROM emails WHERE tenant_id = (select auth.user_id()::uuid))`,
+      withCheck: sql`email_id IN (SELECT id FROM emails WHERE tenant_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("email_label_assignments_auth_delete", {
+      for: "delete",
+      to: authenticatedRole,
+      using: sql`email_id IN (SELECT id FROM emails WHERE tenant_id = (select auth.user_id()::uuid))`,
+    }),
   ]
 );
 
@@ -560,6 +735,11 @@ export const calendarEvents = pgTable(
     index("idx_calendar_events_tenant").on(table.tenantId),
     index("idx_calendar_events_start").on(table.tenantId, table.startDateTime),
     index("idx_calendar_events_end").on(table.tenantId, table.endDateTime),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
+    }),
   ]
 );
 
@@ -592,6 +772,11 @@ export const calendarSyncState = pgTable(
       table.mailbox
     ),
     index("idx_calendar_sync_tenant").on(table.tenantId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
+    }),
   ]
 );
 
@@ -617,7 +802,16 @@ export const outlookOauthTokens = pgTable(
       .notNull(),
   },
   (table) => [
-    uniqueIndex("uq_outlook_oauth_tenant").on(table.tenantId),
+    uniqueIndex("uq_outlook_oauth_tenant_email").on(
+      table.tenantId,
+      table.outlookEmail
+    ),
+    index("idx_outlook_oauth_tenant").on(table.tenantId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
+    }),
   ]
 );
 
@@ -644,6 +838,45 @@ export const zoomOauthTokens = pgTable(
   (table) => [
     uniqueIndex("uq_zoom_oauth_tenant").on(table.tenantId),
     index("idx_zoom_oauth_tenant").on(table.tenantId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
+    }),
+  ]
+);
+
+// ── Zoom User OAuth Tokens (multi-account, user-managed) ──
+export const zoomUserOauthTokens = pgTable(
+  "zoom_user_oauth_tokens",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    zoomEmail: varchar("zoom_email", { length: 255 }).notNull(),
+    zoomUserId: varchar("zoom_user_id", { length: 255 }),
+    accessToken: text("access_token").notNull(),
+    refreshToken: text("refresh_token").notNull(),
+    tokenExpiry: timestamp("token_expiry", { withTimezone: true }).notNull(),
+    active: boolean("active").default(true).notNull(),
+    lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+    syncCursor: text("sync_cursor"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_zoom_user_oauth_tenant_email").on(table.tenantId, table.zoomEmail),
+    index("idx_zoom_user_oauth_tenant").on(table.tenantId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
+    }),
   ]
 );
 
@@ -672,7 +905,12 @@ export const zoomChatMessages = pgTable(
     }).notNull(),
     isEdited: boolean("is_edited").default(false).notNull(),
     isDeleted: boolean("is_deleted").default(false).notNull(),
+    zoomAccountId: uuid("zoom_account_id").references(
+      () => zoomUserOauthTokens.id
+    ),
     rawPayload: jsonb("raw_payload"),
+    embedding: vector("embedding"),
+    embeddingGeneratedAt: timestamp("embedding_generated_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -691,6 +929,11 @@ export const zoomChatMessages = pgTable(
       table.tenantId,
       table.messageTimestamp
     ),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
+    }),
   ]
 );
 
@@ -719,6 +962,11 @@ export const brainChatSessions = pgTable(
   (table) => [
     index("idx_brain_chat_sessions_user").on(table.userId),
     index("idx_brain_chat_sessions_updated").on(table.userId, table.updatedAt),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.userId),
+      modify: authUid(table.userId),
+    }),
   ]
 );
 
@@ -742,11 +990,38 @@ export const brainChatMessages = pgTable(
       table.sessionId,
       table.createdAt
     ),
+    pgPolicy("brain_chat_messages_auth_select", {
+      for: "select",
+      to: authenticatedRole,
+      using: sql`session_id IN (SELECT id FROM brain_chat_sessions WHERE user_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("brain_chat_messages_auth_insert", {
+      for: "insert",
+      to: authenticatedRole,
+      withCheck: sql`session_id IN (SELECT id FROM brain_chat_sessions WHERE user_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("brain_chat_messages_auth_update", {
+      for: "update",
+      to: authenticatedRole,
+      using: sql`session_id IN (SELECT id FROM brain_chat_sessions WHERE user_id = (select auth.user_id()::uuid))`,
+      withCheck: sql`session_id IN (SELECT id FROM brain_chat_sessions WHERE user_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("brain_chat_messages_auth_delete", {
+      for: "delete",
+      to: authenticatedRole,
+      using: sql`session_id IN (SELECT id FROM brain_chat_sessions WHERE user_id = (select auth.user_id()::uuid))`,
+    }),
   ]
 );
 
 // ── Weekly Reviews ──────────────────────────────────
 export const weeklyReviewStatusEnum = pgEnum("weekly_review_status", [
+  "generating",
+  "completed",
+  "failed",
+]);
+
+export const dailyBriefingStatusEnum = pgEnum("daily_briefing_status", [
   "generating",
   "completed",
   "failed",
@@ -782,6 +1057,11 @@ export const weeklyReviews = pgTable(
   (table) => [
     index("idx_weekly_reviews_user_id").on(table.userId),
     index("idx_weekly_reviews_user_week").on(table.userId, table.weekStart),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.userId),
+      modify: authUid(table.userId),
+    }),
   ]
 );
 
@@ -795,7 +1075,13 @@ export const workspaces = pgTable("workspaces", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
-});
+}, (table) => [
+  crudPolicy({
+    role: authenticatedRole,
+    read: authUid(table.ownerId),
+    modify: authUid(table.ownerId),
+  }),
+]);
 
 // ── Pages ───────────────────────────────────────────
 export const pages = pgTable(
@@ -833,6 +1119,27 @@ export const pages = pgTable(
       table.workspaceId,
       table.isArchived
     ),
+    pgPolicy("pages_auth_select", {
+      for: "select",
+      to: authenticatedRole,
+      using: sql`workspace_id IN (SELECT id FROM workspaces WHERE owner_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("pages_auth_insert", {
+      for: "insert",
+      to: authenticatedRole,
+      withCheck: sql`workspace_id IN (SELECT id FROM workspaces WHERE owner_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("pages_auth_update", {
+      for: "update",
+      to: authenticatedRole,
+      using: sql`workspace_id IN (SELECT id FROM workspaces WHERE owner_id = (select auth.user_id()::uuid))`,
+      withCheck: sql`workspace_id IN (SELECT id FROM workspaces WHERE owner_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("pages_auth_delete", {
+      for: "delete",
+      to: authenticatedRole,
+      using: sql`workspace_id IN (SELECT id FROM workspaces WHERE owner_id = (select auth.user_id()::uuid))`,
+    }),
   ]
 );
 
@@ -861,6 +1168,27 @@ export const blocks = pgTable(
       table.parentBlockId,
       table.sortOrder
     ),
+    pgPolicy("blocks_auth_select", {
+      for: "select",
+      to: authenticatedRole,
+      using: sql`page_id IN (SELECT p.id FROM pages p JOIN workspaces w ON p.workspace_id = w.id WHERE w.owner_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("blocks_auth_insert", {
+      for: "insert",
+      to: authenticatedRole,
+      withCheck: sql`page_id IN (SELECT p.id FROM pages p JOIN workspaces w ON p.workspace_id = w.id WHERE w.owner_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("blocks_auth_update", {
+      for: "update",
+      to: authenticatedRole,
+      using: sql`page_id IN (SELECT p.id FROM pages p JOIN workspaces w ON p.workspace_id = w.id WHERE w.owner_id = (select auth.user_id()::uuid))`,
+      withCheck: sql`page_id IN (SELECT p.id FROM pages p JOIN workspaces w ON p.workspace_id = w.id WHERE w.owner_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("blocks_auth_delete", {
+      for: "delete",
+      to: authenticatedRole,
+      using: sql`page_id IN (SELECT p.id FROM pages p JOIN workspaces w ON p.workspace_id = w.id WHERE w.owner_id = (select auth.user_id()::uuid))`,
+    }),
   ]
 );
 
@@ -889,6 +1217,27 @@ export const databaseRows = pgTable(
       table.databasePageId,
       table.sortOrder
     ),
+    pgPolicy("database_rows_auth_select", {
+      for: "select",
+      to: authenticatedRole,
+      using: sql`database_page_id IN (SELECT p.id FROM pages p JOIN workspaces w ON p.workspace_id = w.id WHERE w.owner_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("database_rows_auth_insert", {
+      for: "insert",
+      to: authenticatedRole,
+      withCheck: sql`database_page_id IN (SELECT p.id FROM pages p JOIN workspaces w ON p.workspace_id = w.id WHERE w.owner_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("database_rows_auth_update", {
+      for: "update",
+      to: authenticatedRole,
+      using: sql`database_page_id IN (SELECT p.id FROM pages p JOIN workspaces w ON p.workspace_id = w.id WHERE w.owner_id = (select auth.user_id()::uuid))`,
+      withCheck: sql`database_page_id IN (SELECT p.id FROM pages p JOIN workspaces w ON p.workspace_id = w.id WHERE w.owner_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("database_rows_auth_delete", {
+      for: "delete",
+      to: authenticatedRole,
+      using: sql`database_page_id IN (SELECT p.id FROM pages p JOIN workspaces w ON p.workspace_id = w.id WHERE w.owner_id = (select auth.user_id()::uuid))`,
+    }),
   ]
 );
 
@@ -915,6 +1264,11 @@ export const telegramBotTokens = pgTable(
   },
   (table) => [
     uniqueIndex("uq_telegram_bot_user").on(table.userId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.userId),
+      modify: authUid(table.userId),
+    }),
   ]
 );
 
@@ -948,6 +1302,11 @@ export const outboundWebhooks = pgTable(
   (table) => [
     index("idx_outbound_webhooks_user").on(table.userId),
     index("idx_outbound_webhooks_active").on(table.userId, table.active),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.userId),
+      modify: authUid(table.userId),
+    }),
   ]
 );
 
@@ -968,6 +1327,27 @@ export const outboundWebhookDeliveries = pgTable(
   (table) => [
     index("idx_outbound_webhook_deliveries_webhook").on(table.webhookId),
     index("idx_outbound_webhook_deliveries_sent").on(table.webhookId, table.sentAt),
+    pgPolicy("outbound_webhook_deliveries_auth_select", {
+      for: "select",
+      to: authenticatedRole,
+      using: sql`webhook_id IN (SELECT id FROM outbound_webhooks WHERE user_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("outbound_webhook_deliveries_auth_insert", {
+      for: "insert",
+      to: authenticatedRole,
+      withCheck: sql`webhook_id IN (SELECT id FROM outbound_webhooks WHERE user_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("outbound_webhook_deliveries_auth_update", {
+      for: "update",
+      to: authenticatedRole,
+      using: sql`webhook_id IN (SELECT id FROM outbound_webhooks WHERE user_id = (select auth.user_id()::uuid))`,
+      withCheck: sql`webhook_id IN (SELECT id FROM outbound_webhooks WHERE user_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("outbound_webhook_deliveries_auth_delete", {
+      for: "delete",
+      to: authenticatedRole,
+      using: sql`webhook_id IN (SELECT id FROM outbound_webhooks WHERE user_id = (select auth.user_id()::uuid))`,
+    }),
   ]
 );
 
@@ -1003,6 +1383,11 @@ export const brainThoughts = pgTable(
     index("idx_brain_thoughts_user_created").on(table.userId, table.createdAt),
     index("idx_brain_thoughts_source").on(table.userId, table.source),
     index("idx_brain_thoughts_source_url").on(table.userId, table.sourceUrl),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.userId),
+      modify: authUid(table.userId),
+    }),
   ]
 );
 
@@ -1034,6 +1419,11 @@ export const zapierIngestLogs = pgTable(
     index("idx_zapier_ingest_logs_user").on(table.userId),
     index("idx_zapier_ingest_logs_user_created").on(table.userId, table.createdAt),
     uniqueIndex("uq_zapier_ingest_idempotency").on(table.userId, table.idempotencyKey),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.userId),
+      modify: authUid(table.userId),
+    }),
   ]
 );
 
@@ -1058,6 +1448,11 @@ export const customPrompts = pgTable(
   (table) => [
     uniqueIndex("uq_custom_prompts_user_key").on(table.userId, table.promptKey),
     index("idx_custom_prompts_user").on(table.userId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.userId),
+      modify: authUid(table.userId),
+    }),
   ]
 );
 
@@ -1078,10 +1473,77 @@ export const customPromptHistory = pgTable(
   },
   (table) => [
     index("idx_custom_prompt_history_user_key").on(table.userId, table.promptKey),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.userId),
+      modify: authUid(table.userId),
+    }),
+  ]
+);
+
+// ── Newsletter Sender Whitelist ───────────────────────
+export const newsletterWhitelist = pgTable(
+  "newsletter_whitelist",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    senderEmail: varchar("sender_email", { length: 512 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_newsletter_whitelist_tenant_sender").on(
+      table.tenantId,
+      table.senderEmail
+    ),
+    index("idx_newsletter_whitelist_tenant").on(table.tenantId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
+    }),
   ]
 );
 
 // ── Extension Downloads ───────────────────────────────
+// ── Google OAuth Tokens (Google Calendar) ──
+export const googleOauthTokens = pgTable(
+  "google_oauth_tokens",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    googleEmail: varchar("google_email", { length: 320 }).notNull(),
+    accessToken: text("access_token").notNull(),
+    refreshToken: text("refresh_token").notNull(),
+    tokenExpiry: timestamp("token_expiry", { withTimezone: true }).notNull(),
+    active: boolean("active").default(true).notNull(),
+    lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_google_oauth_tenant_email").on(
+      table.tenantId,
+      table.googleEmail
+    ),
+    index("idx_google_oauth_tenant").on(table.tenantId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
+    }),
+  ]
+);
+
 export const extensionDownloads = pgTable(
   "extension_downloads",
   {
@@ -1096,5 +1558,45 @@ export const extensionDownloads = pgTable(
   },
   (table) => [
     index("idx_extension_downloads_user").on(table.userId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.userId),
+      modify: authUid(table.userId),
+    }),
+  ]
+);
+
+// ── Daily Briefings ────────────────────────────────────
+export const dailyBriefings = pgTable(
+  "daily_briefings",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    briefingDate: date("briefing_date").notNull(),
+    status: dailyBriefingStatusEnum("status").default("generating").notNull(),
+    briefingHtml: text("briefing_html"),
+    overdueCardCount: integer("overdue_card_count").default(0).notNull(),
+    emailCount: integer("email_count").default(0).notNull(),
+    meetingCount: integer("meeting_count").default(0).notNull(),
+    actionItemCount: integer("action_item_count").default(0).notNull(),
+    emailSentAt: timestamp("email_sent_at", { withTimezone: true }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_daily_briefings_user_id").on(table.userId),
+    index("idx_daily_briefings_user_date").on(table.userId, table.briefingDate),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.userId),
+      modify: authUid(table.userId),
+    }),
   ]
 );

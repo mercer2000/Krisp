@@ -1,5 +1,6 @@
 import sql from "./db";
 import type { ZoomChatMessageRow, ZoomChatMessageInsert } from "@/types/zoom";
+import type { EmailListItem } from "@/types/email";
 import { encrypt, encryptNullable, decryptNullable } from "@/lib/encryption";
 
 /** Encrypted columns in zoom_chat_messages */
@@ -143,4 +144,76 @@ export async function zoomMessageExists(
     WHERE tenant_id = ${tenantId} AND message_id = ${messageId}
   `;
   return rows.length > 0;
+}
+
+/**
+ * List Zoom chat messages for the inbox, shaped as EmailListItem[].
+ */
+export async function listZoomMessages(
+  tenantId: string,
+  opts: { q?: string; after?: string; before?: string; accountId?: string }
+): Promise<EmailListItem[]> {
+  // Build query with conditional filters
+  // neon() tagged template doesn't support dynamic WHERE clauses,
+  // so we use the function-call form: sql.query(queryString, params)
+  const conditions = ["tenant_id = $1", "is_deleted = false"];
+  const params: (string | Date)[] = [tenantId];
+  let paramIndex = 2;
+
+  if (opts.accountId) {
+    conditions.push(`zoom_account_id = $${paramIndex}`);
+    params.push(opts.accountId);
+    paramIndex++;
+  }
+  if (opts.after) {
+    conditions.push(`message_timestamp >= $${paramIndex}`);
+    params.push(opts.after);
+    paramIndex++;
+  }
+  if (opts.before) {
+    conditions.push(`message_timestamp <= $${paramIndex}`);
+    params.push(opts.before);
+    paramIndex++;
+  }
+
+  const query = `
+    SELECT id, sender_id, sender_name, channel_id, channel_type,
+           message_content, message_timestamp, zoom_account_id
+    FROM zoom_chat_messages
+    WHERE ${conditions.join(" AND ")}
+    ORDER BY message_timestamp DESC
+    LIMIT 10000
+  `;
+
+  const rows = await sql.query(query, params);
+  const decrypted = decryptZoomRows(rows);
+
+  let items: EmailListItem[] = decrypted.map((row) => ({
+    id: row.id,
+    sender: row.sender_name || row.sender_id,
+    subject: row.channel_type === "channel" ? (row.channel_id ?? "Zoom Channel") : "Direct Message",
+    received_at: row.message_timestamp,
+    recipients: [],
+    has_attachments: false,
+    preview: row.message_content ? row.message_content.slice(0, 200) : null,
+    web_link: null,
+    outlook_account_id: null,
+    account_id: row.zoom_account_id ?? null,
+    provider: "zoom" as const,
+    labels: [],
+    is_newsletter: false,
+  }));
+
+  // Client-side keyword filter on decrypted content
+  if (opts.q) {
+    const lower = opts.q.toLowerCase();
+    items = items.filter(
+      (item) =>
+        (item.preview && item.preview.toLowerCase().includes(lower)) ||
+        item.sender.toLowerCase().includes(lower) ||
+        (item.subject && item.subject.toLowerCase().includes(lower))
+    );
+  }
+
+  return items;
 }

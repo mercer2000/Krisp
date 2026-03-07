@@ -283,6 +283,9 @@ export const emailListQuerySchema = z.object({
   q: z.string().max(200).optional(),
   after: z.string().datetime({ offset: true }).optional(),
   before: z.string().datetime({ offset: true }).optional(),
+  accountId: z.string().uuid().optional(),
+  provider: z.enum(["outlook", "gmail", "zoom"]).optional(),
+  folder: z.enum(["inbox", "newsletter"]).optional(),
 });
 
 export type EmailListQueryInput = z.infer<typeof emailListQuerySchema>;

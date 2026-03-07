@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { processUnembeddedEmails, getEmbeddingStatus } from "@/lib/email/embeddings";
+import { processUnembeddedZoomMessages, getZoomEmbeddingStatus } from "@/lib/zoom/embeddings";
 
 /**
  * POST /api/emails/embed
@@ -18,12 +19,22 @@ export async function POST() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const processed = await processUnembeddedEmails(userId);
-    const status = await getEmbeddingStatus(userId);
+    const [emailProcessed, zoomProcessed, emailStatus, zoomStatus] = await Promise.all([
+      processUnembeddedEmails(userId),
+      processUnembeddedZoomMessages(userId),
+      getEmbeddingStatus(userId),
+      getZoomEmbeddingStatus(userId),
+    ]);
 
     return NextResponse.json({
-      processed,
-      embedding_status: status,
+      processed: emailProcessed + zoomProcessed,
+      processed_emails: emailProcessed,
+      processed_zoom: zoomProcessed,
+      embedding_status: {
+        total: emailStatus.total + zoomStatus.total,
+        embedded: emailStatus.embedded + zoomStatus.embedded,
+        pending: emailStatus.pending + zoomStatus.pending,
+      },
     });
   } catch (error) {
     console.error("Error processing embeddings:", error);
