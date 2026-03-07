@@ -1,4 +1,8 @@
 import OpenAI from "openai";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+import { decrypt, isEncrypted } from "@/lib/encryption";
 
 export const openrouter = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
@@ -6,7 +10,7 @@ export const openrouter = new OpenAI({
 });
 
 export const DEFAULT_MODEL =
-  process.env.OPENROUTER_MODEL || "google/gemini-2.0-flash-001";
+  process.env.OPENROUTER_MODEL || "google/gemini-2.5-flash-lite";
 
 /** Thrown when OpenRouter returns a 402 (token/credit limit exceeded). */
 export class TokenLimitError extends Error {
@@ -16,12 +20,55 @@ export class TokenLimitError extends Error {
   }
 }
 
+/**
+ * Get the OpenRouter API key for a specific user.
+ * Falls back to the global OPENROUTER_API_KEY if the user has no provisioned key.
+ */
+export async function getUserApiKey(userId: string): Promise<string> {
+  try {
+    const [user] = await db
+      .select({ openrouterApiKey: users.openrouterApiKey })
+      .from(users)
+      .where(eq(users.id, userId));
+
+    if (user?.openrouterApiKey) {
+      const key = isEncrypted(user.openrouterApiKey)
+        ? decrypt(user.openrouterApiKey)
+        : user.openrouterApiKey;
+      return key;
+    }
+  } catch (err) {
+    console.error("Failed to fetch user API key, falling back to global:", err);
+  }
+
+  return process.env.OPENROUTER_API_KEY || "";
+}
+
+/**
+ * Get an OpenAI client configured with a specific API key.
+ */
+function getClientForKey(apiKey: string): OpenAI {
+  if (apiKey === process.env.OPENROUTER_API_KEY) {
+    return openrouter;
+  }
+  return new OpenAI({
+    baseURL: "https://openrouter.ai/api/v1",
+    apiKey,
+  });
+}
+
 export async function chatCompletion(
   prompt: string,
-  options?: { maxTokens?: number; model?: string }
+  options?: { maxTokens?: number; model?: string; userId?: string }
 ): Promise<string> {
   try {
-    const response = await openrouter.chat.completions.create({
+    const apiKey = options?.userId
+      ? await getUserApiKey(options.userId)
+      : process.env.OPENROUTER_API_KEY || "";
+
+    const client = getClientForKey(apiKey);
+
+    const response = await client.chat.completions.create({
       model: options?.model ?? DEFAULT_MODEL,
       max_tokens: options?.maxTokens ?? 2000,
       messages: [{ role: "user", content: prompt }],

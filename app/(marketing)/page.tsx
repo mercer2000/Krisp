@@ -6,6 +6,7 @@ import { FeatureDeepDive } from "./components/FeatureDeepDive";
 import { HowItWorks } from "./components/HowItWorks";
 import { Integrations } from "./components/Integrations";
 import { FAQ } from "./components/FAQ";
+import { SecurityTrust } from "./components/SecurityTrust";
 import { FinalCTA } from "./components/FinalCTA";
 import { Footer } from "./components/Footer";
 
@@ -75,6 +76,7 @@ export default function LandingPage() {
         <HowItWorks />
         <Integrations />
         <FAQ />
+        <SecurityTrust />
         <FinalCTA />
       </main>
       <Footer />
