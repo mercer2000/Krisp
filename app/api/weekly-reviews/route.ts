@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { weeklyReviews } from "@/lib/db/schema";
-import { eq, and, desc, isNull } from "drizzle-orm";
+import { eq, and, desc, isNull, lt, inArray } from "drizzle-orm";
 import { generateWeeklyReview, getPreviousWeekRange } from "@/lib/weekly-review/generate";
 import { sendWeeklyReviewEmail } from "@/lib/weekly-review/email";
 import {
   decryptFields,
   decryptRows,
+  encryptFields,
   WEEKLY_REVIEW_ENCRYPTED_FIELDS,
 } from "@/lib/db/encryption-helpers";
 
@@ -17,6 +18,40 @@ export async function GET(request: NextRequest) {
     const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Auto-fix stuck "generating" reviews older than 5 minutes
+    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const stuckReviews = await db
+      .select({ id: weeklyReviews.id })
+      .from(weeklyReviews)
+      .where(
+        and(
+          eq(weeklyReviews.userId, userId),
+          eq(weeklyReviews.status, "generating"),
+          lt(weeklyReviews.createdAt, fiveMinAgo)
+        )
+      );
+
+    if (stuckReviews.length > 0) {
+      await db
+        .update(weeklyReviews)
+        .set(
+          encryptFields(
+            {
+              status: "failed",
+              synthesisReport: "Generation timed out. Please try generating again.",
+              updatedAt: new Date(),
+            },
+            WEEKLY_REVIEW_ENCRYPTED_FIELDS
+          )
+        )
+        .where(
+          inArray(
+            weeklyReviews.id,
+            stuckReviews.map((r) => r.id)
+          )
+        );
     }
 
     const items = await db

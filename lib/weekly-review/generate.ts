@@ -196,18 +196,24 @@ ${unresolvedItems.map((a) => `- [${a.status}] "${a.title}" (${a.priority}${a.due
 
   const text = await chatCompletion(prompt, { maxTokens: 4096, userId });
 
+  // Strip markdown code fences if present (e.g. ```json ... ```)
+  const cleaned = text
+    .replace(/^```(?:json)?\s*\n?/i, "")
+    .replace(/\n?```\s*$/i, "")
+    .trim();
+
   try {
-    return JSON.parse(text) as {
+    return JSON.parse(cleaned) as {
       topicClusters: TopicCluster[];
       crossDayPatterns: CrossDayPattern[];
       synthesisReport: string;
     };
   } catch {
-    // If Claude's response isn't valid JSON, wrap it
+    // If the response isn't valid JSON, wrap it
     return {
       topicClusters: [] as TopicCluster[],
       crossDayPatterns: [] as CrossDayPattern[],
-      synthesisReport: text || "Failed to generate synthesis report.",
+      synthesisReport: cleaned || "Failed to generate synthesis report.",
     };
   }
 }
