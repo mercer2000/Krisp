@@ -23,12 +23,12 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Krisp Life",
+  title: "MyOpenBrain",
   description: "Meeting search and personal Kanban board",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Krisp Life",
+    title: "MyOpenBrain",
   },
 };
 
