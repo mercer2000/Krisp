@@ -32,26 +32,41 @@ async function getPublicKey(): Promise<CryptoKey> {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   providers: [
     Credentials({
       async authorize(credentials) {
-        const parsed = loginSchema.safeParse(credentials);
-        if (!parsed.success) return null;
+        try {
+          const parsed = loginSchema.safeParse(credentials);
+          if (!parsed.success) {
+            console.error("[auth] Invalid credentials format:", parsed.error.flatten());
+            return null;
+          }
 
-        const [user] = await db
-          .select()
-          .from(users)
-          .where(eq(users.username, parsed.data.username));
+          const [user] = await db
+            .select()
+            .from(users)
+            .where(eq(users.username, parsed.data.username));
 
-        if (!user || !user.passwordHash) return null;
+          if (!user || !user.passwordHash) {
+            console.error("[auth] User not found:", parsed.data.username);
+            return null;
+          }
 
-        const valid = await bcrypt.compare(
-          parsed.data.password,
-          user.passwordHash
-        );
-        if (!valid) return null;
+          const valid = await bcrypt.compare(
+            parsed.data.password,
+            user.passwordHash
+          );
+          if (!valid) {
+            console.error("[auth] Invalid password for user:", parsed.data.username);
+            return null;
+          }
 
-        return { id: user.id, name: user.displayName, email: user.email };
+          return { id: user.id, name: user.displayName, email: user.email };
+        } catch (err) {
+          console.error("[auth] authorize() error:", err);
+          return null;
+        }
       },
     }),
   ],
