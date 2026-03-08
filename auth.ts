@@ -87,16 +87,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   jwt: {
     async encode({ token }) {
-      const privateKey = await getPrivateKey();
-      const jwk = JSON.parse(
-        Buffer.from(process.env.AUTH_PUBLIC_JWK!, "base64").toString("utf-8")
-      );
-      return new SignJWT({ ...token })
-        .setProtectedHeader({ alg: "RS256", kid: jwk.kid })
-        .setIssuedAt()
-        .setExpirationTime("30d")
-        .setSubject(String(token?.userId ?? token?.sub ?? ""))
-        .sign(privateKey);
+      try {
+        const privateKey = await getPrivateKey();
+        const jwk = JSON.parse(
+          Buffer.from(process.env.AUTH_PUBLIC_JWK!, "base64").toString("utf-8")
+        );
+        return new SignJWT({ ...token })
+          .setProtectedHeader({ alg: "RS256", kid: jwk.kid })
+          .setIssuedAt()
+          .setExpirationTime("30d")
+          .setSubject(String(token?.userId ?? token?.sub ?? ""))
+          .sign(privateKey);
+      } catch (err) {
+        console.error("[auth] JWT encode error:", err);
+        throw err;
+      }
     },
     async decode({ token }) {
       if (!token) return null;
@@ -106,7 +111,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           algorithms: ["RS256"],
         });
         return payload as any;
-      } catch {
+      } catch (err) {
+        console.error("[auth] JWT decode error:", err);
         return null;
       }
     },

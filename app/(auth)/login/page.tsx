@@ -34,11 +34,14 @@ export default function LoginPage() {
 
       if (result?.error) {
         setError("Invalid username or password");
-      } else {
-        router.push("/");
+      } else if (result?.ok) {
+        router.push("/dashboard");
         router.refresh();
+      } else {
+        setError("Sign-in failed unexpectedly. Please try again.");
       }
-    } catch {
+    } catch (err) {
+      console.error("[login] signIn error:", err);
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
