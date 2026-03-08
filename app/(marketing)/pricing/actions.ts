@@ -10,7 +10,7 @@ import { auth } from "@/lib/auth/server";
 export async function createCheckoutSession(priceId: string) {
   const { data: session } = await auth.getSession();
   if (!session?.user?.id) {
-    redirect("/login");
+    redirect("/auth/sign-in");
   }
 
   const userId = session.user.id;
@@ -23,7 +23,7 @@ export async function createCheckoutSession(priceId: string) {
     .limit(1);
 
   if (!user) {
-    redirect("/login");
+    redirect("/auth/sign-in");
   }
 
   // Create or retrieve the Stripe customer

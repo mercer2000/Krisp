@@ -9,7 +9,7 @@ import { auth } from "@/lib/auth/server";
 
 export async function createPortalSession() {
   const { data: session } = await auth.getSession();
-  if (!session?.user?.id) redirect("/login");
+  if (!session?.user?.id) redirect("/auth/sign-in");
 
   const [user] = await db
     .select({ stripeCustomerId: users.stripeCustomerId })
@@ -31,7 +31,7 @@ export async function createPortalSession() {
 
 export async function cancelSubscription() {
   const { data: session } = await auth.getSession();
-  if (!session?.user?.id) redirect("/login");
+  if (!session?.user?.id) redirect("/auth/sign-in");
 
   const [sub] = await db
     .select()
@@ -55,7 +55,7 @@ export async function cancelSubscription() {
 
 export async function reactivateSubscription() {
   const { data: session } = await auth.getSession();
-  if (!session?.user?.id) redirect("/login");
+  if (!session?.user?.id) redirect("/auth/sign-in");
 
   const [sub] = await db
     .select()
@@ -79,7 +79,7 @@ export async function reactivateSubscription() {
 
 export async function switchPlan(newPriceId: string) {
   const { data: session } = await auth.getSession();
-  if (!session?.user?.id) redirect("/login");
+  if (!session?.user?.id) redirect("/auth/sign-in");
 
   const userId = session.user.id;
 
@@ -125,7 +125,7 @@ export async function switchPlan(newPriceId: string) {
     .where(eq(users.id, userId))
     .limit(1);
 
-  if (!user) redirect("/login");
+  if (!user) redirect("/auth/sign-in");
 
   let stripeCustomerId = user.stripeCustomerId;
   if (!stripeCustomerId) {

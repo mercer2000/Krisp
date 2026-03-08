@@ -4,7 +4,7 @@ export function NavHeader() {
       <div className="mx-auto max-w-6xl flex items-center justify-between">
         <span className="text-xl font-bold text-white">MyOpenBrain</span>
         <div className="flex items-center gap-6">
-          <a href="/login" className="text-sm text-slate-400 hover:text-white transition-colors">
+          <a href="/auth/sign-in" className="text-sm text-slate-400 hover:text-white transition-colors">
             Sign in
           </a>
           <a

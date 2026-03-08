@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const { data: session } = await auth.getSession();
     const userId = session?.user?.id;
     if (!userId) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      return NextResponse.redirect(new URL("/auth/sign-in", request.url));
     }
 
     const code = request.nextUrl.searchParams.get("code");

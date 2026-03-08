@@ -24,7 +24,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <NeonAuthUIProvider authClient={typedAuthClient} emailOTP>
+    <NeonAuthUIProvider authClient={typedAuthClient} emailOTP redirectTo="/brain">
       <QueryClientProvider client={queryClient}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
