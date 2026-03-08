@@ -1,51 +1,5 @@
 import { z } from "zod";
 
-export const loginSchema = z.object({
-  username: z.string().min(1, "Username is required"),
-  password: z.string().min(1, "Password is required"),
-});
-
-export const registerSchema = z.object({
-  username: z
-    .string()
-    .min(3, "Username must be at least 3 characters")
-    .max(50, "Username must be at most 50 characters")
-    .regex(
-      /^[a-z0-9_]+$/,
-      "Username must be lowercase alphanumeric with underscores only"
-    ),
-  email: z.string().email("Invalid email address"),
-  displayName: z
-    .string()
-    .min(1, "Display name is required")
-    .max(100, "Display name must be at most 100 characters"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
-
-export const forgotPasswordSchema = z.object({
-  email: z.string().email("Invalid email address"),
-});
-
-export const resetPasswordSchema = z
-  .object({
-    token: z.string().min(1, "Reset token is required"),
-    password: z
-      .string()
-      .min(8, "Password must be at least 8 characters")
-      .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-      .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-      .regex(/[0-9]/, "Password must contain at least one number"),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
-  });
-
 export const createBoardSchema = z.object({
   title: z.string().min(1, "Title is required").max(255),
   description: z.string().optional(),
@@ -399,10 +353,6 @@ export const contactListQuerySchema = z.object({
 
 export type ContactListQueryInput = z.infer<typeof contactListQuerySchema>;
 
-export type LoginInput = z.infer<typeof loginSchema>;
-export type RegisterInput = z.infer<typeof registerSchema>;
-export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
-export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type CreateBoardInput = z.infer<typeof createBoardSchema>;
 export type UpdateBoardInput = z.infer<typeof updateBoardSchema>;
 export type CreateColumnInput = z.infer<typeof createColumnSchema>;
