@@ -87,6 +87,24 @@ body {
   border-radius: var(--radius) !important;
 }
 
+/* Mobile-specific styles */
+@media (max-width: 767px) {
+  /* Prevent horizontal overflow on mobile */
+  body {
+    overflow-x: hidden;
+  }
+
+  /* Hide scrollbars on mobile for a cleaner look */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Smooth scrolling for better mobile feel */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 /* Landing page animations */
 @keyframes fade-in-up {
   from {

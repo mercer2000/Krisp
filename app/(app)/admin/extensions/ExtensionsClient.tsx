@@ -3,6 +3,44 @@
 import { useState, useEffect, useCallback } from "react";
 import { EXTENSION_CONFIG } from "@/lib/extension/config";
 
+// ── Copy Button ─────────────────────────────────────────
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="flex items-center gap-1 px-3 py-2 text-xs font-medium rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
+    >
+      {copied ? (
+        <>
+          <CheckCircleIcon /> Copied
+        </>
+      ) : (
+        <>
+          <ClipboardIcon /> Copy
+        </>
+      )}
+    </button>
+  );
+}
+
+function ClipboardIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+    </svg>
+  );
+}
+
 // ── Icons ──────────────────────────────────────────────
 
 function DownloadIcon() {
@@ -48,16 +86,6 @@ function AlertTriangleIcon() {
       <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
       <path d="M12 9v4" />
       <path d="M12 17h.01" />
-    </svg>
-  );
-}
-
-function ExternalLinkIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-      <polyline points="15 3 21 3 21 9" />
-      <line x1="10" y1="14" x2="21" y2="3" />
     </svg>
   );
 }
@@ -121,7 +149,7 @@ const TROUBLESHOOTING_ITEMS = [
   },
   {
     q: "API key not recognized or 401 errors",
-    a: 'Verify the API key in the extension popup matches the key from your Integrations page. Keys start with "zk_". Generate a new one if needed. Also check your Krisp URL is correct (include https://).',
+    a: 'Verify the API key in the extension popup matches the key shown on this page. Keys start with "zk_". Generate a new one if needed.',
   },
   {
     q: '"Load unpacked" button is not visible',
@@ -129,7 +157,7 @@ const TROUBLESHOOTING_ITEMS = [
   },
   {
     q: "Extension works but clips are not appearing in Brain",
-    a: "Check the network tab in the extension popup (right-click > Inspect Popup) for failed API calls. The most common issue is an incorrect Krisp URL. Make sure it includes the full URL with https:// and no trailing slash.",
+    a: "Check the network tab in the extension popup (right-click > Inspect Popup) for failed API calls. The most common issue is an expired or revoked API key. Try generating a new one on this page.",
   },
 ];
 
@@ -164,12 +192,54 @@ export function ExtensionsClient({ userId }: { userId: string }) {
   const [browser, setBrowser] = useState<BrowserType>("unknown");
   const [downloading, setDownloading] = useState(false);
   const [downloadComplete, setDownloadComplete] = useState(false);
-  const [testingConnection, setTestingConnection] = useState(false);
-  const [connectionResult, setConnectionResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [fullApiKey, setFullApiKey] = useState<string | null>(null);
+  const [apiKeyLoading, setApiKeyLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+
+  const fetchApiKey = useCallback(async () => {
+    try {
+      setApiKeyLoading(true);
+      const res = await fetch("/api/integrations/zapier/secret");
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      setApiKey(data.secret);
+    } catch {
+      // ignore
+    } finally {
+      setApiKeyLoading(false);
+    }
+  }, []);
+
+  const handleGenerateKey = async () => {
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/integrations/zapier/secret", { method: "POST" });
+      if (!res.ok) throw new Error("Failed to generate");
+      const data = await res.json();
+      setFullApiKey(data.secret);
+      setApiKey(data.secret.slice(0, 8) + "..." + data.secret.slice(-4));
+    } catch {
+      // ignore
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleRevokeKey = async () => {
+    try {
+      await fetch("/api/integrations/zapier/secret", { method: "DELETE" });
+      setApiKey(null);
+      setFullApiKey(null);
+    } catch {
+      // ignore
+    }
+  };
 
   useEffect(() => {
     setBrowser(detectBrowser());
-  }, []);
+    fetchApiKey();
+  }, [fetchApiKey]);
 
   const handleDownload = useCallback(async () => {
     setDownloading(true);
@@ -199,26 +269,6 @@ export function ExtensionsClient({ userId }: { userId: string }) {
     }
   }, []);
 
-  const handleTestConnection = useCallback(async () => {
-    setTestingConnection(true);
-    setConnectionResult(null);
-    try {
-      // We test by calling the Brain clips endpoint with a HEAD-like GET
-      // If the API key is stored in the extension, it would call back to us.
-      // From the app side, we can verify the clips API is accessible.
-      const res = await fetch("/api/brain/clips?test=1");
-      if (res.ok || res.status === 200) {
-        setConnectionResult({ ok: true, message: "API endpoint is reachable. Open the extension popup and verify it connects with your API key." });
-      } else {
-        setConnectionResult({ ok: false, message: `API returned status ${res.status}. Check your setup.` });
-      }
-    } catch {
-      setConnectionResult({ ok: false, message: "Could not reach the API. Check that the application is running." });
-    } finally {
-      setTestingConnection(false);
-    }
-  }, []);
-
   const isChromiumBased = browser === "chrome" || browser === "edge";
 
   return (
@@ -227,7 +277,7 @@ export function ExtensionsClient({ userId }: { userId: string }) {
       <div>
         <h1 className="text-xl font-bold text-[var(--foreground)]">Extensions</h1>
         <p className="text-sm text-[var(--muted-foreground)] mt-1">
-          Install and configure the Krisp browser extension to clip web content directly into your Brain.
+          Install and configure the Web Clipper extension to clip web content directly into your Brain.
         </p>
       </div>
 
@@ -390,61 +440,63 @@ export function ExtensionsClient({ userId }: { userId: string }) {
       {/* Post-Install: API Key Setup */}
       <div className="space-y-4">
         <h2 className="text-base font-semibold text-[var(--foreground)] border-b border-[var(--border)] pb-2">
-          Connect to Your Account
+          Your Personal API Key
         </h2>
 
         <div className="border border-[var(--border)] rounded-xl bg-[var(--card)] p-5 space-y-4">
           <p className="text-sm text-[var(--muted-foreground)]">
-            The extension uses a <strong>Personal API Key</strong> to securely connect to your Krisp account. You&apos;ll need to enter this key in the extension popup the first time you use it.
+            The extension uses a <strong>Personal API Key</strong> to connect to your account. Generate a key below, then paste it into the extension popup.
           </p>
 
-          <div className="flex items-center gap-3">
-            <a
-              href="/admin/integrations"
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
+          {apiKeyLoading ? (
+            <div className="h-10 bg-[var(--secondary)] rounded-lg animate-pulse" />
+          ) : apiKey ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <code className="flex-1 px-3 py-2 text-sm bg-[var(--secondary)] border border-[var(--border)] rounded-lg text-[var(--foreground)] font-mono">
+                  {fullApiKey || apiKey}
+                </code>
+                {fullApiKey && <CopyButton text={fullApiKey} />}
+              </div>
+              {fullApiKey && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-300">
+                  <AlertTriangleIcon />
+                  <span>Copy this key now — it won&apos;t be shown in full again.</span>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={handleGenerateKey}
+                  disabled={generating}
+                  className="px-4 py-2 text-sm font-medium rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors disabled:opacity-50"
+                >
+                  {generating ? "Regenerating..." : "Regenerate Key"}
+                </button>
+                <button
+                  onClick={handleRevokeKey}
+                  className="px-4 py-2 text-sm font-medium rounded-lg border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20 transition-colors"
+                >
+                  Revoke
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={handleGenerateKey}
+              disabled={generating}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg bg-[var(--primary)] text-white hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               <KeyIcon />
-              Manage API Keys
-              <ExternalLinkIcon />
-            </a>
-            <button
-              onClick={handleTestConnection}
-              disabled={testingConnection}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors disabled:opacity-50"
-            >
-              {testingConnection ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
-                  <circle cx="12" cy="12" r="10" strokeDasharray="60" strokeDashoffset="20" />
-                </svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                  <polyline points="22 4 12 14.01 9 11.01" />
-                </svg>
-              )}
-              {testingConnection ? "Testing..." : "Test API Endpoint"}
+              {generating ? "Generating..." : "Generate API Key"}
             </button>
-          </div>
-
-          {connectionResult && (
-            <div
-              className={`flex items-start gap-2 p-3 rounded-lg text-xs ${
-                connectionResult.ok
-                  ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300"
-                  : "bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-300"
-              }`}
-            >
-              {connectionResult.ok ? <CheckCircleIcon /> : <AlertTriangleIcon />}
-              <span>{connectionResult.message}</span>
-            </div>
           )}
 
           <div className="text-sm text-[var(--muted-foreground)] space-y-2 pt-2">
             <p className="font-medium text-[var(--foreground)]">How it works:</p>
             <ol className="list-decimal list-inside space-y-1.5 ml-1">
-              <li>Click the Krisp extension icon in your Chrome toolbar</li>
-              <li>Enter your Krisp instance URL (e.g., <code className="px-1 py-0.5 rounded bg-[var(--secondary)] font-mono text-xs">https://your-app.vercel.app</code>)</li>
-              <li>Paste your Personal API Key (starts with <code className="px-1 py-0.5 rounded bg-[var(--secondary)] font-mono text-xs">zk_</code>)</li>
+              <li>Generate an API key above and copy it</li>
+              <li>Click the Web Clipper extension icon in your Chrome toolbar</li>
+              <li>Paste your API key (starts with <code className="px-1 py-0.5 rounded bg-[var(--secondary)] font-mono text-xs">zk_</code>)</li>
               <li>Click &quot;Save &amp; Connect&quot; — you&apos;re ready to clip!</li>
             </ol>
           </div>

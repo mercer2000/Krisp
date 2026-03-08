@@ -63,6 +63,8 @@ export const users = pgTable("users", {
   dashboardConfig: jsonb("dashboard_config"),
   openrouterApiKey: text("openrouter_api_key"),
   openrouterKeyHash: varchar("openrouter_key_hash", { length: 255 }),
+  stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
+  role: varchar("role", { length: 20 }).default("user").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -1090,6 +1092,13 @@ export const workspaces = pgTable("workspaces", {
   }),
 ]);
 
+// ── Page types ──────────────────────────────────────
+export const pageTypeEnum = pgEnum("page_type", [
+  "page",       // standard Notion-style page
+  "knowledge",  // knowledge collection page (auto-collects brain thoughts)
+  "decisions",  // decisions collection page (auto-collects decisions)
+]);
+
 // ── Pages ───────────────────────────────────────────
 export const pages = pgTable(
   "pages",
@@ -1109,6 +1118,11 @@ export const pages = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     sortOrder: integer("sort_order").default(0).notNull(),
+    // ── Smart-label-powered page fields ──
+    pageType: pageTypeEnum("page_type").default("page").notNull(),
+    color: varchar("color", { length: 7 }),             // hex color, e.g. "#3B82F6"
+    smartRule: text("smart_rule"),                       // AI classification prompt (like smart label prompt)
+    smartActive: boolean("smart_active").default(false).notNull(), // whether AI auto-adds entries
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -1244,6 +1258,65 @@ export const databaseRows = pgTable(
       for: "delete",
       to: authenticatedRole,
       using: sql`database_page_id IN (SELECT p.id FROM pages p JOIN workspaces w ON p.workspace_id = w.id WHERE w.owner_id = (select auth.user_id()::uuid))`,
+    }),
+  ]
+);
+
+// ── Page Entries (knowledge, decisions, email summaries added to pages) ──
+export const pageEntryTypeEnum = pgEnum("page_entry_type", [
+  "knowledge",      // brain thought / knowledge entry
+  "decision",       // decision record
+  "email_summary",  // AI-generated email summary
+  "manual",         // user-added note
+]);
+
+export const pageEntries = pgTable(
+  "page_entries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => pages.id, { onDelete: "cascade" }),
+    entryType: pageEntryTypeEnum("entry_type").notNull(),
+    title: varchar("title", { length: 500 }).default("").notNull(),
+    content: text("content").notNull().default(""),
+    metadata: jsonb("metadata").default({}),  // source-specific data (thought_id, decision_id, email_id, etc.)
+    sourceId: varchar("source_id", { length: 255 }),  // ID of the original item (brain thought, decision, email)
+    sourceType: varchar("source_type", { length: 50 }),  // "brain_thought", "decision", "email", "gmail_email"
+    confidence: integer("confidence"),  // AI confidence when auto-assigned (0-100)
+    sortOrder: integer("sort_order").default(0).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_page_entries_page_sort").on(table.pageId, table.sortOrder),
+    index("idx_page_entries_source").on(table.sourceType, table.sourceId),
+    // NULLs are distinct in PG unique indexes, so manual entries (null source) are not constrained
+    uniqueIndex("uq_page_entry_source").on(table.pageId, table.sourceType, table.sourceId),
+    pgPolicy("page_entries_auth_select", {
+      for: "select",
+      to: authenticatedRole,
+      using: sql`page_id IN (SELECT p.id FROM pages p JOIN workspaces w ON p.workspace_id = w.id WHERE w.owner_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("page_entries_auth_insert", {
+      for: "insert",
+      to: authenticatedRole,
+      withCheck: sql`page_id IN (SELECT p.id FROM pages p JOIN workspaces w ON p.workspace_id = w.id WHERE w.owner_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("page_entries_auth_update", {
+      for: "update",
+      to: authenticatedRole,
+      using: sql`page_id IN (SELECT p.id FROM pages p JOIN workspaces w ON p.workspace_id = w.id WHERE w.owner_id = (select auth.user_id()::uuid))`,
+      withCheck: sql`page_id IN (SELECT p.id FROM pages p JOIN workspaces w ON p.workspace_id = w.id WHERE w.owner_id = (select auth.user_id()::uuid))`,
+    }),
+    pgPolicy("page_entries_auth_delete", {
+      for: "delete",
+      to: authenticatedRole,
+      using: sql`page_id IN (SELECT p.id FROM pages p JOIN workspaces w ON p.workspace_id = w.id WHERE w.owner_id = (select auth.user_id()::uuid))`,
     }),
   ]
 );
@@ -1923,5 +1996,88 @@ export const emailContacts = pgTable(
       read: authUid(table.tenantId),
       modify: authUid(table.tenantId),
     }),
+  ]
+);
+
+// ── Subscription Status Enum ─────────────────────────
+export const subscriptionStatusEnum = pgEnum("subscription_status", [
+  "active",
+  "trialing",
+  "past_due",
+  "canceled",
+  "unpaid",
+  "incomplete",
+]);
+
+// ── Subscriptions ────────────────────────────────────
+export const subscriptions = pgTable(
+  "subscriptions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .unique()
+      .references(() => users.id, { onDelete: "cascade" }),
+    stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 })
+      .notNull()
+      .unique(),
+    stripePriceId: varchar("stripe_price_id", { length: 255 }).notNull(),
+    stripeCurrentPeriodEnd: timestamp("stripe_current_period_end", {
+      withTimezone: true,
+    }).notNull(),
+    status: subscriptionStatusEnum("status").notNull().default("incomplete"),
+    cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_subscriptions_user").on(table.userId),
+    index("idx_subscriptions_stripe_sub").on(table.stripeSubscriptionId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.userId),
+      modify: authUid(table.userId),
+    }),
+  ]
+);
+
+// ── Webhook Events (idempotency tracking) ────────────
+export const stripeWebhookEvents = pgTable(
+  "stripe_webhook_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    stripeEventId: varchar("stripe_event_id", { length: 255 })
+      .notNull()
+      .unique(),
+    eventType: varchar("event_type", { length: 100 }).notNull(),
+    processedAt: timestamp("processed_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_stripe_events_event_id").on(table.stripeEventId),
+  ]
+);
+
+// ── Admin Action Log ─────────────────────────────────
+export const adminActionLogs = pgTable(
+  "admin_action_logs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    adminUserId: uuid("admin_user_id")
+      .notNull()
+      .references(() => users.id),
+    action: varchar("action", { length: 100 }).notNull(),
+    details: jsonb("details"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_admin_action_logs_admin").on(table.adminUserId),
   ]
 );

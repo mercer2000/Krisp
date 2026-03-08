@@ -62,6 +62,10 @@ export async function POST(request: NextRequest) {
       icon,
       is_database,
       database_config,
+      page_type,
+      color,
+      smart_rule,
+      smart_active,
     } = body as {
       workspace_id?: string;
       parent_id?: string | null;
@@ -69,6 +73,10 @@ export async function POST(request: NextRequest) {
       icon?: string | null;
       is_database?: boolean;
       database_config?: Record<string, unknown> | null;
+      page_type?: "page" | "knowledge" | "decisions";
+      color?: string | null;
+      smart_rule?: string | null;
+      smart_active?: boolean;
     };
 
     if (!workspace_id) {
@@ -99,6 +107,10 @@ export async function POST(request: NextRequest) {
         databaseConfig: database_config ?? null,
         createdBy: user.id,
         sortOrder: 0,
+        pageType: page_type ?? "page",
+        color: color ?? null,
+        smartRule: smart_rule ?? null,
+        smartActive: smart_active ?? false,
       })
       .returning();
 

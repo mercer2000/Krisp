@@ -5,6 +5,7 @@ import { usePage } from "@/lib/hooks/usePages";
 import { PageHeader } from "@/components/pages/PageHeader";
 import { BlockEditor } from "@/components/pages/editor/BlockEditor";
 import { DatabaseView } from "@/components/pages/database/DatabaseView";
+import { PageEntriesView } from "@/components/pages/PageEntriesView";
 
 export default function PageView({
   params,
@@ -35,10 +36,15 @@ export default function PageView({
     );
   }
 
+  const isEntriesPage = page.pageType === "knowledge" || page.pageType === "decisions";
+  const showEntries = isEntriesPage || !!page.smartRule;
+
   return (
     <div className="mx-auto max-w-3xl px-16 py-12">
       <PageHeader page={page} />
-      {page.isDatabase ? (
+      {showEntries ? (
+        <PageEntriesView page={page} />
+      ) : page.isDatabase ? (
         <DatabaseView page={page} />
       ) : (
         <BlockEditor page={page} />

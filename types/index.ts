@@ -189,6 +189,8 @@ export interface Workspace {
   createdAt: string;
 }
 
+export type PageType = "page" | "knowledge" | "decisions";
+
 export interface Page {
   id: string;
   workspaceId: string;
@@ -201,12 +203,39 @@ export interface Page {
   isArchived: boolean;
   createdBy: string;
   sortOrder: number;
+  // Smart-label-powered page fields
+  pageType: PageType;
+  color: string | null;
+  smartRule: string | null;
+  smartActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface PageWithBlocks extends Page {
   blocks: Block[];
+}
+
+export type PageEntryType = "knowledge" | "decision" | "email_summary" | "manual";
+
+export interface PageEntry {
+  id: string;
+  pageId: string;
+  entryType: PageEntryType;
+  title: string;
+  content: string;
+  metadata: Record<string, unknown>;
+  sourceId: string | null;
+  sourceType: string | null;
+  confidence: number | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PageWithEntries extends Page {
+  entries: PageEntry[];
+  entryCount: number;
 }
 
 export interface Block {
@@ -279,6 +308,31 @@ export interface DatabaseRow {
 }
 
 export type TrashItemType = "card" | "action_item" | "email" | "meeting" | "decision" | "page";
+
+// ── Billing / Subscriptions ────────────────────────────
+export type PlanKey = "free" | "standard" | "pro";
+
+export type SubscriptionStatus =
+  | "active"
+  | "trialing"
+  | "past_due"
+  | "canceled"
+  | "unpaid"
+  | "incomplete";
+
+export type UserRole = "user" | "admin";
+
+export interface Subscription {
+  id: string;
+  userId: string;
+  stripeSubscriptionId: string;
+  stripePriceId: string;
+  stripeCurrentPeriodEnd: string;
+  status: SubscriptionStatus;
+  cancelAtPeriodEnd: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface TrashItem {
   id: string | number;

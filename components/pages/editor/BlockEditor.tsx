@@ -24,6 +24,7 @@ import {
   useDeleteBlock,
   useReorderBlocks,
 } from "@/lib/hooks/useBlocks";
+import { saveDraft, readDrafts, hasDrafts, clearDrafts } from "@/lib/cache/pagesCache";
 import type { PageWithBlocks, Block, BlockType } from "@/types";
 import { SlashCommandMenu } from "./SlashCommandMenu";
 import { BlockActionMenu } from "./BlockActionMenu";
@@ -169,9 +170,54 @@ export function BlockEditor({ page }: BlockEditorProps) {
     return () => document.removeEventListener("keydown", handleGlobalKeyDown);
   }, [selectedBlockIds, deleteBlock]);
 
-  // Debounced content save
+  // Recover unsaved drafts on mount
+  const [draftRecovered, setDraftRecovered] = useState(false);
+  const [draftRecoveryDone, setDraftRecoveryDone] = useState(false);
+  useEffect(() => {
+    if (draftRecoveryDone) return;
+    const drafts = readDrafts(page.id);
+    if (drafts && Object.keys(drafts).length > 0) {
+      // Apply any drafts that are newer than the server data
+      let applied = false;
+      for (const [blockId, draft] of Object.entries(drafts)) {
+        const el = blockRefs.current.get(blockId);
+        if (el && draft.content?.text !== undefined) {
+          el.innerHTML = draft.content.text as string;
+          applied = true;
+        }
+      }
+      if (applied) {
+        setDraftRecovered(true);
+        // Auto-dismiss recovery banner after 4 seconds
+        setTimeout(() => setDraftRecovered(false), 4000);
+        // Re-save recovered drafts to server
+        for (const [blockId, draft] of Object.entries(drafts)) {
+          if (draft.content) {
+            updateBlock.mutate({ blockId, content: draft.content, _skipInvalidate: true });
+          }
+        }
+      }
+    }
+    setDraftRecoveryDone(true);
+  }, [draftRecoveryDone, page.id, updateBlock, blockRefs]);
+
+  // Warn before navigating away with pending debounce timers
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (debounceTimers.current.size > 0) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
+  // Debounced content save — also saves draft to localStorage immediately
   const saveBlockContent = useCallback(
     (blockId: string, content: Record<string, unknown>) => {
+      // Save to localStorage immediately so edits survive refresh
+      saveDraft(page.id, { blockId, content });
+
       const existing = debounceTimers.current.get(blockId);
       if (existing) clearTimeout(existing);
       debounceTimers.current.set(
@@ -182,7 +228,7 @@ export function BlockEditor({ page }: BlockEditorProps) {
         }, 500)
       );
     },
-    [updateBlock]
+    [updateBlock, page.id]
   );
 
   const handleCreateBlock = useCallback(
@@ -503,6 +549,23 @@ export function BlockEditor({ page }: BlockEditorProps) {
 
   return (
     <div className="relative pb-32">
+      {/* Draft recovery banner */}
+      {draftRecovered && (
+        <div className="mb-2 flex items-center gap-2 rounded-lg bg-[var(--accent)] px-3 py-1.5 text-sm text-[var(--foreground)] shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M8 1v6l3 3" />
+            <circle cx="8" cy="8" r="7" />
+          </svg>
+          <span>Unsaved changes recovered</span>
+          <button
+            onClick={() => setDraftRecovered(false)}
+            className="ml-auto rounded px-2 py-0.5 text-xs hover:bg-[var(--muted)] transition-colors"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Selection indicator */}
       {selectedBlockIds.size > 1 && (
         <div className="sticky top-0 z-30 mb-2 flex items-center gap-3 rounded-lg bg-[var(--primary)] px-3 py-1.5 text-sm text-[var(--primary-foreground)] shadow-sm">

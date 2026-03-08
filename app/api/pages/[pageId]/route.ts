@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRequiredUser } from "@/lib/auth/getRequiredUser";
 import { db } from "@/lib/db";
-import { pages, blocks, workspaces } from "@/lib/db/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { pages, blocks, workspaces, pageEntries } from "@/lib/db/schema";
+import { eq, and, asc, desc, count } from "drizzle-orm";
 
 // GET /api/pages/[pageId] — get page with its blocks
 export async function GET(
@@ -39,7 +39,24 @@ export async function GET(
       .where(eq(blocks.pageId, pageId))
       .orderBy(asc(blocks.sortOrder));
 
-    return NextResponse.json({ ...page, blocks: pageBlocks });
+    // For knowledge/decisions pages or pages with a smart rule, also fetch recent entries
+    let entries: typeof pageEntries.$inferSelect[] = [];
+    let entryCount = 0;
+    if (page.pageType === "knowledge" || page.pageType === "decisions" || page.smartRule) {
+      entries = await db
+        .select()
+        .from(pageEntries)
+        .where(eq(pageEntries.pageId, pageId))
+        .orderBy(desc(pageEntries.createdAt))
+        .limit(50);
+      const [countResult] = await db
+        .select({ count: count() })
+        .from(pageEntries)
+        .where(eq(pageEntries.pageId, pageId));
+      entryCount = countResult?.count ?? 0;
+    }
+
+    return NextResponse.json({ ...page, blocks: pageBlocks, entries, entryCount });
   } catch (error) {
     if (error instanceof Response) throw error;
     console.error("Error fetching page:", error);
@@ -86,6 +103,10 @@ export async function PATCH(
       sort_order,
       is_archived,
       database_config,
+      page_type,
+      color,
+      smart_rule,
+      smart_active,
     } = body as {
       title?: string;
       icon?: string | null;
@@ -94,6 +115,10 @@ export async function PATCH(
       sort_order?: number;
       is_archived?: boolean;
       database_config?: Record<string, unknown> | null;
+      page_type?: "page" | "knowledge" | "decisions";
+      color?: string | null;
+      smart_rule?: string | null;
+      smart_active?: boolean;
     };
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -104,6 +129,10 @@ export async function PATCH(
     if (sort_order !== undefined) updates.sortOrder = sort_order;
     if (is_archived !== undefined) updates.isArchived = is_archived;
     if (database_config !== undefined) updates.databaseConfig = database_config;
+    if (page_type !== undefined) updates.pageType = page_type;
+    if (color !== undefined) updates.color = color;
+    if (smart_rule !== undefined) updates.smartRule = smart_rule;
+    if (smart_active !== undefined) updates.smartActive = smart_active;
 
     const [updated] = await db
       .update(pages)

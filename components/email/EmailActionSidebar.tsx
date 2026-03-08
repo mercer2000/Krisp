@@ -236,7 +236,7 @@ export function EmailActionSidebar({ emailId }: EmailActionSidebarProps) {
   // Not scanned yet — show scan button
   if (!scanned) {
     return (
-      <div className="border-l border-[var(--border)] bg-[var(--card)] w-80 flex-shrink-0 flex flex-col" data-testid="email-action-sidebar">
+      <div className="border-l border-[var(--border)] bg-[var(--card)] w-80 flex-shrink-0 hidden md:flex flex-col" data-testid="email-action-sidebar">
         <div className="p-4 border-b border-[var(--border)]">
           <h3 className="text-sm font-semibold text-[var(--foreground)]">Action Items</h3>
           <p className="text-xs text-[var(--muted-foreground)] mt-1">
@@ -270,7 +270,7 @@ export function EmailActionSidebar({ emailId }: EmailActionSidebarProps) {
   // Scanned but no actions found
   if (actions.length === 0) {
     return (
-      <div className="border-l border-[var(--border)] bg-[var(--card)] w-80 flex-shrink-0 flex flex-col" data-testid="email-action-sidebar">
+      <div className="border-l border-[var(--border)] bg-[var(--card)] w-80 flex-shrink-0 hidden md:flex flex-col" data-testid="email-action-sidebar">
         <div className="p-4 border-b border-[var(--border)]">
           <h3 className="text-sm font-semibold text-[var(--foreground)]">Action Items</h3>
         </div>
@@ -293,7 +293,7 @@ export function EmailActionSidebar({ emailId }: EmailActionSidebarProps) {
 
   // Actions found — show them
   return (
-    <div className="border-l border-[var(--border)] bg-[var(--card)] w-80 flex-shrink-0 flex flex-col overflow-hidden" data-testid="email-action-sidebar">
+    <div className="border-l border-[var(--border)] bg-[var(--card)] w-80 flex-shrink-0 hidden md:flex flex-col overflow-hidden" data-testid="email-action-sidebar">
       {/* Header */}
       <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
         <div>

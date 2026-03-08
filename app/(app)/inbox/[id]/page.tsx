@@ -7,6 +7,8 @@ import DOMPurify from "isomorphic-dompurify";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { EmailActionSidebar } from "@/components/email/EmailActionSidebar";
+import { SendToPageModal } from "@/components/email/SendToPageModal";
+import { CopyToPageToolbar } from "@/components/email/CopyToPageToolbar";
 import type { EmailDetail, EmailAttachmentMetadata, EmailLabelChip } from "@/types/email";
 
 interface LabelDef {
@@ -82,6 +84,11 @@ export default function EmailDetailPage() {
   const [forwardSending, setForwardSending] = useState(false);
   const [forwardIntent, setForwardIntent] = useState<string | null>(null);
   const forwardUserEdited = useRef(false);
+
+  // Send to Page state
+  const [showSendToPage, setShowSendToPage] = useState(false);
+  const [sendToPageSelectedText, setSendToPageSelectedText] = useState<string | undefined>();
+  const emailBodyRef = useRef<HTMLDivElement>(null);
 
   // Fetch labels for this email and all available labels
   useEffect(() => {
@@ -283,47 +290,62 @@ export default function EmailDetailPage() {
   return (
     <div className="flex h-full flex-col bg-[var(--background)]">
       {/* Back nav */}
-      <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md px-6 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md px-3 md:px-6 py-2 md:py-3 flex items-center justify-between">
         <Link
           href="/inbox"
-          className="inline-flex items-center gap-2 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+          className="inline-flex items-center gap-1.5 md:gap-2 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="m15 18-6-6 6-6" />
           </svg>
-          Back to Inbox
+          <span className="hidden sm:inline">Back to Inbox</span>
+          <span className="sm:hidden">Back</span>
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 md:gap-2">
           {email.web_link && (
             <a
               href={email.web_link}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
+              className="inline-flex items-center gap-2 p-2 md:px-3 md:py-1.5 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M15 3h6v6" />
                 <path d="M10 14 21 3" />
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
               </svg>
-              Open in Outlook
+              <span className="hidden md:inline">Open in Outlook</span>
             </a>
           )}
           <button
             onClick={() => { setForwardRecipient(""); setForwardMessage(""); setForwardIntent(null); forwardUserEdited.current = false; setShowForwardModal(true); }}
-            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
+            className="inline-flex items-center gap-2 p-2 md:px-3 md:py-1.5 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
             title="Forward email"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 17 20 12 15 7" />
               <path d="M4 18v-2a4 4 0 0 1 4-4h12" />
             </svg>
-            Forward
+            <span className="hidden md:inline">Forward</span>
+          </button>
+          <button
+            onClick={() => {
+              setSendToPageSelectedText(undefined);
+              setShowSendToPage(true);
+            }}
+            className="inline-flex items-center gap-2 p-2 md:px-3 md:py-1.5 text-sm font-medium rounded-lg border border-[var(--border)] text-emerald-600 hover:bg-emerald-500/10 transition-colors"
+            title="Send to Page"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m22 2-7 20-4-9-9-4Z" />
+              <path d="M22 2 11 13" />
+            </svg>
+            <span className="hidden md:inline">Send to Page</span>
           </button>
           <button
             onClick={() => setShowDeleteModal(true)}
             disabled={deleting}
-            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--destructive)] hover:bg-[var(--destructive)]/10 transition-colors disabled:opacity-40"
+            className="inline-flex items-center gap-2 p-2 md:px-3 md:py-1.5 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--destructive)] hover:bg-[var(--destructive)]/10 transition-colors disabled:opacity-40"
             title="Delete email"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -331,7 +353,7 @@ export default function EmailDetailPage() {
               <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
               <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
             </svg>
-            {deleting ? "Deleting..." : "Delete"}
+            <span className="hidden md:inline">{deleting ? "Deleting..." : "Delete"}</span>
           </button>
         </div>
       </header>
@@ -339,10 +361,10 @@ export default function EmailDetailPage() {
       {/* Message content + sidebar */}
       <div className="flex-1 flex overflow-hidden">
         <main className="flex-1 overflow-auto">
-          <div className="max-w-4xl mx-auto px-6 py-6">
+          <div className="max-w-4xl mx-auto px-3 py-4 md:px-6 md:py-6">
             {/* Headers */}
             <div className="space-y-3 mb-6">
-              <h1 className="text-2xl font-bold text-[var(--foreground)]">
+              <h1 className="text-lg md:text-2xl font-bold text-[var(--foreground)]">
                 {email.subject || "(No subject)"}
               </h1>
 
@@ -467,7 +489,7 @@ export default function EmailDetailPage() {
             )}
 
             {/* Body */}
-            <div className="border-t border-[var(--border)] pt-6">
+            <div ref={emailBodyRef} className="border-t border-[var(--border)] pt-6">
               {sanitizedHtml ? (
                 <div
                   className="prose prose-sm max-w-none text-[var(--foreground)] [&_a]:text-[var(--primary)] [&_img]:max-w-full"
@@ -483,6 +505,15 @@ export default function EmailDetailPage() {
                 </p>
               )}
             </div>
+
+            {/* Floating Copy to Page toolbar on text selection */}
+            <CopyToPageToolbar
+              containerRef={emailBodyRef}
+              onCopyToPage={(text) => {
+                setSendToPageSelectedText(text);
+                setShowSendToPage(true);
+              }}
+            />
           </div>
         </main>
 
@@ -640,6 +671,38 @@ export default function EmailDetailPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Send to Page Modal */}
+      {email && (
+        <SendToPageModal
+          open={showSendToPage}
+          onClose={() => {
+            setShowSendToPage(false);
+            setSendToPageSelectedText(undefined);
+          }}
+          emails={[{
+            id: email.id,
+            sender: email.sender,
+            subject: email.subject,
+            received_at: email.received_at,
+            recipients: email.recipients,
+            has_attachments: (email.attachments_metadata?.length ?? 0) > 0,
+            preview: email.body_plain_text?.slice(0, 200) ?? null,
+            web_link: email.web_link,
+            outlook_account_id: null,
+            account_id: null,
+            provider: "outlook" as const,
+          }]}
+          selectedText={sendToPageSelectedText}
+          onSent={(title) => {
+            toast({
+              title: sendToPageSelectedText ? "Excerpt sent to page" : "Email sent to page",
+              description: `Content sent to "${title}"`,
+              variant: "success",
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

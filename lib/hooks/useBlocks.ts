@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Block } from "@/types";
+import { clearBlockDraft, removeCache, buildPageKey } from "@/lib/cache/pagesCache";
 
 async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
@@ -27,7 +28,10 @@ export function useCreateBlock(pageId: string) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["page", pageId] }),
+    onSuccess: () => {
+      removeCache(buildPageKey(pageId));
+      qc.invalidateQueries({ queryKey: ["page", pageId] });
+    },
   });
 }
 
@@ -50,6 +54,9 @@ export function useUpdateBlock(pageId: string) {
       });
     },
     onSuccess: (_result, vars) => {
+      // Clear the draft for this block since it's been saved to the server
+      clearBlockDraft(pageId, vars.blockId);
+      removeCache(buildPageKey(pageId));
       // Skip query invalidation for content-only edits to avoid
       // re-rendering contentEditable and resetting cursor position
       if (!vars._skipInvalidate) {
@@ -64,7 +71,10 @@ export function useDeleteBlock(pageId: string) {
   return useMutation({
     mutationFn: (blockId: string) =>
       fetchJSON(`/api/blocks/${blockId}`, { method: "DELETE" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["page", pageId] }),
+    onSuccess: () => {
+      removeCache(buildPageKey(pageId));
+      qc.invalidateQueries({ queryKey: ["page", pageId] });
+    },
   });
 }
 
@@ -79,6 +89,9 @@ export function useReorderBlocks(pageId: string) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["page", pageId] }),
+    onSuccess: () => {
+      removeCache(buildPageKey(pageId));
+      qc.invalidateQueries({ queryKey: ["page", pageId] });
+    },
   });
 }

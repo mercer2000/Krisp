@@ -7,6 +7,8 @@ import { useToast } from "@/components/ui/Toast";
 import { useInboxCache } from "@/lib/hooks/useInboxCache";
 import type { EmailListItem, EmailListResponse, EmailSearchResponse, EmailSearchItem, EmailLabelChip } from "@/types/email";
 import type { SmartLabelChip, EmailDraft } from "@/types/smartLabel";
+import { InboxFilterDrawer } from "@/components/email/InboxFilterDrawer";
+import { SendToPageModal } from "@/components/email/SendToPageModal";
 
 const POLL_INTERVAL = 15_000; // 15 seconds
 
@@ -177,6 +179,7 @@ export default function InboxPage() {
   const [afterDate, setAfterDate] = useState("");
   const [beforeDate, setBeforeDate] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSemanticSearch, setIsSemanticSearch] = useState(false);
@@ -229,6 +232,27 @@ export default function InboxPage() {
   const [forwardIntent, setForwardIntent] = useState<string | null>(null);
   const forwardUserEdited = useRef(false);
 
+  // Send to Page state
+  const [showSendToPage, setShowSendToPage] = useState(false);
+  const [sendToPageEmails, setSendToPageEmails] = useState<EmailListItem[]>([]);
+  const [bulkSelected, setBulkSelected] = useState<Set<string | number>>(new Set());
+
+  // Keyboard shortcut: Ctrl+Shift+P → Send to Page (bulk selected emails)
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        const selected = emails.filter((em) => bulkSelected.has(em.id));
+        if (selected.length > 0) {
+          setSendToPageEmails(selected);
+          setShowSendToPage(true);
+        }
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [emails, bulkSelected]);
+
   // Auto-generate forwarding draft when forward modal opens
   useEffect(() => {
     if (!showForwardModal || !forwardEmailId) return;
@@ -272,13 +296,61 @@ export default function InboxPage() {
 
   // Newsletter & Spam state
   const [activeFolder, setActiveFolder] = useState<"inbox" | "newsletter" | "spam" | "vip" | "all">("inbox");
-  const [detecting, setDetecting] = useState(false);
-  const [detectingSpam, setDetectingSpam] = useState(false);
+
+
   const [syncing, setSyncing] = useState(false);
   const [showWhitelistManager, setShowWhitelistManager] = useState(false);
   const [whitelist, setWhitelist] = useState<{ id: string; sender_email: string; created_at: string }[]>([]);
   const [newWhitelistEmail, setNewWhitelistEmail] = useState("");
   const [addingWhitelist, setAddingWhitelist] = useState(false);
+
+  // Pinned tabs state (persisted in localStorage)
+  const [pinnedAccounts, setPinnedAccounts] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem("inbox-pinned-accounts") || "[]"); } catch { return []; }
+  });
+  const [pinnedLabels, setPinnedLabels] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem("inbox-pinned-labels") || "[]"); } catch { return []; }
+  });
+  const [showAccountDropdown, setShowAccountDropdown] = useState(false);
+  const [showLabelDropdown, setShowLabelDropdown] = useState(false);
+  const accountDropdownRef = useRef<HTMLDivElement>(null);
+  const labelDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Persist pinned state
+  useEffect(() => {
+    localStorage.setItem("inbox-pinned-accounts", JSON.stringify(pinnedAccounts));
+  }, [pinnedAccounts]);
+  useEffect(() => {
+    localStorage.setItem("inbox-pinned-labels", JSON.stringify(pinnedLabels));
+  }, [pinnedLabels]);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (accountDropdownRef.current && !accountDropdownRef.current.contains(e.target as Node)) {
+        setShowAccountDropdown(false);
+      }
+      if (labelDropdownRef.current && !labelDropdownRef.current.contains(e.target as Node)) {
+        setShowLabelDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const togglePinAccount = useCallback((accountId: string) => {
+    setPinnedAccounts((prev) =>
+      prev.includes(accountId) ? prev.filter((id) => id !== accountId) : [...prev, accountId]
+    );
+  }, []);
+
+  const togglePinLabel = useCallback((labelId: string) => {
+    setPinnedLabels((prev) =>
+      prev.includes(labelId) ? prev.filter((id) => id !== labelId) : [...prev, labelId]
+    );
+  }, []);
 
   const hasFetchedOnce = useRef(false);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -660,9 +732,12 @@ export default function InboxPage() {
       }
 
       cache.invalidateAll();
+      const parts = [`${data.classified} labeled`];
+      if (data.newslettersMarked > 0) parts.push(`${data.newslettersMarked} newsletters`);
+      if (data.spamMarked > 0) parts.push(`${data.spamMarked} spam`);
       toast({
         title: "Classification complete",
-        description: `${data.total} emails checked, ${data.classified} labeled`,
+        description: `${data.total} emails processed: ${parts.join(", ")}`,
         variant: "success",
       });
       // Refresh to show new labels
@@ -672,50 +747,6 @@ export default function InboxPage() {
       toast({ title: "Classification failed", variant: "destructive" });
     } finally {
       setClassifying(false);
-    }
-  };
-
-  // Detect newsletters
-  const handleDetectNewsletters = async () => {
-    setDetecting(true);
-    try {
-      const res = await fetch("/api/emails/newsletter/detect", { method: "POST" });
-      if (!res.ok) throw new Error("Failed to detect newsletters");
-      const data = await res.json();
-      cache.invalidateAll();
-      toast({
-        title: "Newsletter detection complete",
-        description: `${data.marked} newsletters detected, ${data.whitelisted} whitelisted senders skipped`,
-        variant: "success",
-      });
-      hasFetchedOnce.current = false;
-      fetchEmails(false);
-    } catch {
-      toast({ title: "Newsletter detection failed", variant: "destructive" });
-    } finally {
-      setDetecting(false);
-    }
-  };
-
-  // Detect spam
-  const handleDetectSpam = async () => {
-    setDetectingSpam(true);
-    try {
-      const res = await fetch("/api/emails/spam/detect", { method: "POST" });
-      if (!res.ok) throw new Error("Failed to detect spam");
-      const data = await res.json();
-      cache.invalidateAll();
-      toast({
-        title: "Spam detection complete",
-        description: `${data.marked} spam emails detected out of ${data.total} scanned`,
-        variant: "success",
-      });
-      hasFetchedOnce.current = false;
-      fetchEmails(false);
-    } catch {
-      toast({ title: "Spam detection failed", variant: "destructive" });
-    } finally {
-      setDetectingSpam(false);
     }
   };
 
@@ -1002,22 +1033,23 @@ export default function InboxPage() {
     <div className="flex h-full flex-col bg-[var(--background)]">
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md">
-        <div className="flex items-center justify-between px-6 py-4">
-          <div>
-            <h1 className="text-2xl font-bold text-[var(--foreground)]">
+        <div className="flex items-center justify-between px-3 py-3 md:px-6 md:py-4">
+          <div className="min-w-0">
+            <h1 className="text-lg md:text-2xl font-bold text-[var(--foreground)]">
               {activeFolder === "newsletter" ? "Newsletters" : activeFolder === "spam" ? "Spam" : activeFolder === "vip" ? "VIP Inbox" : "Inbox"}
             </h1>
-            <p className="text-sm text-[var(--muted-foreground)] mt-1">
+            <p className="text-xs md:text-sm text-[var(--muted-foreground)] mt-0.5 md:mt-1 truncate">
               {total} {total === 1 ? "message" : "messages"}
               {filterAccount && accounts.length > 0 && (
-                <span className="ml-1">
+                <span className="ml-1 hidden sm:inline">
                   in {accounts.find((a) => a.id === filterAccount)?.email ?? "selected account"}
                 </span>
               )}
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Desktop toolbar */}
+          <div className="hidden md:flex items-center gap-3">
             {/* Sync button */}
             <button
               onClick={handleSync}
@@ -1051,7 +1083,7 @@ export default function InboxPage() {
               onClick={handleClassify}
               disabled={classifying}
               className="px-3 py-2 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors disabled:opacity-40"
-              title="Classify all emails on this page with AI"
+              title="Classify, detect newsletters, and detect spam for all emails on this page"
               data-testid="classify-button"
             >
               {classifying ? (
@@ -1068,63 +1100,6 @@ export default function InboxPage() {
                     <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" />
                   </svg>
                   Classify All
-                </span>
-              )}
-            </button>
-
-            {/* Detect newsletters button */}
-            <button
-              onClick={handleDetectNewsletters}
-              disabled={detecting}
-              className="px-3 py-2 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors disabled:opacity-40"
-              title="Detect newsletter and marketing emails"
-              data-testid="detect-newsletters-button"
-            >
-              {detecting ? (
-                <span className="flex items-center gap-1.5">
-                  <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Detecting...
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-2 2zm0 0a2 2 0 01-2-2v-9c0-1.1.9-2 2-2h2" />
-                    <path d="M18 14h-8" />
-                    <path d="M15 18h-5" />
-                    <path d="M10 6h8v4h-8V6z" />
-                  </svg>
-                  Detect
-                </span>
-              )}
-            </button>
-
-            {/* Detect spam button */}
-            <button
-              onClick={handleDetectSpam}
-              disabled={detectingSpam}
-              className="px-3 py-2 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors disabled:opacity-40"
-              title="Detect spam and unwanted emails"
-              data-testid="detect-spam-button"
-            >
-              {detectingSpam ? (
-                <span className="flex items-center gap-1.5">
-                  <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Scanning...
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                    <line x1="9" y1="9" x2="15" y2="15" />
-                    <line x1="15" y1="9" x2="9" y2="15" />
-                  </svg>
-                  Spam
                 </span>
               )}
             </button>
@@ -1185,10 +1160,78 @@ export default function InboxPage() {
               Filters
             </button>
           </div>
+
+          {/* Mobile toolbar — icon-only buttons */}
+          <div className="flex md:hidden items-center gap-1">
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="p-2 rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--accent)] transition-colors disabled:opacity-40"
+              title="Sync"
+            >
+              {syncing ? (
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 2v6h-6" />
+                  <path d="M3 12a9 9 0 0115-6.7L21 8" />
+                  <path d="M3 22v-6h6" />
+                  <path d="M21 12a9 9 0 01-15 6.7L3 16" />
+                </svg>
+              )}
+            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowMobileFilters(true)}
+                className={`p-2 rounded-lg transition-colors ${
+                  hasActiveFilters
+                    ? "text-[var(--primary)] bg-[var(--primary)]/10"
+                    : "text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
+                }`}
+                title="Filters"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                </svg>
+              </button>
+              {(() => {
+                const count = [filterAccount, filterLabel, filterSmartLabel, afterDate, beforeDate].filter(Boolean).length;
+                return count > 0 ? (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] text-[10px] font-bold leading-none px-1">
+                    {count}
+                  </span>
+                ) : null;
+              })()}
+            </div>
+          </div>
         </div>
 
-        {/* Folder tabs: Inbox / VIP / Newsletters / All */}
-        <div className="px-6 pb-2 flex items-center gap-1 border-b border-[var(--border)]" data-testid="folder-tabs">
+        {/* Mobile search bar */}
+        <div className="md:hidden px-3 pb-2">
+          <form onSubmit={handleSearch} className="flex gap-2">
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search emails..."
+              className="flex-1 min-w-0 px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
+            />
+            <button
+              type="submit"
+              className="px-3 py-2 text-sm font-medium bg-[var(--primary)] text-[var(--primary-foreground)] rounded-lg hover:opacity-90 transition-opacity flex-shrink-0"
+            >
+              Search
+            </button>
+          </form>
+        </div>
+
+        {/* Combined tab bar: folders + pinned accounts + pinned labels + dropdowns */}
+        <div className="px-3 md:px-6 pb-2 flex items-center gap-0.5 md:gap-1 border-b border-[var(--border)]" data-testid="folder-tabs">
+          <div className="flex items-center gap-0.5 md:gap-1 overflow-x-auto min-w-0 flex-1">
+          {/* Folder tabs */}
           {([
             { key: "inbox" as const, label: "Inbox" },
             { key: "vip" as const, label: "VIP" },
@@ -1201,12 +1244,16 @@ export default function InboxPage() {
               onClick={() => {
                 if (activeFolder !== tab.key) {
                   hasFetchedOnce.current = false;
+                  setFilterAccount(null);
+                  setFilterProvider(null);
+                  setFilterLabel(null);
+                  setFilterSmartLabel(null);
                   setActiveFolder(tab.key);
                   setPage(1);
                 }
               }}
-              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-                activeFolder === tab.key
+              className={`px-3 md:px-4 py-2 text-xs md:text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap ${
+                activeFolder === tab.key && !filterAccount && !filterLabel && !filterSmartLabel
                   ? "text-[var(--primary)] border-b-2 border-[var(--primary)]"
                   : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               }`}
@@ -1215,162 +1262,323 @@ export default function InboxPage() {
               {tab.label}
             </button>
           ))}
-          {activeFolder === "vip" && (
+
+          {/* Separator between folders and pinned items */}
+          {(pinnedAccounts.length > 0 || pinnedLabels.length > 0) && (
+            <span className="mx-1 md:mx-2 h-4 w-px bg-[var(--border)] flex-shrink-0" />
+          )}
+
+          {/* Pinned account tabs */}
+          {pinnedAccounts.map((accountId) => {
+            const account = accounts.find((a) => a.id === accountId);
+            if (!account) return null;
+            const isActive = filterAccount === accountId;
+            return (
+              <button
+                key={`pinned-account-${accountId}`}
+                onClick={() => {
+                  hasFetchedOnce.current = false;
+                  if (isActive) {
+                    setFilterAccount(null);
+                    setFilterProvider(null);
+                  } else {
+                    setFilterAccount(accountId);
+                    setFilterProvider(account.provider);
+                    setFilterLabel(null);
+                    setFilterSmartLabel(null);
+                  }
+                  setPage(1);
+                }}
+                className={`group px-2.5 md:px-3 py-2 text-xs md:text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+                  isActive
+                    ? "text-[var(--primary)] border-b-2 border-[var(--primary)]"
+                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                }`}
+                data-testid={`pinned-account-tab-${account.email}`}
+              >
+                <ProviderIcon provider={account.provider} size={12} />
+                <span className="max-w-[120px] truncate">{account.email.split("@")[0]}</span>
+                <span
+                  onClick={(e) => { e.stopPropagation(); togglePinAccount(accountId); }}
+                  className="ml-0.5 opacity-0 group-hover:opacity-100 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-opacity cursor-pointer"
+                  title="Unpin"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </span>
+              </button>
+            );
+          })}
+
+          {/* Pinned label tabs */}
+          {pinnedLabels.map((labelId) => {
+            const label = allLabels.find((l) => l.id === labelId) || allSmartLabels.find((l) => l.id === labelId);
+            if (!label) return null;
+            const isSmartLabel = allSmartLabels.some((sl) => sl.id === labelId);
+            const isActive = isSmartLabel ? filterSmartLabel === labelId : filterLabel === labelId;
+            return (
+              <button
+                key={`pinned-label-${labelId}`}
+                onClick={() => {
+                  if (isActive) {
+                    if (isSmartLabel) setFilterSmartLabel(null);
+                    else setFilterLabel(null);
+                  } else {
+                    setFilterAccount(null);
+                    setFilterProvider(null);
+                    if (isSmartLabel) {
+                      setFilterSmartLabel(labelId);
+                      setFilterLabel(null);
+                    } else {
+                      setFilterLabel(labelId);
+                      setFilterSmartLabel(null);
+                    }
+                  }
+                  setPage(1);
+                }}
+                className={`group px-2.5 md:px-3 py-2 text-xs md:text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+                  isActive
+                    ? "border-b-2"
+                    : "hover:opacity-80"
+                }`}
+                style={{
+                  color: label.color,
+                  borderColor: isActive ? label.color : "transparent",
+                }}
+                data-testid={`pinned-label-tab-${label.name}`}
+              >
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: label.color }} />
+                {label.name}
+                <span
+                  onClick={(e) => { e.stopPropagation(); togglePinLabel(labelId); }}
+                  className="ml-0.5 opacity-0 group-hover:opacity-100 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-opacity cursor-pointer"
+                  title="Unpin"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </span>
+              </button>
+            );
+          })}
+
+          {/* VIP / Whitelist manage buttons */}
+          {activeFolder === "vip" && !filterAccount && !filterLabel && !filterSmartLabel && (
             <button
               onClick={() => { fetchVipContacts(); setShowVipManager(true); }}
-              className="ml-auto text-xs px-2.5 py-1 rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
+              className="text-xs px-2.5 py-1 rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors flex-shrink-0"
               data-testid="manage-vip-button"
             >
               Manage VIPs
             </button>
           )}
-          {activeFolder === "newsletter" && (
+          {activeFolder === "newsletter" && !filterAccount && !filterLabel && !filterSmartLabel && (
             <button
               onClick={() => { fetchWhitelist(); setShowWhitelistManager(true); }}
-              className="ml-auto text-xs px-2.5 py-1 rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
+              className="text-xs px-2.5 py-1 rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors flex-shrink-0"
               data-testid="manage-whitelist-button"
             >
               Whitelist
             </button>
           )}
+          </div>
+          {/* Account dropdown */}
+          {accounts.length > 0 && (
+            <div className="relative flex-shrink-0 hidden md:flex" ref={accountDropdownRef}>
+              <button
+                onClick={() => { setShowAccountDropdown(!showAccountDropdown); setShowLabelDropdown(false); }}
+                className={`px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors flex items-center gap-1 ${
+                  filterAccount
+                    ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
+                    : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)]"
+                }`}
+                data-testid="account-dropdown-trigger"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                Account
+                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              {showAccountDropdown && (
+                <div className="absolute right-0 top-full mt-1 w-72 bg-[var(--card)] border border-[var(--border)] rounded-lg shadow-lg z-50 py-1">
+                  <button
+                    onClick={() => {
+                      hasFetchedOnce.current = false;
+                      setFilterAccount(null);
+                      setFilterProvider(null);
+                      setPage(1);
+                      setShowAccountDropdown(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${
+                      !filterAccount ? "text-[var(--primary)] bg-[var(--primary)]/5 font-medium" : "text-[var(--foreground)] hover:bg-[var(--accent)]"
+                    }`}
+                  >
+                    All accounts
+                  </button>
+                  {accounts.map((account) => {
+                    const isPinned = pinnedAccounts.includes(account.id);
+                    return (
+                      <div key={account.id} className="flex items-center group">
+                        <button
+                          onClick={() => {
+                            hasFetchedOnce.current = false;
+                            if (filterAccount === account.id) {
+                              setFilterAccount(null);
+                              setFilterProvider(null);
+                            } else {
+                              setFilterAccount(account.id);
+                              setFilterProvider(account.provider);
+                              setFilterLabel(null);
+                              setFilterSmartLabel(null);
+                            }
+                            setPage(1);
+                            setShowAccountDropdown(false);
+                          }}
+                          className={`flex-1 text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${
+                            filterAccount === account.id ? "text-[var(--primary)] bg-[var(--primary)]/5 font-medium" : "text-[var(--foreground)] hover:bg-[var(--accent)]"
+                          }`}
+                        >
+                          <ProviderIcon provider={account.provider} size={14} />
+                          <span className="truncate">{account.email}</span>
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); togglePinAccount(account.id); }}
+                          className={`px-2 py-2 text-xs transition-colors flex-shrink-0 ${
+                            isPinned ? "text-[var(--primary)]" : "text-[var(--muted-foreground)] opacity-0 group-hover:opacity-100"
+                          } hover:text-[var(--primary)]`}
+                          title={isPinned ? "Unpin from tabs" : "Pin to tabs"}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill={isPinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 17v5" />
+                            <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16h14v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 2-2H6a2 2 0 0 0 2 2 1 1 0 0 1 1 1z" />
+                          </svg>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Label dropdown */}
+          {(allLabels.length > 0 || allSmartLabels.length > 0) && (
+            <div className="relative flex-shrink-0 hidden md:block" ref={labelDropdownRef}>
+              <button
+                onClick={() => { setShowLabelDropdown(!showLabelDropdown); setShowAccountDropdown(false); }}
+                className={`px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors flex items-center gap-1 ${
+                  filterLabel || filterSmartLabel
+                    ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
+                    : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)]"
+                }`}
+                data-testid="label-dropdown-trigger"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                Labels
+                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              {showLabelDropdown && (
+                <div className="absolute right-0 top-full mt-1 w-64 bg-[var(--card)] border border-[var(--border)] rounded-lg shadow-lg z-50 py-1 max-h-80 overflow-auto">
+                  <button
+                    onClick={() => {
+                      setFilterLabel(null);
+                      setFilterSmartLabel(null);
+                      setPage(1);
+                      setShowLabelDropdown(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                      !filterLabel && !filterSmartLabel ? "text-[var(--primary)] bg-[var(--primary)]/5 font-medium" : "text-[var(--foreground)] hover:bg-[var(--accent)]"
+                    }`}
+                  >
+                    All labels
+                  </button>
+                  {allLabels.length > 0 && (
+                    <div className="px-3 pt-2 pb-1">
+                      <span className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Labels</span>
+                    </div>
+                  )}
+                  {allLabels.map((label) => {
+                    const isPinned = pinnedLabels.includes(label.id);
+                    return (
+                      <div key={label.id} className="flex items-center group">
+                        <button
+                          onClick={() => {
+                            setFilterLabel(filterLabel === label.id ? null : label.id);
+                            setFilterSmartLabel(null);
+                            setFilterAccount(null);
+                            setFilterProvider(null);
+                            setPage(1);
+                            setShowLabelDropdown(false);
+                          }}
+                          className={`flex-1 text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${
+                            filterLabel === label.id ? "font-medium" : "hover:bg-[var(--accent)]"
+                          }`}
+                          style={{ color: filterLabel === label.id ? label.color : undefined }}
+                        >
+                          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: label.color }} />
+                          {label.name}
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); togglePinLabel(label.id); }}
+                          className={`px-2 py-2 text-xs transition-colors flex-shrink-0 ${
+                            isPinned ? "text-[var(--primary)]" : "text-[var(--muted-foreground)] opacity-0 group-hover:opacity-100"
+                          } hover:text-[var(--primary)]`}
+                          title={isPinned ? "Unpin from tabs" : "Pin to tabs"}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill={isPinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 17v5" />
+                            <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16h14v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 2-2H6a2 2 0 0 0 2 2 1 1 0 0 1 1 1z" />
+                          </svg>
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {allSmartLabels.length > 0 && (
+                    <div className="px-3 pt-2 pb-1">
+                      <span className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Smart Labels</span>
+                    </div>
+                  )}
+                  {allSmartLabels.map((sl) => {
+                    const isPinned = pinnedLabels.includes(sl.id);
+                    return (
+                      <div key={sl.id} className="flex items-center group">
+                        <button
+                          onClick={() => {
+                            setFilterSmartLabel(filterSmartLabel === sl.id ? null : sl.id);
+                            setFilterLabel(null);
+                            setFilterAccount(null);
+                            setFilterProvider(null);
+                            setPage(1);
+                            setShowLabelDropdown(false);
+                          }}
+                          className={`flex-1 text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${
+                            filterSmartLabel === sl.id ? "font-medium" : "hover:bg-[var(--accent)]"
+                          }`}
+                          style={{ color: filterSmartLabel === sl.id ? sl.color : undefined }}
+                        >
+                          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: sl.color }} />
+                          {sl.name}
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); togglePinLabel(sl.id); }}
+                          className={`px-2 py-2 text-xs transition-colors flex-shrink-0 ${
+                            isPinned ? "text-[var(--primary)]" : "text-[var(--muted-foreground)] opacity-0 group-hover:opacity-100"
+                          } hover:text-[var(--primary)]`}
+                          title={isPinned ? "Unpin from tabs" : "Pin to tabs"}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill={isPinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 17v5" />
+                            <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16h14v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 2-2H6a2 2 0 0 0 2 2 1 1 0 0 1 1 1z" />
+                          </svg>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Account filter chips */}
-        {accounts.length > 1 && (
-          <div className="px-6 pb-2 flex items-center gap-2 flex-wrap" data-testid="account-filter-bar">
-            <span className="text-xs text-[var(--muted-foreground)] mr-1">Account:</span>
-            <button
-              onClick={() => { hasFetchedOnce.current = false; setFilterAccount(null); setFilterProvider(null); setPage(1); }}
-              className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                !filterAccount
-                  ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
-                  : "border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
-              }`}
-            >
-              All accounts
-            </button>
-            {accounts.map((account) => (
-              <button
-                key={account.id}
-                onClick={() => {
-                  hasFetchedOnce.current = false;
-                  if (filterAccount === account.id) {
-                    setFilterAccount(null);
-                    setFilterProvider(null);
-                  } else {
-                    setFilterAccount(account.id);
-                    setFilterProvider(account.provider);
-                  }
-                  setPage(1);
-                }}
-                className={`text-xs px-2.5 py-1 rounded-full border transition-colors flex items-center gap-1.5 ${
-                  filterAccount === account.id
-                    ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
-                    : "border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
-                }`}
-                data-testid={`account-filter-${account.email}`}
-              >
-                <ProviderIcon provider={account.provider} size={12} />
-                {account.email}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Label filter chips */}
-        {(allLabels.length > 0 || allSmartLabels.length > 0) && (
-          <div className="px-6 pb-3 flex items-center gap-2 flex-wrap" data-testid="label-filter-bar">
-            {allLabels.length > 0 && (
-              <>
-                <span className="text-xs text-[var(--muted-foreground)] mr-1">Labels:</span>
-                <button
-                  onClick={() => setFilterLabel(null)}
-                  className={`text-xs px-2 py-1 rounded-full border transition-colors ${
-                    !filterLabel
-                      ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
-                      : "border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
-                  }`}
-                >
-                  All
-                </button>
-                {allLabels.map((label) => (
-                  <button
-                    key={label.id}
-                    onClick={() => setFilterLabel(filterLabel === label.id ? null : label.id)}
-                    className={`text-xs px-2 py-1 rounded-full border transition-colors ${
-                      filterLabel === label.id
-                        ? "border-current"
-                        : "border-transparent hover:border-current"
-                    }`}
-                    style={{
-                      backgroundColor: filterLabel === label.id ? label.color + "22" : label.color + "11",
-                      color: label.color,
-                    }}
-                    data-testid={`label-filter-${label.name}`}
-                  >
-                    {label.name}
-                  </button>
-                ))}
-              </>
-            )}
-
-            {/* Smart label filters */}
-            {allSmartLabels.length > 0 && (
-              <>
-                {allLabels.length > 0 && <span className="text-[10px] text-[var(--muted-foreground)] px-1">|</span>}
-                <span className="text-xs text-[var(--muted-foreground)] mr-1">Smart:</span>
-                {allSmartLabels.map((sl) => (
-                  <button
-                    key={sl.id}
-                    onClick={() => setFilterSmartLabel(filterSmartLabel === sl.id ? null : sl.id)}
-                    className={`text-xs px-2 py-1 rounded-full border transition-colors ${
-                      filterSmartLabel === sl.id
-                        ? "border-current"
-                        : "border-transparent hover:border-current"
-                    }`}
-                    style={{
-                      backgroundColor: filterSmartLabel === sl.id ? sl.color + "22" : sl.color + "11",
-                      color: sl.color,
-                    }}
-                    data-testid={`smart-label-filter-${sl.name}`}
-                  >
-                    {sl.name}
-                  </button>
-                ))}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Filter panel */}
+        {/* Filter panel — hidden on mobile, shown in drawer instead */}
         {showFilters && (
-          <div className="px-6 pb-4 flex items-end gap-4 flex-wrap">
-            {accounts.length > 0 && (
-              <div>
-                <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">
-                  Account
-                </label>
-                <select
-                  value={filterAccount ?? ""}
-                  onChange={(e) => {
-                    hasFetchedOnce.current = false;
-                    const selectedId = e.target.value || null;
-                    const selectedAccount = accounts.find((a) => a.id === selectedId);
-                    setFilterAccount(selectedId);
-                    setFilterProvider(selectedAccount?.provider ?? null);
-                    setPage(1);
-                  }}
-                  className="px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                >
-                  <option value="">All accounts</option>
-                  {accounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.provider === "gmail" ? "[Gmail]" : account.provider === "zoom" ? "[Zoom]" : "[Outlook]"} {account.email}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+          <div className="px-3 md:px-6 pb-4 hidden md:flex items-end gap-3 md:gap-4 flex-wrap">
             <div>
               <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">
                 After
@@ -1408,7 +1616,7 @@ export default function InboxPage() {
       {/* Email list */}
       <main className="flex-1 overflow-auto">
         {error && (
-          <div className="mx-6 mt-4 p-4 bg-[var(--destructive)]/10 border border-[var(--destructive)]/20 rounded-lg text-[var(--destructive)] text-sm">
+          <div className="mx-3 md:mx-6 mt-4 p-3 md:p-4 bg-[var(--destructive)]/10 border border-[var(--destructive)]/20 rounded-lg text-[var(--destructive)] text-sm">
             {error}
           </div>
         )}
@@ -1417,14 +1625,14 @@ export default function InboxPage() {
         {embeddingStatus && embeddingStatus.pending > 0 && embeddingStatus.total > 0 && (
           embeddingStatus.pending / embeddingStatus.total > 0.2
         ) && (
-          <div className="mx-6 mt-4 p-3 bg-[var(--primary)]/5 border border-[var(--primary)]/20 rounded-lg text-sm text-[var(--muted-foreground)]">
+          <div className="mx-3 md:mx-6 mt-4 p-3 bg-[var(--primary)]/5 border border-[var(--primary)]/20 rounded-lg text-sm text-[var(--muted-foreground)]">
             Search index is still building — results may be incomplete. ({embeddingStatus.embedded}/{embeddingStatus.total} emails indexed)
           </div>
         )}
 
         {/* Semantic search indicator */}
         {isSemanticSearch && !initialLoading && emails.length > 0 && (
-          <div className="px-6 pt-3 pb-1 flex items-center justify-between">
+          <div className="px-3 md:px-6 pt-3 pb-1 flex items-center justify-between">
             <span className="text-xs text-[var(--muted-foreground)]">
               Showing {emails.length} results ranked by relevance
             </span>
@@ -1437,7 +1645,7 @@ export default function InboxPage() {
         {initialLoading ? (
           <div className="divide-y divide-[var(--border)]">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="px-6 py-4 animate-pulse">
+              <div key={i} className="px-3 md:px-6 py-3 md:py-4 animate-pulse">
                 <div className="flex items-center gap-4">
                   <div className="w-4 h-4 bg-[var(--secondary)] rounded" />
                   <div className="flex-1">
@@ -1478,6 +1686,37 @@ export default function InboxPage() {
             </p>
           </div>
         ) : (
+          <>
+          {/* Bulk action bar */}
+          {bulkSelected.size > 0 && (
+            <div className="flex items-center gap-3 px-4 md:px-6 py-2 bg-[var(--primary)]/5 border-b border-[var(--border)]">
+              <span className="text-xs font-medium text-[var(--foreground)]">
+                {bulkSelected.size} selected
+              </span>
+              <button
+                onClick={() => {
+                  const selected = filteredEmails.filter((e) => bulkSelected.has(e.id));
+                  if (selected.length > 0) {
+                    setSendToPageEmails(selected);
+                    setShowSendToPage(true);
+                  }
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md text-emerald-700 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m22 2-7 20-4-9-9-4Z" />
+                  <path d="M22 2 11 13" />
+                </svg>
+                Send all to Page
+              </button>
+              <button
+                onClick={() => setBulkSelected(new Set())}
+                className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors ml-auto"
+              >
+                Clear selection
+              </button>
+            </div>
+          )}
           <div className="divide-y divide-[var(--border)]">
             {filteredEmails.map((email) => {
               const emailDraft = draftMap[String(email.id)];
@@ -1485,10 +1724,29 @@ export default function InboxPage() {
               return (
               <div key={email.id}>
               <div
-                className="flex items-start gap-4 px-6 py-4 hover:bg-[var(--accent)]/50 transition-colors group"
+                className="flex items-start gap-2 md:gap-4 px-3 md:px-6 py-3 md:py-4 hover:bg-[var(--accent)]/50 transition-colors group"
               >
+                {/* Bulk selection checkbox */}
+                <div className="hidden md:flex items-center pt-1 flex-shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={bulkSelected.has(email.id)}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      setBulkSelected((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(email.id)) next.delete(email.id);
+                        else next.add(email.id);
+                        return next;
+                      });
+                    }}
+                    className="w-3.5 h-3.5 rounded border-[var(--border)] accent-[var(--primary)] cursor-pointer"
+                    title="Select for bulk actions"
+                  />
+                </div>
+
                 {/* Status indicators */}
-                <div className="w-4 flex-shrink-0 pt-1 flex flex-col items-center gap-1">
+                <div className="w-4 flex-shrink-0 pt-1 hidden md:flex flex-col items-center gap-1">
                   {email.has_attachments && (
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -1567,7 +1825,48 @@ export default function InboxPage() {
                   href={`/inbox/${email.id}`}
                   className="flex-1 min-w-0"
                 >
-                  <div className="flex items-baseline gap-3">
+                  {/* Mobile layout: sender + time on top, subject below */}
+                  <div className="flex items-center gap-2 md:hidden">
+                    <span className="text-sm font-medium text-[var(--foreground)] truncate min-w-0 flex-1 inline-flex items-center gap-1">
+                      {email.sender}
+                      {vipMap[email.sender] && (
+                        <span
+                          className="text-[10px] px-1 py-0.5 rounded-full font-semibold flex-shrink-0"
+                          style={{ backgroundColor: "#F59E0B22", color: "#D97706", border: "1px solid #F59E0B44" }}
+                          data-testid="vip-badge"
+                        >
+                          VIP
+                        </span>
+                      )}
+                    </span>
+                    <span
+                      className="text-[10px] text-[var(--muted-foreground)] flex-shrink-0"
+                      title={formatAbsoluteTime(email.received_at)}
+                    >
+                      {formatRelativeTime(email.received_at)}
+                    </span>
+                  </div>
+                  <div className="md:hidden mt-0.5">
+                    <p className="text-sm text-[var(--foreground)] truncate">
+                      {email.subject || "(No subject)"}
+                    </p>
+                  </div>
+                  {/* Mobile label chips */}
+                  {((email.labels && email.labels.length > 0) || smartLabelMap[String(email.id)]?.length) && (
+                    <div className="md:hidden flex items-center gap-1 mt-1 flex-wrap">
+                      <LabelChips labels={email.labels} />
+                      <SmartLabelChips labels={smartLabelMap[String(email.id)]} />
+                    </div>
+                  )}
+                  {/* Mobile preview */}
+                  {email.preview && (
+                    <p className="md:hidden text-xs text-[var(--muted-foreground)] truncate mt-0.5">
+                      {email.preview}
+                    </p>
+                  )}
+
+                  {/* Desktop layout: single row */}
+                  <div className="hidden md:flex items-baseline gap-3">
                     {/* Sender */}
                     <span className="text-sm font-medium text-[var(--foreground)] truncate max-w-[200px] inline-flex items-center gap-1">
                       {email.sender}
@@ -1621,8 +1920,8 @@ export default function InboxPage() {
                     )}
                   </div>
 
-                  {/* Preview + account indicator */}
-                  <div className="flex items-center gap-2 mt-1">
+                  {/* Preview + account indicator (desktop) */}
+                  <div className="hidden md:flex items-center gap-2 mt-1">
                     {email.preview && (
                       <p className="text-xs text-[var(--muted-foreground)] truncate flex-1 min-w-0">
                         {email.preview}
@@ -1644,7 +1943,7 @@ export default function InboxPage() {
                 {email.unsubscribe_link && (
                   <button
                     onClick={(e) => handleUnsubscribe(e, email.unsubscribe_link!)}
-                    className="flex-shrink-0 px-2.5 py-1 text-xs font-medium rounded-md bg-red-500/10 text-red-600 hover:bg-red-500/20 border border-red-500/20 transition-colors"
+                    className="hidden md:block flex-shrink-0 px-2.5 py-1 text-xs font-medium rounded-md bg-red-500/10 text-red-600 hover:bg-red-500/20 border border-red-500/20 transition-colors"
                     title="Unsubscribe from this sender"
                     data-testid="unsubscribe-button"
                   >
@@ -1652,8 +1951,8 @@ export default function InboxPage() {
                   </button>
                 )}
 
-                {/* Actions */}
-                <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Actions — hidden on mobile (accessible from detail page) */}
+                <div className="flex-shrink-0 hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   {/* VIP toggle */}
                   {!vipMap[email.sender] && (
                     <button
@@ -1699,6 +1998,21 @@ export default function InboxPage() {
                       <path d="M4 18v-2a4 4 0 0 1 4-4h12" />
                     </svg>
                   </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setSendToPageEmails([email]);
+                      setShowSendToPage(true);
+                    }}
+                    className="p-1.5 rounded-md text-[var(--muted-foreground)] hover:text-emerald-600 hover:bg-emerald-500/10 transition-colors"
+                    title="Send to Page"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m22 2-7 20-4-9-9-4Z" />
+                      <path d="M22 2 11 13" />
+                    </svg>
+                  </button>
                   {email.web_link && (
                     <a
                       href={email.web_link}
@@ -1733,7 +2047,7 @@ export default function InboxPage() {
               {/* Draft preview strip */}
               {emailDraft && (
                 <div
-                  className="mx-6 mb-2 rounded-md border-l-2 border-dashed"
+                  className="mx-3 md:mx-6 mb-2 rounded-md border-l-2 border-dashed"
                   style={{
                     borderColor: "#3B82F6",
                     backgroundColor: "var(--background)",
@@ -1865,23 +2179,25 @@ export default function InboxPage() {
               );
             })}
           </div>
+          </>
         )}
       </main>
 
       {/* Pagination (hidden during semantic search) */}
       {totalPages > 1 && !initialLoading && !isSemanticSearch && (
-        <footer className="border-t border-[var(--border)] px-6 py-3 flex items-center justify-between bg-[var(--background)]">
-          <span className="text-sm text-[var(--muted-foreground)]">
-            Page {page} of {totalPages}
+        <footer className="border-t border-[var(--border)] px-3 md:px-6 py-3 flex items-center justify-between bg-[var(--background)]">
+          <span className="text-xs md:text-sm text-[var(--muted-foreground)]">
+            {page}/{totalPages}
           </span>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1}
-              className="px-3 py-1.5 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-2 md:px-3 py-1.5 text-xs md:text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              Previous
+              Prev
             </button>
+            <span className="hidden md:contents">
             {pageNumbers.map((p, i) =>
               p === "ellipsis" ? (
                 <span key={`ellipsis-${i}`} className="px-2 py-1.5 text-sm text-[var(--muted-foreground)]">
@@ -1901,10 +2217,11 @@ export default function InboxPage() {
                 </button>
               )
             )}
+            </span>
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
-              className="px-3 py-1.5 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-2 md:px-3 py-1.5 text-xs md:text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               Next
             </button>
@@ -2394,6 +2711,50 @@ export default function InboxPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Send to Page Modal */}
+      <SendToPageModal
+        open={showSendToPage}
+        onClose={() => {
+          setShowSendToPage(false);
+          setSendToPageEmails([]);
+        }}
+        emails={sendToPageEmails}
+        onSent={(title) => {
+          toast({
+            title: "Sent to page",
+            description: `Content sent to "${title}"`,
+            variant: "success",
+          });
+          setBulkSelected(new Set());
+        }}
+      />
+
+      {/* Mobile filter drawer */}
+      <div className="md:hidden">
+        <InboxFilterDrawer
+          open={showMobileFilters}
+          onClose={() => setShowMobileFilters(false)}
+          accounts={accounts}
+          filterAccount={filterAccount}
+          setFilterAccount={setFilterAccount}
+          setFilterProvider={setFilterProvider}
+          allLabels={allLabels}
+          filterLabel={filterLabel}
+          setFilterLabel={setFilterLabel}
+          allSmartLabels={allSmartLabels}
+          filterSmartLabel={filterSmartLabel}
+          setFilterSmartLabel={setFilterSmartLabel}
+          afterDate={afterDate}
+          setAfterDate={setAfterDate}
+          beforeDate={beforeDate}
+          setBeforeDate={setBeforeDate}
+          hasActiveFilters={!!hasActiveFilters}
+          clearFilters={clearFilters}
+          hasFetchedOnce={hasFetchedOnce}
+          setPage={setPage}
+        />
+      </div>
     </div>
   );
 }

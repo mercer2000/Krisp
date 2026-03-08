@@ -80,28 +80,10 @@ const NAV_ITEMS = [
     icon: AnalyticsIcon,
   },
   {
-    key: "integrations",
-    label: "Integrations",
-    href: "/admin/integrations",
-    icon: IntegrationsIcon,
-  },
-  {
-    key: "prompts",
-    label: "AI Prompts",
-    href: "/admin/prompts",
-    icon: AIPromptsIcon,
-  },
-  {
-    key: "smart-labels",
-    label: "Smart Labels",
-    href: "/admin/smart-labels",
-    icon: SmartLabelsIcon,
-  },
-  {
-    key: "extensions",
-    label: "Extensions",
-    href: "/admin/extensions",
-    icon: ExtensionsIcon,
+    key: "settings",
+    label: "Settings",
+    href: "/settings",
+    icon: SettingsIcon,
   },
   {
     key: "trash",
@@ -433,6 +415,81 @@ function ExtensionsIcon({ size = 20 }: { size?: number }) {
   );
 }
 
+function BillingIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <line x1="2" y1="10" x2="22" y2="10" />
+    </svg>
+  );
+}
+
+function SubscriptionsIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+    </svg>
+  );
+}
+
+function AccountIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="8" r="5" />
+      <path d="M20 21a8 8 0 0 0-16 0" />
+    </svg>
+  );
+}
+
+function SettingsIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
 function TrashNavIcon({ size = 20 }: { size?: number }) {
   return (
     <svg
@@ -468,6 +525,24 @@ function MenuIcon({ size = 20 }: { size?: number }) {
       <line x1="4" y1="12" x2="20" y2="12" />
       <line x1="4" y1="6" x2="20" y2="6" />
       <line x1="4" y1="18" x2="20" y2="18" />
+    </svg>
+  );
+}
+
+function AdminIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
     </svg>
   );
 }
@@ -518,6 +593,7 @@ export function SideNav() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [lastBoardId, setLastBoardId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Persist collapsed state and read last board from localStorage
   useEffect(() => {
@@ -526,6 +602,14 @@ export function SideNav() {
       setCollapsed(saved === "true");
     }
     setLastBoardId(localStorage.getItem("last-board-id"));
+  }, []);
+
+  // Check if user is admin
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.role === "admin") setIsAdmin(true); })
+      .catch(() => {});
   }, []);
 
   // Keep lastBoardId in sync when navigating to a board
@@ -554,11 +638,9 @@ export function SideNav() {
     if (href === "/decisions") return pathname.startsWith("/decisions");
     if (href === "/weekly-reviews") return pathname.startsWith("/weekly-reviews");
     if (href === "/analytics") return pathname === "/analytics";
-if (href === "/admin/integrations") return pathname.startsWith("/admin/integrations");
-    if (href === "/admin/prompts") return pathname.startsWith("/admin/prompts");
-    if (href === "/admin/smart-labels") return pathname.startsWith("/admin/smart-labels");
-    if (href === "/admin/extensions") return pathname.startsWith("/admin/extensions");
+    if (href === "/settings") return pathname.startsWith("/settings");
     if (href === "/trash") return pathname === "/trash";
+    if (href === "/admin/subscriptions") return pathname.startsWith("/admin");
     return pathname === href;
   };
 
@@ -620,6 +702,25 @@ if (href === "/admin/integrations") return pathname.startsWith("/admin/integrati
             </Link>
           );
         })}
+
+        {/* Admin link — only visible to admin users */}
+        {isAdmin && (
+          <>
+            <div className={`my-1 border-t border-[var(--border)] ${collapsed ? "mx-1" : ""}`} />
+            <Link
+              href="/admin/subscriptions"
+              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                isActive("/admin/subscriptions")
+                  ? "bg-[var(--primary)]/10 text-[var(--primary)]"
+                  : "text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
+              } ${collapsed ? "justify-center px-0" : ""}`}
+              title={collapsed ? "Admin" : undefined}
+            >
+              <AdminIcon size={20} />
+              {!collapsed && <span className="flex-1">Admin</span>}
+            </Link>
+          </>
+        )}
       </div>
 
       {/* Upcoming events widget */}

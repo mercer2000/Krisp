@@ -179,6 +179,18 @@ export default function DecisionsPage() {
 
   return (
     <div className="flex h-full flex-col bg-[var(--background)]">
+      {/* Pages integration banner */}
+      <div className="flex items-center gap-2 border-b border-[var(--border)] bg-[var(--primary)]/5 px-6 py-2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--primary)]">
+          <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+        </svg>
+        <span className="text-xs text-[var(--foreground)]">
+          Decisions can now be organized into Pages with smart rules for auto-classification.
+        </span>
+        <a href="/workspace" className="ml-auto text-xs font-medium text-[var(--primary)] hover:underline">
+          Open Pages
+        </a>
+      </div>
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--background)]">
         <div className="flex items-center justify-between px-6 py-4">

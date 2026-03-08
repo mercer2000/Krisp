@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SideNav } from "./SideNav";
+import { MobileBottomNav } from "./MobileBottomNav";
 import { ToastProvider } from "./Toast";
 import { CommandPalette } from "./CommandPalette";
+import { AIUsageWidget } from "../ai/AIUsageWidget";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -31,9 +33,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
       <div className="flex h-screen overflow-hidden">
-        <SideNav />
-        <main className="flex-1 overflow-auto">{children}</main>
+        {/* Desktop sidebar — hidden on mobile */}
+        <div className="hidden md:block">
+          <SideNav />
+        </div>
+
+        {/* Main content — bottom padding on mobile for bottom nav */}
+        <main className="flex-1 overflow-auto relative pb-16 md:pb-0">
+          <div className="hidden md:block absolute top-3 right-4 z-40">
+            <AIUsageWidget />
+          </div>
+          {children}
+        </main>
       </div>
+
+      {/* Mobile bottom navigation */}
+      <MobileBottomNav />
+
       <CommandPalette
         open={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}

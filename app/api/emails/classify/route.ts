@@ -3,11 +3,15 @@ import { auth } from "@/auth";
 import { classifyEmail } from "@/lib/email/classifyEmail";
 import { getEmailById } from "@/lib/email/emails";
 import { classifyItem } from "@/lib/smartLabels/classify";
+import { detectAndMarkNewsletters } from "@/lib/email/newsletterDetection";
+import { detectAndMarkSpam } from "@/lib/email/spamDetection";
+import { getLabelsForEmails } from "@/lib/email/labels";
+import { isEncrypted, decryptNullable } from "@/lib/encryption";
 import sql from "@/lib/email/db";
 
 /**
  * POST /api/emails/classify
- * Classify emails with both traditional labels and smart labels.
+ * Unified classification: AI labels, smart labels, newsletter detection, and spam detection.
  *
  * Body variants:
  *   { emailId: number }           — classify a single email
@@ -49,13 +53,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(result);
     }
 
-    // Determine which emails to classify
-    let rows: { id: number; sender: string; subject: string | null; body_plain_text: string | null; recipients: string[] }[];
+    // Determine which emails to classify — fetch extra columns for detection
+    let rows: {
+      id: number;
+      sender: string;
+      subject: string | null;
+      body_plain_text: string | null;
+      body_html: string | null;
+      raw_payload: Record<string, unknown> | null;
+      recipients: string[];
+    }[];
 
     if (emailIds && Array.isArray(emailIds) && emailIds.length > 0) {
       // Classify specific emails (from current page)
       rows = await sql`
-        SELECT e.id, e.sender, e.subject, e.body_plain_text, e.recipients
+        SELECT e.id, e.sender, e.subject, e.body_plain_text, e.body_html, e.raw_payload, e.recipients
         FROM emails e
         WHERE e.tenant_id = ${userId}
           AND e.deleted_at IS NULL
@@ -65,7 +77,7 @@ export async function POST(request: NextRequest) {
     } else {
       // Legacy: classify up to 10 unclassified emails
       rows = await sql`
-        SELECT e.id, e.sender, e.subject, e.body_plain_text, e.recipients
+        SELECT e.id, e.sender, e.subject, e.body_plain_text, e.body_html, e.raw_payload, e.recipients
         FROM emails e
         WHERE e.tenant_id = ${userId}
           AND e.deleted_at IS NULL
@@ -81,6 +93,7 @@ export async function POST(request: NextRequest) {
     const results = [];
     const processedIds: number[] = [];
 
+    // Step 1: AI classification + smart labels
     for (const row of rows) {
       try {
         const result = await classifyEmail(row.id, userId, {
@@ -105,11 +118,88 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Step 2: Newsletter + spam detection (uses AI labels assigned above)
+    let newslettersMarked = 0;
+    let spamMarked = 0;
+
+    if (processedIds.length > 0) {
+      const labelsMap = await getLabelsForEmails(processedIds);
+
+      // Build batches for newsletter and spam detection
+      const newsletterBatch: {
+        id: number;
+        sender: string;
+        subject: string | null;
+        raw_payload?: Record<string, unknown> | null;
+        labels?: { name: string; confidence: number | null }[];
+      }[] = [];
+
+      const spamBatch: {
+        id: number;
+        sender: string;
+        subject: string | null;
+        body_plain_text?: string | null;
+        body_html?: string | null;
+        raw_payload?: Record<string, unknown> | null;
+        labels?: { name: string; confidence: number | null }[];
+      }[] = [];
+
+      for (const row of rows) {
+        const sender = typeof row.sender === "string" && isEncrypted(row.sender)
+          ? decryptNullable(row.sender) ?? ""
+          : (row.sender as string);
+        const subject = typeof row.subject === "string" && isEncrypted(row.subject)
+          ? decryptNullable(row.subject)
+          : (row.subject as string | null);
+        const bodyPlain = typeof row.body_plain_text === "string" && isEncrypted(row.body_plain_text)
+          ? decryptNullable(row.body_plain_text)
+          : (row.body_plain_text as string | null);
+        const bodyHtml = typeof row.body_html === "string" && isEncrypted(row.body_html)
+          ? decryptNullable(row.body_html)
+          : (row.body_html as string | null);
+        const labels = labelsMap[row.id] ?? [];
+
+        newsletterBatch.push({
+          id: row.id,
+          sender,
+          subject,
+          raw_payload: row.raw_payload,
+          labels,
+        });
+
+        spamBatch.push({
+          id: row.id,
+          sender,
+          subject,
+          body_plain_text: bodyPlain,
+          body_html: bodyHtml,
+          raw_payload: row.raw_payload,
+          labels,
+        });
+      }
+
+      try {
+        const nlResult = await detectAndMarkNewsletters(userId, newsletterBatch);
+        newslettersMarked = nlResult.marked;
+      } catch (err) {
+        console.error("Newsletter detection failed during classify:", err);
+      }
+
+      try {
+        const spamResult = await detectAndMarkSpam(userId, spamBatch);
+        spamMarked = spamResult.marked;
+      } catch (err) {
+        console.error("Spam detection failed during classify:", err);
+      }
+    }
+
     return NextResponse.json({
       classified: results.filter((r) => r.labels.length > 0).length,
       total: results.length,
       processedIds,
       results,
+      newslettersMarked,
+      spamMarked,
     });
   } catch (error) {
     console.error("Error classifying emails:", error);

@@ -118,8 +118,14 @@ function PageTreeItem({ page, pages, level, workspaceId, activePageId, onNavigat
         >
           {hasChildren ? <ChevronIcon expanded={expanded} size={14} /> : <span className="w-3.5" />}
         </button>
+        {page.color && (
+          <span
+            className="h-2.5 w-2.5 shrink-0 rounded-full"
+            style={{ backgroundColor: page.color }}
+          />
+        )}
         <span className="shrink-0 text-base leading-none mr-1">
-          {page.icon || (page.isDatabase ? "📊" : "📄")}
+          {page.icon || (page.pageType === "knowledge" ? "🧠" : page.pageType === "decisions" ? "⚖️" : page.isDatabase ? "📊" : "📄")}
         </span>
         <span className="flex-1 truncate">
           {page.title || "Untitled"}
@@ -202,11 +208,22 @@ export function PagesSidebar({ workspaceId }: { workspaceId: string }) {
     [router, workspaceId]
   );
 
-  const handleNewPage = () => {
+  const [showNewPageMenu, setShowNewPageMenu] = useState(false);
+
+  const handleNewPage = (pageType: "page" | "knowledge" | "decisions" = "page") => {
+    const defaults: Record<string, { title: string; icon: string }> = {
+      page: { title: "", icon: "" },
+      knowledge: { title: "Knowledge", icon: "🧠" },
+      decisions: { title: "Decisions", icon: "⚖️" },
+    };
+    const d = defaults[pageType];
     createPage.mutate(
-      { workspace_id: workspaceId, title: "" },
+      { workspace_id: workspaceId, title: d.title, icon: d.icon || undefined, page_type: pageType },
       {
-        onSuccess: (page) => handleNavigate(page.id),
+        onSuccess: (page) => {
+          handleNavigate(page.id);
+          setShowNewPageMenu(false);
+        },
       }
     );
   };
@@ -242,13 +259,40 @@ export function PagesSidebar({ workspaceId }: { workspaceId: string }) {
 
       {/* Bottom actions */}
       <div className="border-t border-[var(--border)] p-2 space-y-1">
-        <button
-          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
-          onClick={handleNewPage}
-        >
-          <PlusIcon size={16} />
-          New Page
-        </button>
+        <div className="relative">
+          <button
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
+            onClick={() => setShowNewPageMenu(!showNewPageMenu)}
+          >
+            <PlusIcon size={16} />
+            New Page
+          </button>
+          {showNewPageMenu && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowNewPageMenu(false)} />
+              <div className="absolute bottom-full left-0 mb-1 z-50 w-full rounded-lg border border-[var(--border)] bg-[var(--card)] py-1 shadow-lg">
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-[var(--foreground)] hover:bg-[var(--accent)]"
+                  onClick={() => handleNewPage("page")}
+                >
+                  📄 Blank Page
+                </button>
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-[var(--foreground)] hover:bg-[var(--accent)]"
+                  onClick={() => handleNewPage("knowledge")}
+                >
+                  🧠 Knowledge Page
+                </button>
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-[var(--foreground)] hover:bg-[var(--accent)]"
+                  onClick={() => handleNewPage("decisions")}
+                >
+                  ⚖️ Decisions Page
+                </button>
+              </div>
+            </>
+          )}
+        </div>
         <button
           className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
           onClick={() => setShowTrash(!showTrash)}
