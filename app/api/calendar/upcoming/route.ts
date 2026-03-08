@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 import { NextRequest, NextResponse } from "next/server";
 import { getUpcomingEvents, getCalendarEventsInRange } from "@/lib/graph/calendar";
 
@@ -13,7 +13,7 @@ import { getUpcomingEvents, getCalendarEventsInRange } from "@/lib/graph/calenda
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const { data: session } = await auth.getSession();
     const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

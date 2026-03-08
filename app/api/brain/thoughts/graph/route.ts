@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 import { neon } from "@neondatabase/serverless";
 import {
   decryptRows,
@@ -16,7 +16,7 @@ const sql = neon(process.env.DATABASE_URL!);
  * Only thoughts that have embeddings are included.
  */
 export async function GET(request: NextRequest) {
-  const session = await auth();
+  const { data: session } = await auth.getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

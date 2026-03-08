@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import { boards, columns, cards, cardTags, actionItems } from "@/lib/db/schema";
 import { eq, and, asc, max } from "drizzle-orm";
@@ -18,7 +18,7 @@ interface CardInput {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const { data: session } = await auth.getSession();
     const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import { vipContacts } from "@/lib/db/schema";
 import { eq, and, ilike, desc } from "drizzle-orm";
@@ -8,7 +8,7 @@ import { createVipContactSchema } from "@/lib/validators/schemas";
 // GET /api/vip-contacts — list all VIP contacts for the user
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const { data: session } = await auth.getSession();
     const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
 // POST /api/vip-contacts — add a new VIP contact
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const { data: session } = await auth.getSession();
     const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

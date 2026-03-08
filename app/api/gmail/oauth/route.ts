@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 import {
   getActiveWatch,
   deactivateWatch,
@@ -25,7 +25,7 @@ function buildGmailAuthUrl(redirectUri: string, state: string): string {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const { data: session } = await auth.getSession();
     const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE() {
   try {
-    const session = await auth();
+    const { data: session } = await auth.getSession();
     const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import { vipContacts } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -8,7 +8,7 @@ import { batchCheckVipSchema } from "@/lib/validators/schemas";
 // POST /api/vip-contacts/batch-check — check which senders are VIP
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const { data: session } = await auth.getSession();
     const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

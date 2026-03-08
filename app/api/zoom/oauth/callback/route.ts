@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 import { exchangeZoomCode, upsertZoomTokens } from "@/lib/zoom/oauth";
 import { fetchZoomUserProfile } from "@/lib/zoom/chat";
 
@@ -10,7 +10,7 @@ import { fetchZoomUserProfile } from "@/lib/zoom/chat";
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const { data: session } = await auth.getSession();
     const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.redirect(new URL("/login", request.url));

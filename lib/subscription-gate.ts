@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 import { getUserPlanInfo } from "@/lib/access";
 import { getFeaturesForPlan, getRequiredPlanForFeature, PLANS, type PlanKey } from "@/lib/stripe-plans";
 
@@ -14,7 +14,7 @@ import { getFeaturesForPlan, getRequiredPlanForFeature, PLANS, type PlanKey } fr
 export async function requireFeature(
   feature: string
 ): Promise<NextResponse | null> {
-  const session = await auth();
+  const { data: session } = await auth.getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -46,7 +46,7 @@ export async function requireFeature(
 export async function requirePlan(
   minimumPlan: PlanKey
 ): Promise<NextResponse | null> {
-  const session = await auth();
+  const { data: session } = await auth.getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

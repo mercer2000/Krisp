@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import { actionItems, users } from "@/lib/db/schema";
 import { eq, and, lte, isNull, inArray } from "drizzle-orm";
@@ -7,7 +7,7 @@ import { getResend, getSenderEmail } from "@/lib/email/resend";
 
 export async function POST() {
   try {
-    const session = await auth();
+    const { data: session } = await auth.getSession();
     const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

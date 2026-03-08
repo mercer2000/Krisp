@@ -5,10 +5,10 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 
 export async function createCheckoutSession(priceId: string) {
-  const session = await auth();
+  const { data: session } = await auth.getSession();
   if (!session?.user?.id) {
     redirect("/login");
   }

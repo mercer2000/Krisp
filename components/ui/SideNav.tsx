@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { authClient } from "@/lib/auth/client";
 import { ThemeToggle } from "./ThemeToggle";
 import { UpcomingEvents } from "@/components/calendar/UpcomingEvents";
 
@@ -735,7 +735,7 @@ export function SideNav() {
         <div className={`flex items-center ${collapsed ? "flex-col gap-2" : "gap-2"}`}>
           <ThemeToggle />
           <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => { window.location.href = "/auth/sign-in"; } } })}
             className={`flex items-center gap-2 rounded-lg text-sm font-medium text-[var(--muted-foreground)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--foreground)] ${
               collapsed ? "h-8 w-8 justify-center" : "flex-1 px-3 py-2"
             }`}

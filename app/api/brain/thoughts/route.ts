@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import { brainThoughts } from "@/lib/db/schema";
 import { and, eq, desc, sql } from "drizzle-orm";
@@ -9,7 +9,7 @@ import {
 } from "@/lib/db/encryption-helpers";
 
 export async function GET(request: NextRequest) {
-  const session = await auth();
+  const { data: session } = await auth.getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

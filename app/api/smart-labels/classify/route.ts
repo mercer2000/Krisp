@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 import { classifyItem, classifyBatch } from "@/lib/smartLabels/classify";
 import {
   classifySmartLabelsSchema,
@@ -15,7 +15,7 @@ import {
  */
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const { data: session } = await auth.getSession();
     const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

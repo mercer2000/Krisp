@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import { thoughtReminders, brainThoughts } from "@/lib/db/schema";
 import { and, eq, desc } from "drizzle-orm";
@@ -12,7 +12,7 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ thoughtId: string }> }
 ) {
-  const session = await auth();
+  const { data: session } = await auth.getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -42,7 +42,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ thoughtId: string }> }
 ) {
-  const session = await auth();
+  const { data: session } = await auth.getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

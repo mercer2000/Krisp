@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { signOut } from "next-auth/react";
+import { authClient } from "@/lib/auth/client";
 
 // ── Data categories ───────────────────────────────────────
 const DATA_CATEGORIES = [
@@ -192,7 +192,7 @@ export function DeleteAccountDataClient() {
       if (data.isFullWipe) {
         // Full wipe: sign out after a brief delay so user sees the message
         setTimeout(() => {
-          signOut({ callbackUrl: "/login?deleted=1" });
+          authClient.signOut({ fetchOptions: { onSuccess: () => { window.location.href = "/auth/sign-in?deleted=1"; } } });
         }, 3000);
       }
     } catch (err) {

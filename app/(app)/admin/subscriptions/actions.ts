@@ -1,13 +1,13 @@
 "use server";
 
 import { stripe } from "@/lib/stripe";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import { users, adminActionLogs } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 async function requireAdmin() {
-  const session = await auth();
+  const { data: session } = await auth.getSession();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
   const [user] = await db

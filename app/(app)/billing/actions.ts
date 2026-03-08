@@ -5,10 +5,10 @@ import { db } from "@/lib/db";
 import { users, subscriptions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 
 export async function createPortalSession() {
-  const session = await auth();
+  const { data: session } = await auth.getSession();
   if (!session?.user?.id) redirect("/login");
 
   const [user] = await db
@@ -30,7 +30,7 @@ export async function createPortalSession() {
 }
 
 export async function cancelSubscription() {
-  const session = await auth();
+  const { data: session } = await auth.getSession();
   if (!session?.user?.id) redirect("/login");
 
   const [sub] = await db
@@ -54,7 +54,7 @@ export async function cancelSubscription() {
 }
 
 export async function reactivateSubscription() {
-  const session = await auth();
+  const { data: session } = await auth.getSession();
   if (!session?.user?.id) redirect("/login");
 
   const [sub] = await db
@@ -78,7 +78,7 @@ export async function reactivateSubscription() {
 }
 
 export async function switchPlan(newPriceId: string) {
-  const session = await auth();
+  const { data: session } = await auth.getSession();
   if (!session?.user?.id) redirect("/login");
 
   const userId = session.user.id;

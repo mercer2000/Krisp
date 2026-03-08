@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import { customPromptHistory } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
@@ -11,7 +11,7 @@ import { PROMPT_DEFAULTS } from "@/lib/ai/prompts";
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const { data: session } = await auth.getSession();
     const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

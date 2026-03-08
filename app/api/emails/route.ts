@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 import { listEmails } from "@/lib/email/emails";
 import { listGmailEmails } from "@/lib/gmail/emails";
 import { listZoomMessages } from "@/lib/zoom/messages";
@@ -9,7 +9,7 @@ import type { EmailListItem, EmailAttachmentMetadata } from "@/types/email";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const { data: session } = await auth.getSession();
     const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 import sql from "@/lib/email/db";
 import { detectAndMarkSpam } from "@/lib/email/spamDetection";
 import { getLabelsForEmails } from "@/lib/email/labels";
@@ -12,7 +12,7 @@ import { isEncrypted, decryptNullable } from "@/lib/encryption";
  */
 export async function POST() {
   try {
-    const session = await auth();
+    const { data: session } = await auth.getSession();
     const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

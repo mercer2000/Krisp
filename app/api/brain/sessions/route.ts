@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import { brainChatSessions } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
@@ -11,7 +11,7 @@ import { decryptRows, BRAIN_CHAT_SESSION_ENCRYPTED_FIELDS } from "@/lib/db/encry
  */
 export async function GET() {
   try {
-    const session = await auth();
+    const { data: session } = await auth.getSession();
     const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

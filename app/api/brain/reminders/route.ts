@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import { thoughtReminders, brainThoughts } from "@/lib/db/schema";
 import { and, eq, desc } from "drizzle-orm";
@@ -13,7 +13,7 @@ import {
  * List all reminders for the authenticated user (with thought content).
  */
 export async function GET(request: NextRequest) {
-  const session = await auth();
+  const { data: session } = await auth.getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
  * Body: { id: string, status?: string, scheduledAt?: string }
  */
 export async function PATCH(request: NextRequest) {
-  const session = await auth();
+  const { data: session } = await auth.getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -132,7 +132,7 @@ export async function PATCH(request: NextRequest) {
  * Body: { id: string }
  */
 export async function DELETE(request: NextRequest) {
-  const session = await auth();
+  const { data: session } = await auth.getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

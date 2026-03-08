@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion } from "@/lib/ai/client";
 import { resolvePrompt } from "@/lib/ai/resolvePrompt";
 import { PROMPT_SEARCH_OPTIMIZER, PROMPT_SEARCH_ANSWER } from "@/lib/ai/prompts";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 import {
   searchMeetings,
   searchMeetingsSimple,
@@ -22,7 +22,7 @@ interface SearchResult {
  * Returns null if not authenticated.
  */
 async function getAuthenticatedUserId(): Promise<string | null> {
-  const session = await auth();
+  const { data: session } = await auth.getSession();
   return session?.user?.id ?? null;
 }
 

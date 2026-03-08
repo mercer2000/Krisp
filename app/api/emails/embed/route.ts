@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth/server";
 import { processUnembeddedEmails, getEmbeddingStatus } from "@/lib/email/embeddings";
 import { processUnembeddedZoomMessages, getZoomEmbeddingStatus } from "@/lib/zoom/embeddings";
 
@@ -13,7 +13,7 @@ import { processUnembeddedZoomMessages, getZoomEmbeddingStatus } from "@/lib/zoo
  */
 export async function POST() {
   try {
-    const session = await auth();
+    const { data: session } = await auth.getSession();
     const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
