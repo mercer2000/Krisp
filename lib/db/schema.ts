@@ -1660,6 +1660,14 @@ export const smartLabels = pgTable(
     active: boolean("active").default(true).notNull(),
     autoDraftEnabled: boolean("auto_draft_enabled").default(false).notNull(),
     contextWindowMax: integer("context_window_max").default(7).notNull(),
+    graphFolderId: varchar("graph_folder_id", { length: 255 }),
+    folderSyncStatus: varchar("folder_sync_status", { length: 20 })
+      .default("none")
+      .notNull(), // "none" | "pending" | "synced" | "failed" | "unlinked"
+    outlookAccountId: uuid("outlook_account_id").references(
+      () => outlookOauthTokens.id,
+      { onDelete: "set null" }
+    ),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -1670,6 +1678,7 @@ export const smartLabels = pgTable(
   (table) => [
     uniqueIndex("uq_smart_labels_tenant_name").on(table.tenantId, table.name),
     index("idx_smart_labels_tenant").on(table.tenantId),
+    index("idx_smart_labels_folder_sync").on(table.folderSyncStatus),
     crudPolicy({
       role: authenticatedRole,
       read: authUid(table.tenantId),
@@ -1807,6 +1816,47 @@ export const emailDrafts = pgTable(
     index("idx_email_drafts_tenant").on(table.tenantId),
     index("idx_email_drafts_email").on(table.emailId, table.emailType),
     index("idx_email_drafts_status").on(table.tenantId, table.status),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
+    }),
+  ]
+);
+
+// ── Folder Move Queue (retry queue for Outlook folder moves) ──
+export const folderMoveQueue = pgTable(
+  "folder_move_queue",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    labelId: uuid("label_id")
+      .notNull()
+      .references(() => smartLabels.id, { onDelete: "cascade" }),
+    emailId: varchar("email_id", { length: 255 }).notNull(),
+    graphMessageId: varchar("graph_message_id", { length: 512 }).notNull(),
+    graphFolderId: varchar("graph_folder_id", { length: 255 }).notNull(),
+    outlookAccountId: uuid("outlook_account_id")
+      .notNull()
+      .references(() => outlookOauthTokens.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 20 }).default("pending").notNull(), // "pending" | "success" | "failed" | "skipped"
+    attempts: integer("attempts").default(0).notNull(),
+    lastError: text("last_error"),
+    nextRetryAt: timestamp("next_retry_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_fmq_tenant").on(table.tenantId),
+    index("idx_fmq_status_retry").on(table.status, table.nextRetryAt),
+    index("idx_fmq_label").on(table.labelId),
+    uniqueIndex("uq_fmq_email_label").on(table.emailId, table.labelId),
     crudPolicy({
       role: authenticatedRole,
       read: authUid(table.tenantId),
@@ -2060,6 +2110,38 @@ export const stripeWebhookEvents = pgTable(
   },
   (table) => [
     index("idx_stripe_events_event_id").on(table.stripeEventId),
+  ]
+);
+
+// ── Transcripts (CallGuard) ──────────────────────────
+export const transcripts = pgTable(
+  "transcripts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    recordingId: text("recording_id"),
+    application: text("application"),
+    startTimeUtc: timestamp("start_time_utc", { withTimezone: true }),
+    endTimeUtc: timestamp("end_time_utc", { withTimezone: true }),
+    duration: text("duration"),
+    modelName: text("model_name"),
+    language: text("language"),
+    fullText: text("full_text"),
+    segments: jsonb("segments"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_transcripts_user").on(table.userId),
+    index("idx_transcripts_recording").on(table.recordingId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.userId),
+      modify: authUid(table.userId),
+    }),
   ]
 );
 
