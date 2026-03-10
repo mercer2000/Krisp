@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo } from "react";
 import { usePages, useCreatePage, useUpdatePage, useReorderPages } from "@/lib/hooks/usePages";
 import { useRouter, useParams } from "next/navigation";
 import { NewPageSetupModal } from "@/components/pages/NewPageSetupModal";
+import { SmartRuleGuideModal } from "@/components/pages/SmartRuleGuideModal";
 import type { Page } from "@/types";
 import {
   DndContext,
@@ -465,6 +466,9 @@ export function PagesSidebar({ workspaceId }: { workspaceId: string }) {
           onPageNameChange={(name) => setSetupModal((s) => ({ ...s, pageName: name }))}
         />
       )}
+
+      {/* Smart rule feature guide (shows until first rule is created) */}
+      <SmartRuleGuideModal onCreatePage={handleNewPage} />
     </div>
   );
 }

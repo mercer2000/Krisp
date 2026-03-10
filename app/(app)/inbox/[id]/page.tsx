@@ -62,6 +62,77 @@ function AttachmentBadge({ attachment }: { attachment: EmailAttachmentMetadata }
   );
 }
 
+/**
+ * Renders sanitized email HTML inside an iframe with a white background,
+ * isolating inline email styles from the app's dark mode theme.
+ */
+function EmailHtmlFrame({ html }: { html: string }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [height, setHeight] = useState(300);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    const doc = iframe.contentDocument;
+    if (!doc) return;
+
+    doc.open();
+    doc.write(`<!DOCTYPE html>
+<html><head><style>
+  body {
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    color: #1a1a1a;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+  img { max-width: 100%; height: auto; }
+  a { color: #2563eb; }
+  pre, code { white-space: pre-wrap; }
+  table { max-width: 100%; }
+</style></head><body>${html}</body></html>`);
+    doc.close();
+
+    // Resize iframe to fit content
+    const resize = () => {
+      if (doc.body) {
+        setHeight(doc.body.scrollHeight);
+      }
+    };
+
+    // Resize after images load
+    const images = doc.querySelectorAll("img");
+    let loaded = 0;
+    const onImgLoad = () => { loaded++; if (loaded >= images.length) resize(); };
+    images.forEach((img) => {
+      if (img.complete) { loaded++; } else { img.addEventListener("load", onImgLoad); img.addEventListener("error", onImgLoad); }
+    });
+
+    // Initial resize with a short delay for rendering
+    resize();
+    const timer = setTimeout(resize, 200);
+
+    return () => {
+      clearTimeout(timer);
+      images.forEach((img) => { img.removeEventListener("load", onImgLoad); img.removeEventListener("error", onImgLoad); });
+    };
+  }, [html]);
+
+  return (
+    <iframe
+      ref={iframeRef}
+      sandbox="allow-same-origin"
+      style={{ width: "100%", height, border: "none", borderRadius: "8px" }}
+      title="Email content"
+    />
+  );
+}
+
 export default function EmailDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -498,10 +569,7 @@ export default function EmailDetailPage() {
             {/* Body */}
             <div ref={emailBodyRef} className="border-t border-[var(--border)] pt-6">
               {sanitizedHtml ? (
-                <div
-                  className="prose prose-sm max-w-none text-[var(--foreground)] [&_a]:text-[var(--primary)] [&_img]:max-w-full"
-                  dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
-                />
+                <EmailHtmlFrame html={sanitizedHtml} />
               ) : email.body_plain_text ? (
                 <pre className="whitespace-pre-wrap text-sm text-[var(--foreground)] font-sans leading-relaxed">
                   {email.body_plain_text}
