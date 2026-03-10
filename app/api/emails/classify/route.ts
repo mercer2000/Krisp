@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/server";
 import { classifyEmail } from "@/lib/email/classifyEmail";
 import { getEmailById } from "@/lib/email/emails";
-import { classifyItem } from "@/lib/smartLabels/classify";
+import { classifyItem, buildEmailContent } from "@/lib/smartLabels/classify";
+import { classifyItemForPages } from "@/lib/pageRules/classify";
 import { detectAndMarkNewsletters } from "@/lib/email/newsletterDetection";
 import { detectAndMarkSpam } from "@/lib/email/spamDetection";
 import { getLabelsForEmails } from "@/lib/email/labels";
@@ -43,11 +44,24 @@ export async function POST(request: NextRequest) {
         recipients: Array.isArray(email.recipients) ? email.recipients : [],
       });
 
-      // Also run smart label classification
+      // Run smart label + page rule classification
+      const content = buildEmailContent({
+        sender: email.sender,
+        subject: email.subject,
+        bodyPlainText: email.body_plain_text,
+        recipients: Array.isArray(email.recipients) ? email.recipients : [],
+      });
+
       try {
-        await classifyItem("email", String(emailId), userId);
+        await classifyItem("email", String(emailId), userId, { content });
       } catch (err) {
         console.error(`Smart label classification failed for email ${emailId}:`, err);
+      }
+
+      try {
+        await classifyItemForPages("email", String(emailId), userId, { content });
+      } catch (err) {
+        console.error(`Page rule classification failed for email ${emailId}:`, err);
       }
 
       return NextResponse.json(result);
@@ -110,11 +124,32 @@ export async function POST(request: NextRequest) {
         processedIds.push(row.id);
       }
 
-      // Also run smart label classification for each email
+      // Decrypt fields before building content for classifiers
+      const decSender = typeof row.sender === "string" && isEncrypted(row.sender)
+        ? decryptNullable(row.sender) ?? "" : (row.sender as string);
+      const decSubject = typeof row.subject === "string" && isEncrypted(row.subject)
+        ? decryptNullable(row.subject) : (row.subject as string | null);
+      const decBody = typeof row.body_plain_text === "string" && isEncrypted(row.body_plain_text)
+        ? decryptNullable(row.body_plain_text) : (row.body_plain_text as string | null);
+
+      // Run smart label + page rule classification for each email
+      const content = buildEmailContent({
+        sender: decSender,
+        subject: decSubject,
+        bodyPlainText: decBody,
+        recipients: Array.isArray(row.recipients) ? row.recipients : [],
+      });
+
       try {
-        await classifyItem("email", String(row.id), userId);
+        await classifyItem("email", String(row.id), userId, { content });
       } catch (err) {
         console.error(`Smart label classification failed for email ${row.id}:`, err);
+      }
+
+      try {
+        await classifyItemForPages("email", String(row.id), userId, { content });
+      } catch (err) {
+        console.error(`Page rule classification failed for email ${row.id}:`, err);
       }
     }
 

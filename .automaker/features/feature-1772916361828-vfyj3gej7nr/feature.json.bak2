@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "Add optimization for mobile devices and add focus on the left rail side navigation and switching between pages. We want to move some of the core functionality to buttons at the bottom, like our traditional mobile app: the brain, the inbox, and the meetings and calendar tab you.  Optimize the brain AI chat interface to work well on mobile devices. ",
+  "title": "Optimize mobile UI with bottom navigation and responsive AI chat",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "in_progress",
+  "startedAt": "2026-03-08T05:41:39.339Z",
+  "id": "feature-1772916361828-vfyj3gej7nr",
+  "descriptionHistory": [
+    {
+      "description": "Add optimization for mobile devices and add focus on the left rail side navigation and switching between pages. We want to move some of the core functionality to buttons at the bottom, like our traditional mobile app: the brain, the inbox, and the meetings and calendar tab you.  Optimize the brain AI chat interface to work well on mobile devices. ",
+      "timestamp": "2026-03-07T20:46:02.274Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-07T20:55:35.784Z",
+  "justFinishedAt": "2026-03-07T20:55:35.763Z",
+  "summary": "## Summary: Mobile Device Optimization with Bottom Navigation\n\n### Changes Implemented\n- **Mobile bottom navigation bar**: Created a new `MobileBottomNav` component with 4 core tabs (Brain, Inbox, Meetings, Calendar) and a \"More\" button that opens a drawer with access to all other pages (Dashboard, Kanban, Decisions, Reviews, Pages, Contacts, Analytics, Integrations, AI Prompts, Extensions)\n- **Responsive AppShell layout**: Desktop sidebar is hidden on mobile (`md:` breakpoint); mobile bottom nav appears instead; main content has bottom padding to avoid overlap with the bottom nav\n- **Viewport metadata**: Added proper `viewport` export with `device-width`, `initialScale`, and responsive `themeColor` for light/dark mode; added `appleWebApp` metadata for PWA support\n- **Brain chat mobile optimization**: Session sidebar becomes a slide-out overlay on mobile (with backdrop) instead of a fixed sidebar; auto-detects mobile viewport and hides sidebar by default; chat messages, input area, and knowledge tab all use responsive padding and spacing\n- **ThoughtDetailDrawer**: Full-width on mobile (`w-full`) instead of fixed `400px`, with desktop breakpoint fallback (`md:w-[400px]`)\n- **Touch feedback**: Added `active:scale-95 active:opacity-70` to bottom nav tab buttons for press feedback\n- **Mobile CSS utilities**: Added mobile-specific styles including horizontal overflow prevention, hidden scrollbars, and smooth touch scrolling\n- **Accessibility**: Kept viewport zoomable (no `userScalable: false`) for WCAG compliance\n\n### Files Modified\n- `app/layout.tsx` — Added `Viewport` export with theme colors and `appleWebApp` metadata\n- `components/ui/AppShell.tsx` — Restructured to hide SideNav on mobile, show MobileBottomNav, add responsive content padding\n- `components/ui/MobileBottomNav.tsx` — **New file** — Bottom tab bar with 4 primary tabs + More drawer\n- `app/(app)/brain/page.tsx` — Mobile-responsive sidebar (overlay mode), responsive padding/spacing throughout, viewport detection\n- `app/globals.css` — Added mobile-specific styles (overflow, scrollbar, touch)\n\n### Notes for Developer\n- The mobile breakpoint is `md:` (768px) — below this width, the sidebar is hidden and the bottom nav appears\n- The \"More\" drawer in the bottom nav uses a slide-up panel with a 4-column grid of additional navigation items\n- The Brain chat session sidebar on mobile slides in from the left with a backdrop overlay, and auto-closes when selecting a session\n- Safe area handling is included for notched devices (`env(safe-area-inset-bottom)`)\n- TypeScript compilation passes cleanly with no errors"
+}

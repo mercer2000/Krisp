@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "http://localhost:3000/inbox\n\nCombine Detect and Spam into Classify All.  We can do all of the needed detection in a single AI LLM call. ",
+  "title": "Combine Detect and Spam into Classify All",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-08T04:29:36.392Z",
+  "id": "feature-1772944176392-tmtkgado9jr",
+  "descriptionHistory": [
+    {
+      "description": "http://localhost:3000/inbox\n\nCombine Detect and Spam into Classify All.  We can do all of the needed detection in a single AI LLM call. ",
+      "timestamp": "2026-03-08T04:29:37.003Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-08T04:40:06.035Z",
+  "justFinishedAt": "2026-03-08T04:40:06.035Z"
+}

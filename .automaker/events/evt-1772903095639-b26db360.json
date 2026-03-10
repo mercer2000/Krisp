@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772903095639-b26db360",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-07T17:04:55.639Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "user-activity-heatmap",
+  "featureName": "Personal Productivity Heatmap",
+  "passes": true
+}

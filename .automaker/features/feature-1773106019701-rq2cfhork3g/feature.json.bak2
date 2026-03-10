@@ -1,0 +1,27 @@
+{
+  "category": "Uncategorized",
+  "description": "On workspaces, add a new item count on the page label. For example \"Disney World  (3)\" indicating 3 new items (notes, knowledge, Decisions) have been added to the page. ",
+  "title": "Add item count indicator to workspace page labels",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "in_progress",
+  "startedAt": "2026-03-10T01:26:59.701Z",
+  "id": "feature-1773106019701-rq2cfhork3g",
+  "descriptionHistory": [
+    {
+      "description": "On workspaces, add a new item count on the page label. For example \"Disney World  (3)\" indicating 3 new items (notes, knowledge, Decisions) have been added to the page. ",
+      "timestamp": "2026-03-10T01:27:00.035Z",
+      "source": "initial"
+    }
+  ]
+}

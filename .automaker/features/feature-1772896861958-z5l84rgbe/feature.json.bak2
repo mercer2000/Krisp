@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "When manually pressing on the classify button on the inbox page, can it classify all of the messages that are in the current page? Currently I'm not sure how many messages are classified, but it looks like it's only the last 10 or 20. I'd like it to classify all the messages that are currently in view on the current page.  And I'd also like to indicate on messages that they have been checked for classification http://localhost:3000/inbox",
+  "title": "Classify all visible messages on current page",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-07T15:21:01.958Z",
+  "id": "feature-1772896861958-z5l84rgbe",
+  "descriptionHistory": [
+    {
+      "description": "When manually pressing on the classify button on the inbox page, can it classify all of the messages that are in the current page? Currently I'm not sure how many messages are classified, but it looks like it's only the last 10 or 20. I'd like it to classify all the messages that are currently in view on the current page.  And I'd also like to indicate on messages that they have been checked for classification http://localhost:3000/inbox",
+      "timestamp": "2026-03-07T15:21:02.344Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-07T15:29:05.166Z",
+  "justFinishedAt": "2026-03-07T15:29:05.166Z"
+}

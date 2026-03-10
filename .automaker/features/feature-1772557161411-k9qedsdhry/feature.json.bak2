@@ -14,8 +14,8 @@
   "planningMode": "skip",
   "requirePlanApproval": false,
   "dependencies": [],
-  "status": "waiting_approval",
-  "startedAt": "2026-03-03T17:51:48.330Z",
+  "status": "in_progress",
+  "startedAt": "2026-03-03T18:55:52.583Z",
   "id": "feature-1772557161411-k9qedsdhry",
   "descriptionHistory": [
     {

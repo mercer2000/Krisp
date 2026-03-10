@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "Make the page http://localhost:3000/brain more mobile friendly.  ",
+  "title": "Make page mobile responsive for better viewing",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "lite",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-08T05:35:04.617Z",
+  "id": "feature-1772948104617-jae0fyixprb",
+  "descriptionHistory": [
+    {
+      "description": "Make the page http://localhost:3000/brain more mobile friendly.  ",
+      "timestamp": "2026-03-08T05:35:04.925Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-08T05:38:44.953Z",
+  "justFinishedAt": "2026-03-08T05:38:44.931Z",
+  "summary": "## Summary: Make Brain Page Mobile Friendly\n\n### Changes Implemented\n- **Mobile sidebar drawer**: On viewports < 768px, the chat sessions sidebar now renders as a full-screen overlay drawer with a dark backdrop, instead of taking up inline space. Tapping the backdrop closes it.\n- **Auto-hide sidebar on mobile**: Sidebar defaults to hidden on mobile, visible on desktop. Uses `matchMedia` to detect viewport size and adjusts dynamically on resize.\n- **Close button in mobile sidebar**: Added an X close button in the sidebar header visible only on mobile.\n- **Auto-close on session select**: Selecting a chat session on mobile automatically closes the sidebar drawer.\n- **Responsive empty state**: Brain icon scales down (56px vs 80px), text sizes reduce, suggestion grid stacks to 1 column on mobile (vs 2 on sm+), tighter padding.\n- **Responsive message bubbles**: Reduced gap, padding, and avatar sizes on mobile. Message max-width increased to 85% on mobile (vs 80% desktop) for better use of narrow screens.\n- **Responsive loading indicator**: Matching reduced sizing for the typing indicator.\n- **Mobile-friendly input area**: Reduced padding, smaller send button on mobile, safe-area-inset-bottom padding for iOS notch devices, helper text hidden on mobile to save space.\n- **New CloseIcon component**: Added inline SVG close icon for the mobile sidebar close button.\n\n### Files Modified\n- `app/(app)/brain/page.tsx` — all mobile responsiveness changes in a single file\n\n### Notes for Developer\n- The sidebar uses `position: fixed` with `z-50` on mobile to overlay content without disrupting the flex layout\n- `env(safe-area-inset-bottom)` is used in the input area to account for iOS safe areas (home indicator)\n- No new dependencies added — uses Tailwind responsive prefixes (`sm:`) and `window.matchMedia` for the `isMobile` state\n- The `isMobile` state is used for JavaScript-dependent logic (closing sidebar on select, icon sizing), while CSS breakpoints handle the rest"
+}

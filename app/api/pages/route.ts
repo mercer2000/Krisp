@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRequiredUser } from "@/lib/auth/getRequiredUser";
 import { db } from "@/lib/db";
 import { pages, blocks, workspaces } from "@/lib/db/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, sql } from "drizzle-orm";
+import { logActivity } from "@/lib/activity/log";
 
 // GET /api/pages?workspace_id=...  — list non-archived pages for a workspace
 export async function GET(request: NextRequest) {
@@ -28,7 +29,29 @@ export async function GET(request: NextRequest) {
     }
 
     const rows = await db
-      .select()
+      .select({
+        id: pages.id,
+        workspaceId: pages.workspaceId,
+        parentId: pages.parentId,
+        title: pages.title,
+        icon: pages.icon,
+        coverUrl: pages.coverUrl,
+        isDatabase: pages.isDatabase,
+        databaseConfig: pages.databaseConfig,
+        isArchived: pages.isArchived,
+        createdBy: pages.createdBy,
+        sortOrder: pages.sortOrder,
+        pageType: pages.pageType,
+        color: pages.color,
+        smartRule: pages.smartRule,
+        smartActive: pages.smartActive,
+        smartRuleAccountId: pages.smartRuleAccountId,
+        smartRuleFolderId: pages.smartRuleFolderId,
+        smartRuleFolderName: pages.smartRuleFolderName,
+        createdAt: pages.createdAt,
+        updatedAt: pages.updatedAt,
+        entryCount: sql<number>`(SELECT count(*) FROM page_entries WHERE page_id = ${pages.id})`.as("entry_count"),
+      })
       .from(pages)
       .where(
         and(
@@ -121,6 +144,15 @@ export async function POST(request: NextRequest) {
       type: "paragraph",
       content: { text: "" },
       sortOrder: 0,
+    });
+
+    logActivity({
+      userId: user.id,
+      eventType: "page.created",
+      title: `Created page "${page.title || "Untitled"}"`,
+      entityType: "page",
+      entityId: page.id,
+      metadata: { pageType: page_type ?? "page", workspaceId: workspace_id },
     });
 
     return NextResponse.json(page, { status: 201 });

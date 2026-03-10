@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772915352753-33d554cc",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-07T20:29:12.753Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772914755822-71q47ibjvvt",
+  "featureName": "Unify dashboard and workspace analytics views",
+  "passes": true
+}

@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772830930612-b58339b2",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-06T21:02:10.612Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "calendar-upcoming-widget",
+  "featureName": "Upcoming Events Widget on Dashboard",
+  "passes": true
+}

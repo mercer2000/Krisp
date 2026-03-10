@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772908564678-a884f707",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-07T18:36:04.678Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "workspace-analytics",
+  "featureName": "Personal Productivity Analytics Dashboard",
+  "passes": true
+}

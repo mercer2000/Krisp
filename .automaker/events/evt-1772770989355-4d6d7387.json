@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772770989355-4d6d7387",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-06T04:23:09.355Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772688276317-t7fo1gy5cjo",
+  "featureName": "Implement Zapier webhook integration for cross-system message ingestion",
+  "passes": true
+}

@@ -1,0 +1,26 @@
+{
+  "category": "Uncategorized",
+  "description": "On the dashboard, it shows the email count. We should also show the last five messages for both the email count, and we should show the last five meetings. Each one of those cards should link off to the specific feature. ",
+  "title": "",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "backlog",
+  "id": "feature-1772901850138-j6tz0r3qqyi",
+  "descriptionHistory": [
+    {
+      "description": "On the dashboard, it shows the email count. We should also show the last five messages for both the email count, and we should show the last five meetings. Each one of those cards should link off to the specific feature. ",
+      "timestamp": "2026-03-07T16:44:10.451Z",
+      "source": "initial"
+    }
+  ]
+}

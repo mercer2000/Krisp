@@ -1,0 +1,14 @@
+{
+  "id": "workspace-analytics",
+  "category": "Analytics",
+  "title": "Personal Productivity Analytics Dashboard",
+  "description": "A /analytics page showing weekly and monthly stats: cards completed, meetings attended, emails processed, thoughts captured, and action items resolved. Renders sparkline trends and a heatmap calendar of activity. Data is aggregated server-side from all tables scoped to the user.",
+  "status": "in_progress",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:00:34.444Z",
+  "updatedAt": "2026-03-02T19:00:34.444Z",
+  "startedAt": "2026-03-07T18:25:48.299Z",
+  "descriptionHistory": []
+}

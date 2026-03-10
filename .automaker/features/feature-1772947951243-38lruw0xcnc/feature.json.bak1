@@ -1,0 +1,26 @@
+{
+  "category": "Uncategorized",
+  "description": "Think about the app we are building and suggest the 3 plans we should provide. THink about the pricing and the feature mix. Update the pricing pages with these details.",
+  "title": "",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "backlog",
+  "id": "feature-1772947951243-38lruw0xcnc",
+  "descriptionHistory": [
+    {
+      "description": "Think about the app we are building and suggest the 3 plans we should provide. THink about the pricing and the feature mix. Update the pricing pages with these details.",
+      "timestamp": "2026-03-08T05:32:31.462Z",
+      "source": "initial"
+    }
+  ]
+}

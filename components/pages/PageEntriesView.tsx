@@ -93,15 +93,25 @@ export function PageEntriesView({ page }: PageEntriesViewProps) {
             </span>
             <p className="text-sm text-[var(--foreground)]">{page.smartRule}</p>
           </div>
-          <span
-            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-              page.smartActive
-                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                : "bg-gray-100 text-gray-500 dark:bg-gray-800/50 dark:text-gray-400"
-            }`}
-          >
-            {page.smartActive ? "Active" : "Inactive"}
-          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            {page.smartRuleFolderId && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700 dark:bg-sky-900/30 dark:text-sky-400">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
+                </svg>
+                {page.smartRuleFolderName || "Outlook"}
+              </span>
+            )}
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                page.smartActive
+                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                  : "bg-gray-100 text-gray-500 dark:bg-gray-800/50 dark:text-gray-400"
+              }`}
+            >
+              {page.smartActive ? "Active" : "Inactive"}
+            </span>
+          </div>
         </div>
       )}
 

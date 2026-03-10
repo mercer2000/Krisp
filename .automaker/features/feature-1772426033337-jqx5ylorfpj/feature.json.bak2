@@ -14,7 +14,7 @@
   "planningMode": "lite",
   "requirePlanApproval": false,
   "dependencies": [],
-  "status": "in_progress",
+  "status": "waiting_approval",
   "id": "feature-1772426033337-jqx5ylorfpj",
   "descriptionHistory": [
     {
@@ -23,5 +23,7 @@
       "source": "initial"
     }
   ],
-  "startedAt": "2026-03-02T04:34:00.425Z"
+  "startedAt": "2026-03-02T04:34:00.425Z",
+  "updatedAt": "2026-03-02T04:46:43.960Z",
+  "justFinishedAt": "2026-03-02T04:46:43.960Z"
 }

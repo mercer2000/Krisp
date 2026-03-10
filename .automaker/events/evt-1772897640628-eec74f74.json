@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772897640628-eec74f74",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-07T15:34:00.628Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772897363351-ogxewu0n1j",
+  "featureName": "Add smart label categorizations to inbox filters",
+  "passes": true
+}

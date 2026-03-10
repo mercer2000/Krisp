@@ -3,7 +3,7 @@
   "category": "Open Brain",
   "title": "Cross-Entity Thought Linking",
   "description": "Allow Open Brain thoughts to be linked to Kanban cards, meetings, or emails via a relationship table. Displays linked entities inside the thought detail drawer with click-through navigation. Enables tracing a captured idea back to its source context.",
-  "status": "backlog",
+  "status": "verified",
   "priority": 2,
   "complexity": "moderate",
   "dependencies": [
@@ -11,5 +11,8 @@
     "open-brain-thought-detail"
   ],
   "createdAt": "2026-03-02T19:00:34.371Z",
-  "updatedAt": "2026-03-02T19:00:34.371Z"
+  "updatedAt": "2026-03-07T17:27:49.983Z",
+  "startedAt": "2026-03-07T16:47:02.807Z",
+  "descriptionHistory": [],
+  "summary": "<feature>open-brain-thought-linking</feature>\n<status>completed</status>\n\n<files_changed>\n- lib/db/schema.ts (added thoughtLinks table with polymorphic linking pattern)\n- drizzle/migrations/0035_add-thought-links.sql (new migration with table, indexes, RLS policies)\n- app/api/brain/thoughts/[thoughtId]/route.ts (new - GET thought detail endpoint)\n- app/api/brain/thoughts/[thoughtId]/links/route.ts (new - GET links list, POST create link)\n- app/api/brain/thoughts/[thoughtId]/links/[linkId]/route.ts (new - DELETE unlink)\n- app/api/brain/thoughts/[thoughtId]/link-search/route.ts (new - GET search cards/meetings/emails)\n- app/(app)/brain/page.tsx (added LinkedEntity/ThoughtLink types, linked entities UI in ThoughtDetailDrawer, link search panel, entity navigation, KanbanIcon/VideoIcon/MailIcon components)\n</files_changed>\n\n<verification>\n- TypeScript: `npx tsc --noEmit` passes with zero errors\n- Playwright: 2/2 tests passed\n  - API routes respond with 401 (auth required), not 404\n  - Brain page loads without crashing (200 or redirect)\n</verification>\n\n<notes>\n- Used varchar(255) for linkedEntityId to handle mixed ID types (uuid for cards, serial/integer for emails and meetings), following the existing smartLabelItems pattern\n- Added unique constraint on (thoughtId, linkedEntityType, linkedEntityId) to prevent duplicate links\n- POST endpoint verifies both thought ownership and linked entity ownership before creating links\n- GET links endpoint hydrates each link with entity details (card title, meeting title, email subject/sender) using decryption helpers\n- Resolved Next.js dynamic route slug conflict: all routes under `[thoughtId]` (not `[id]`) to match existing reminders route\n- Link search panel supports type tabs (card/meeting/email) with real-time search and \"already linked\" detection\n- Click-through navigation routes to /board for cards, / for meetings, /inbox/[id] for emails\n</notes>"
 }

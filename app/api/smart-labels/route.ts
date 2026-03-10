@@ -1,7 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { auth } from "@/lib/auth/server";
 import { getSmartLabels, createSmartLabel } from "@/lib/smartLabels/labels";
 import { createSmartLabelSchema } from "@/lib/validators/schemas";
+import {
+  provisionFolderForLabel,
+  getDefaultOutlookAccountId,
+} from "@/lib/smartLabels/folderSync";
+import { logActivity } from "@/lib/activity/log";
 
 /**
  * GET /api/smart-labels
@@ -28,7 +33,8 @@ export async function GET() {
 
 /**
  * POST /api/smart-labels
- * Create a new smart label.
+ * Create a new smart label. If the user has an active Outlook account,
+ * provisions a matching Outlook mail folder in the background.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -53,6 +59,31 @@ export async function POST(request: NextRequest) {
       parsed.data.prompt,
       parsed.data.color || "#6366F1"
     );
+
+    logActivity({
+      userId,
+      eventType: "smart_label.created",
+      title: `Created smart label "${label.name}"`,
+      entityType: "smart_label",
+      entityId: String(label.id),
+      metadata: { color: label.color },
+    });
+
+    // Provision Outlook folder in background (non-blocking)
+    after(async () => {
+      try {
+        const outlookAccountId = await getDefaultOutlookAccountId(userId);
+        if (outlookAccountId) {
+          await provisionFolderForLabel(label, outlookAccountId);
+        }
+      } catch (err) {
+        console.error(
+          `[SmartLabels] Failed to provision Outlook folder for label "${label.name}":`,
+          err
+        );
+      }
+    });
+
     return NextResponse.json({ data: label }, { status: 201 });
   } catch (error: unknown) {
     if (

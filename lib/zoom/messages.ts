@@ -202,6 +202,7 @@ export async function listZoomMessages(
     provider: "zoom" as const,
     labels: [],
     is_newsletter: false,
+    is_read: true,
   }));
 
   // Client-side keyword filter on decrypted content

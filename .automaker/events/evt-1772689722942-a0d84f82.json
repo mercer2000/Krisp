@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772689722942-a0d84f82",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-05T05:48:42.942Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "zapier-webhook-trigger",
+  "featureName": "Zapier & Make Outbound Webhook Triggers",
+  "passes": true
+}

@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772752078099-8e5ed0f2",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-05T23:07:58.099Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772751207574-vlw5eh0xh1a",
+  "featureName": "Add calendar sync for Outlook integration",
+  "passes": true
+}

@@ -16,7 +16,7 @@
   "dependencies": [
     "feature-1772326534400-ishpeuzrf"
   ],
-  "status": "in_progress",
+  "status": "waiting_approval",
   "id": "feature-1772406328272-x8jr1l28u3j",
   "descriptionHistory": [
     {
@@ -25,5 +25,7 @@
       "source": "initial"
     }
   ],
-  "startedAt": "2026-03-02T04:03:24.655Z"
+  "startedAt": "2026-03-02T04:03:24.655Z",
+  "updatedAt": "2026-03-02T04:16:29.118Z",
+  "justFinishedAt": "2026-03-02T04:16:29.118Z"
 }

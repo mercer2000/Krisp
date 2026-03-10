@@ -154,6 +154,9 @@ export function useUpdatePage(pageId: string) {
       color?: string | null;
       smart_rule?: string | null;
       smart_active?: boolean;
+      smart_rule_account_id?: string | null;
+      smart_rule_folder_id?: string | null;
+      smart_rule_folder_name?: string | null;
     }) =>
       fetchJSON<Page>(`/api/pages/${pageId}`, {
         method: "PATCH",
@@ -179,6 +182,50 @@ export function useDeletePage() {
       removeCache(buildPageKey(vars.pageId));
       clearDrafts(vars.pageId);
       qc.invalidateQueries({ queryKey: ["pages", vars.workspaceId] });
+    },
+  });
+}
+
+export function useReorderPages(workspaceId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      pages: { id: string; sort_order: number; parent_id?: string | null }[];
+    }) =>
+      fetchJSON("/api/pages/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspace_id: workspaceId, ...data }),
+      }),
+    onMutate: async (data) => {
+      // Cancel in-flight fetches so they don't overwrite our optimistic update
+      await qc.cancelQueries({ queryKey: ["pages", workspaceId] });
+
+      const previous = qc.getQueryData<Page[]>(["pages", workspaceId]);
+
+      // Optimistically apply the new sort orders
+      if (previous) {
+        const sortMap = new Map(data.pages.map((p) => [p.id, p.sort_order]));
+        const updated = previous.map((page) => {
+          const newSort = sortMap.get(page.id);
+          return newSort !== undefined ? { ...page, sortOrder: newSort } : page;
+        });
+        qc.setQueryData(["pages", workspaceId], updated);
+      }
+
+      return { previous };
+    },
+    onSuccess: () => {
+      // Persist the optimistic cache to localStorage (server confirmed the new order)
+      const current = qc.getQueryData<Page[]>(["pages", workspaceId]);
+      if (current) safeWriteCache(buildPagesListKey(workspaceId), current);
+    },
+    onError: (_err, _data, context) => {
+      // Roll back on error
+      if (context?.previous) {
+        qc.setQueryData(["pages", workspaceId], context.previous);
+        safeWriteCache(buildPagesListKey(workspaceId), context.previous);
+      }
     },
   });
 }

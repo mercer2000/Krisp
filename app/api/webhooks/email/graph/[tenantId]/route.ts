@@ -15,7 +15,9 @@ import {
 import { autoProcessEmailActions } from "@/lib/actions/autoProcessEmailActions";
 import { dispatchWebhooks } from "@/lib/webhooks/dispatch";
 import { classifyItem, buildEmailContent } from "@/lib/smartLabels/classify";
+import { classifyItemForPages } from "@/lib/pageRules/classify";
 import smartLabelSql from "@/lib/smartLabels/db";
+import { logActivity } from "@/lib/activity/log";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -254,6 +256,16 @@ export async function POST(
               messageId: item.messageId,
             }).catch(() => {});
 
+            logActivity({
+              userId: tenantId,
+              eventType: "email.received",
+              title: `Email received: "${fullEmail.subject || "(No subject)"}"`,
+              description: `From ${fullEmail.from}`,
+              entityType: "email",
+              entityId: item.messageId,
+              metadata: { sender: fullEmail.from, subject: fullEmail.subject },
+            });
+
             // Auto-extract action items and create Kanban cards
             try {
               await autoProcessEmailActions(tenantId, {
@@ -270,29 +282,42 @@ export async function POST(
               );
             }
 
-            // Smart label classification
-            try {
-              const content = buildEmailContent({
-                sender: fullEmail.from,
-                recipients: fullEmail.to,
-                subject: fullEmail.subject ?? null,
-                bodyPlainText: fullEmail.bodyPlainText ?? null,
-              });
-              // Find the DB row ID by message_id
-              const idRows = await smartLabelSql`
-                SELECT id FROM emails
-                WHERE tenant_id = ${tenantId} AND message_id = ${item.messageId}
-              `;
-              if (idRows[0]) {
-                await classifyItem("email", String(idRows[0].id), tenantId, { content });
-              } else {
-                console.warn(`[Graph] Could not find email ID for message ${item.messageId} during smart label classification`);
+            // Resolve email DB row ID + build content for classifiers
+            const content = buildEmailContent({
+              sender: fullEmail.from,
+              recipients: fullEmail.to,
+              subject: fullEmail.subject ?? null,
+              bodyPlainText: fullEmail.bodyPlainText ?? null,
+            });
+            const idRows = await smartLabelSql`
+              SELECT id FROM emails
+              WHERE tenant_id = ${tenantId} AND message_id = ${item.messageId}
+            `;
+
+            if (idRows[0]) {
+              const emailDbId = String(idRows[0].id);
+
+              // Smart label classification
+              try {
+                await classifyItem("email", emailDbId, tenantId, { content });
+              } catch (classifyErr) {
+                console.error(
+                  `[Graph] Smart label classification failed for message ${item.messageId}:`,
+                  classifyErr instanceof Error ? classifyErr.message : classifyErr
+                );
               }
-            } catch (classifyErr) {
-              console.error(
-                `[Graph] Smart label classification failed for message ${item.messageId}:`,
-                classifyErr instanceof Error ? classifyErr.message : classifyErr
-              );
+
+              // Page smart rule classification (independent of smart labels)
+              try {
+                await classifyItemForPages("email", emailDbId, tenantId, { content });
+              } catch (pageRuleErr) {
+                console.error(
+                  `[Graph] Page rule classification failed for message ${item.messageId}:`,
+                  pageRuleErr instanceof Error ? pageRuleErr.message : pageRuleErr
+                );
+              }
+            } else {
+              console.warn(`[Graph] Could not find email ID for message ${item.messageId} during classification`);
             }
           } catch (err) {
             console.error(

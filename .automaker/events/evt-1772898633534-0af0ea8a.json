@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772898633534-0af0ea8a",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-07T15:50:33.534Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772897317865-7ptpvq39827",
+  "featureName": "Generate AI Draft Replies for Smart Labels",
+  "passes": true
+}

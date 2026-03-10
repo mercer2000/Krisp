@@ -1,0 +1,10 @@
+{
+  "id": "evt-1773113359314-70ad26fa",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-10T03:29:19.314Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772943593430-yy0u8ml8g6c",
+  "featureName": "Remove Brain Knowledge and Graph features",
+  "passes": true
+}

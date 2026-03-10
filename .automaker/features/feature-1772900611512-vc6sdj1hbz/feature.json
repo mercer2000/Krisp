@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "On the Kanban board, if a task was added because of a meeting action, we want to be able to link back to the original meeting. Right now I can see a snippet of the conversation, but I want to be able to go and look at the total conversation.",
+  "title": "Link tasks to original meeting conversations",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "verified",
+  "startedAt": "2026-03-07T16:23:31.512Z",
+  "id": "feature-1772900611512-vc6sdj1hbz",
+  "descriptionHistory": [
+    {
+      "description": "On the Kanban board, if a task was added because of a meeting action, we want to be able to link back to the original meeting. Right now I can see a snippet of the conversation, but I want to be able to go and look at the total conversation.",
+      "timestamp": "2026-03-07T16:23:32.121Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-07T16:32:35.168Z",
+  "justFinishedAt": "2026-03-07T16:32:35.147Z",
+  "summary": "## Summary: Meeting Conversation Link-back from Kanban Cards\n\n### Changes Implemented\n- **New API endpoint** (`GET /api/v1/cards/[id]/meeting`) that traces the link from a card back to its source meeting via the `action_items` table. It verifies card ownership, looks up the linked action item, fetches the meeting from `webhook_key_points`, decrypts it, and returns meeting metadata (title, date, duration, speakers).\n- **CardDetailDrawer**: Added a \"Source Meeting\" section that appears when a card has a \"Meeting\" tag. It fetches meeting info on card open, displays the meeting title, date, duration, and speakers in an indigo-themed card. A \"View Full Conversation\" button opens the existing `MeetingDetailDrawer` which shows the full transcript, key points, and action items.\n- **Card component**: Added a small video camera icon indicator (indigo colored) in the card's meta row for any card that has a \"Meeting\" tag, so users can tell at a glance which cards originated from a meeting.\n\n### Files Modified\n- `app/api/v1/cards/[id]/meeting/route.ts` (new file) - API endpoint for card-to-meeting lookup\n- `components/board/CardDetailDrawer.tsx` - Added meeting source section with \"View Full Conversation\" button and MeetingDetailDrawer integration\n- `components/board/Card.tsx` - Added meeting source indicator icon for cards with \"Meeting\" tag\n\n### Notes for Developer\n- The meeting link works through the existing data chain: `cards.id` -> `action_items.card_id` -> `action_items.meeting_id` -> `webhook_key_points.id`\n- The meeting API only fires for cards that have a \"Meeting\" tag (auto-added by `bulk-create-cards`), avoiding unnecessary API calls for regular cards\n- The `MeetingDetailDrawer` opens layered on top of the `CardDetailDrawer`, giving access to the full transcript, key points, action items, and all other meeting functionality\n- TypeScript compiles with no errors"
+}

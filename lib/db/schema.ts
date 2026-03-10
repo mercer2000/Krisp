@@ -418,6 +418,7 @@ export const gmailEmails = pgTable(
     isNewsletter: boolean("is_newsletter").default(false).notNull(),
     isSpam: boolean("is_spam").default(false).notNull(),
     unsubscribeLink: text("unsubscribe_link"),
+    isRead: boolean("is_read").default(false).notNull(),
     ingestedAt: timestamp("ingested_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -457,6 +458,7 @@ export const gmailWatchSubscriptions = pgTable(
     refreshToken: text("refresh_token"),
     tokenExpiry: timestamp("token_expiry", { withTimezone: true }),
     active: boolean("active").default(true).notNull(),
+    emailActionBoardId: uuid("email_action_board_id"), // per-account Kanban board for auto-ticket creation
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -600,6 +602,7 @@ export const emails = pgTable(
     isNewsletter: boolean("is_newsletter").default(false).notNull(),
     isSpam: boolean("is_spam").default(false).notNull(),
     unsubscribeLink: text("unsubscribe_link"),
+    isRead: boolean("is_read").default(false).notNull(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -803,6 +806,7 @@ export const outlookOauthTokens = pgTable(
     tokenExpiry: timestamp("token_expiry", { withTimezone: true }).notNull(),
     active: boolean("active").default(true).notNull(),
     lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+    emailActionBoardId: uuid("email_action_board_id"), // per-account Kanban board for auto-ticket creation
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -1123,6 +1127,12 @@ export const pages = pgTable(
     color: varchar("color", { length: 7 }),             // hex color, e.g. "#3B82F6"
     smartRule: text("smart_rule"),                       // AI classification prompt (like smart label prompt)
     smartActive: boolean("smart_active").default(false).notNull(), // whether AI auto-adds entries
+    smartRuleAccountId: uuid("smart_rule_account_id").references(
+      () => outlookOauthTokens.id,
+      { onDelete: "set null" }
+    ), // which Outlook account to use for folder sync
+    smartRuleFolderId: varchar("smart_rule_folder_id", { length: 255 }), // Graph API folder ID
+    smartRuleFolderName: varchar("smart_rule_folder_name", { length: 255 }), // Outlook folder display name
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -2137,6 +2147,71 @@ export const transcripts = pgTable(
   (table) => [
     index("idx_transcripts_user").on(table.userId),
     index("idx_transcripts_recording").on(table.recordingId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.userId),
+      modify: authUid(table.userId),
+    }),
+  ]
+);
+
+// ── Activity Feed ────────────────────────────────────
+export const activityEventTypeEnum = pgEnum("activity_event_type", [
+  "email.received",
+  "email.sent",
+  "email.classified",
+  "email.draft_created",
+  "email.draft_sent",
+  "email.labeled",
+  "smart_label.triggered",
+  "smart_label.created",
+  "smart_label.updated",
+  "smart_label.folder_synced",
+  "card.created",
+  "card.moved",
+  "card.completed",
+  "card.deleted",
+  "board.created",
+  "decision.created",
+  "decision.status_changed",
+  "action_item.created",
+  "action_item.completed",
+  "thought.created",
+  "thought.linked",
+  "thought.reminder_sent",
+  "page.created",
+  "page.updated",
+  "page.entry_auto_added",
+  "meeting.received",
+  "meeting.transcript_ready",
+  "calendar.event_synced",
+  "calendar.connected",
+  "integration.connected",
+  "integration.webhook_received",
+  "weekly_review.generated",
+  "daily_briefing.sent",
+]);
+
+export const activityEvents = pgTable(
+  "activity_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    eventType: activityEventTypeEnum("event_type").notNull(),
+    title: varchar("title", { length: 500 }).notNull(),
+    description: text("description"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    entityType: varchar("entity_type", { length: 50 }),
+    entityId: varchar("entity_id", { length: 255 }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_activity_events_user_created").on(table.userId, table.createdAt),
+    index("idx_activity_events_type").on(table.eventType),
     crudPolicy({
       role: authenticatedRole,
       read: authUid(table.userId),

@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772948110036-69d701e1",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-08T05:35:10.036Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772948046117-u4adpsgqo7p",
+  "featureName": "Investigate and fix AI usage widget disappearance from header",
+  "passes": true
+}

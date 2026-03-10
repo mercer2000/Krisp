@@ -1,0 +1,29 @@
+{
+  "id": "meeting-vector-embeddings",
+  "category": "AI",
+  "title": "Meeting Transcript Vector Embeddings for Semantic Search",
+  "description": "Generate OpenAI embeddings for meeting transcripts and key points and store them in a pgvector column on the webhook_key_points table. Replace the current full-text Claude search with a hybrid approach: vector similarity pre-filter followed by Claude synthesis, reducing token usage and improving relevance.\n\nThought the project was already using open AI embeddings. Can you review and see if there's additional work that we need to do here? ",
+  "status": "backlog",
+  "priority": 1,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.451Z",
+  "updatedAt": "2026-03-02T18:35:40.451Z",
+  "skipTests": false,
+  "model": "claude-opus",
+  "thinkingLevel": "none",
+  "reasoningEffort": "none",
+  "imagePaths": [],
+  "textFilePaths": [],
+  "branchName": "master",
+  "planningMode": "skip",
+  "requirePlanApproval": false,
+  "workMode": "current",
+  "descriptionHistory": [
+    {
+      "description": "Generate OpenAI embeddings for meeting transcripts and key points and store them in a pgvector column on the webhook_key_points table. Replace the current full-text Claude search with a hybrid approach: vector similarity pre-filter followed by Claude synthesis, reducing token usage and improving relevance.\n\nThought the project was already using open AI embeddings. Can you review and see if there's additional work that we need to do here? ",
+      "timestamp": "2026-03-05T17:07:38.867Z",
+      "source": "edit"
+    }
+  ]
+}

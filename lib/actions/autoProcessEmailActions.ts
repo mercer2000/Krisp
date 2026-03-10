@@ -32,7 +32,8 @@ interface EmailData {
  */
 export async function autoProcessEmailActions(
   tenantId: string,
-  email: EmailData
+  email: EmailData,
+  options?: { boardId?: string | null }
 ): Promise<{ actionItemsCreated: number; cardsCreated: number }> {
   // Skip emails with no body content
   if (!email.bodyPlainText?.trim()) {
@@ -48,11 +49,11 @@ export async function autoProcessEmailActions(
     .from(users)
     .where(eq(users.id, tenantId));
 
-  if (!user?.emailActionBoardId) {
+  // Per-account board takes priority over global user setting
+  const boardId = options?.boardId ?? user?.emailActionBoardId;
+  if (!boardId) {
     return { actionItemsCreated: 0, cardsCreated: 0 };
   }
-
-  const boardId = user.emailActionBoardId;
 
   // Verify board exists and belongs to user
   const [board] = await db

@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772828328956-49ac0d42",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-06T20:18:48.956Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "google-calendar-integration",
+  "featureName": "Google Calendar Event Ingestion",
+  "passes": true
+}

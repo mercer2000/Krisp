@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "The subscriptions page is for internal admins only. Create a new page just for admins. We may need to add an admin role.   email@michaelpatten.com should be the admin.",
+  "title": "Admin subscriptions management page",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-08T05:39:02.073Z",
+  "id": "feature-1772948342073-djxmg6x98a",
+  "descriptionHistory": [
+    {
+      "description": "The subscriptions page is for internal admins only. Create a new page just for admins. We may need to add an admin role.   email@michaelpatten.com should be the admin.",
+      "timestamp": "2026-03-08T05:39:02.598Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-08T05:46:30.549Z",
+  "justFinishedAt": "2026-03-08T05:46:30.550Z"
+}

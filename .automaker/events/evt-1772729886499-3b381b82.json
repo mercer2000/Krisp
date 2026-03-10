@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772729886499-3b381b82",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-05T16:58:06.499Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772723033714-l6qblw2qky",
+  "featureName": "Add AI system prompt management to admin settings",
+  "passes": true
+}

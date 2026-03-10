@@ -1,0 +1,10 @@
+{
+  "id": "evt-1773113341785-0523f02e",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-10T03:29:01.785Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772946409356-xgqjyb6mdu",
+  "featureName": "Add settings page with sub-menus for organization",
+  "passes": true
+}

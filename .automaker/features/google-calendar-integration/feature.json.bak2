@@ -1,0 +1,14 @@
+{
+  "id": "google-calendar-integration",
+  "category": "Integrations",
+  "title": "Google Calendar Event Ingestion",
+  "description": "Connect Google Calendar via OAuth to ingest upcoming and past events into a google_calendar_events table (title, start/end, attendees, description, meet link). Events appear in the Calendar widget and can be correlated with Krisp meetings by timestamp overlap. Supports multiple connected calendars.",
+  "status": "in_progress",
+  "priority": 1,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.178Z",
+  "updatedAt": "2026-03-02T19:21:47.178Z",
+  "startedAt": "2026-03-06T20:05:33.335Z",
+  "descriptionHistory": []
+}

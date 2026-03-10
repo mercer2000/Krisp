@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772689116340-900a6dfd",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-05T05:38:36.340Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772555497240-u9eebgrxafj",
+  "featureName": "Add color-coded speaker segmentation to meeting transcripts",
+  "passes": true
+}

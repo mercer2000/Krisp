@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "When a new page is created, show a modal dialog that asks the user what this page is about. The goal is to have them describe the page such that you can automatically set up the smart rules. The smart rules determine how various email and meeting transcripts are extracted and then placed onto the page. The smart rules accomplish this.\n\nWhen the user creates that page, if they provide us some context about the page, we can assist them in creating the smart rule. We may want to use some AI on the fly. After they tell us about the purpose of the page, we could then use it to clarify what they've told us. That clarified text would be the actual rule.",
+  "title": "Add page context modal with AI-powered smart rule setup",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "in_progress",
+  "startedAt": "2026-03-09T23:00:17.941Z",
+  "id": "feature-1773096651650-db0rqwpb5bk",
+  "descriptionHistory": [
+    {
+      "description": "When a new page is created, show a modal dialog that asks the user what this page is about. The goal is to have them describe the page such that you can automatically set up the smart rules. The smart rules determine how various email and meeting transcripts are extracted and then placed onto the page. The smart rules accomplish this.\n\nWhen the user creates that page, if they provide us some context about the page, we can assist them in creating the smart rule. We may want to use some AI on the fly. After they tell us about the purpose of the page, we could then use it to clarify what they've told us. That clarified text would be the actual rule.",
+      "timestamp": "2026-03-09T22:50:52.279Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-09T22:58:46.899Z",
+  "justFinishedAt": "2026-03-09T22:58:46.879Z",
+  "summary": "## Summary: New Page Setup Modal with AI Smart Rule Generation\n\n### Changes Implemented\n- When a new page is created from the sidebar, a modal dialog now appears asking the user to name the page and describe what it's about\n- The modal has a two-step flow:\n  1. **Describe step**: User enters a page name and describes the page's purpose in natural language\n  2. **Review step**: AI generates a clarified smart rule from the description, which the user can edit before saving\n- The generated smart rule is saved to the page with `smartActive: true`, enabling automatic content classification\n- Users can skip the modal at any step if they don't want to set up smart rules\n- The AI prompt instructs the classifier to generate a specific, actionable rule that avoids false positives while catching relevant content\n\n### Files Modified\n- `components/pages/PagesSidebar.tsx` — Added `NewPageSetupModal` import and state management; modal opens after page creation via `handleNewPage`\n\n### Files Created\n- `app/api/pages/generate-smart-rule/route.ts` — New API endpoint that takes a user's page description and uses OpenRouter AI to generate a clarified smart rule prompt\n- `components/pages/NewPageSetupModal.tsx` — Two-step modal component with page name input, description textarea, AI generation button, rule review/edit, and save/skip actions\n\n### Notes for Developer\n- The modal reuses the existing `Modal` component from `components/ui/Modal.tsx` for consistent accessibility (focus trap, escape key, backdrop)\n- The API endpoint follows existing patterns: `getRequiredUser()` for auth, `chatCompletion()` for AI, `TokenLimitError` handling\n- The `useUpdatePage` hook is used to save both the page title and generated smart rule in one mutation\n- Pre-existing type errors in `.next/types/validator.ts` (stale cache) and `app/api/pages/[pageId]/ask/route.ts` are unrelated to these changes\n- Sub-page creation via the tree item `+` button does not trigger the modal (only the sidebar \"New Page\" button does)"
+}

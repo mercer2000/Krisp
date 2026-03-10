@@ -9,6 +9,8 @@ import {
 import { fetchOutlookInboxMessages } from "@/lib/outlook/messages";
 import { insertEmail, emailExists } from "@/lib/email/emails";
 import { classifyItem, buildEmailContent } from "@/lib/smartLabels/classify";
+import { classifyItemForPages } from "@/lib/pageRules/classify";
+import { autoProcessEmailActions } from "@/lib/actions/autoProcessEmailActions";
 import { upsertContacts } from "@/lib/contacts/contacts";
 
 /**
@@ -37,7 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine which accounts to sync
-    let accounts: { id: string; outlook_email: string; last_sync_at: string | null }[];
+    let accounts: { id: string; outlook_email: string; last_sync_at: string | null; email_action_board_id: string | null }[];
     if (body.accountId) {
       const token = await getOutlookTokenById(body.accountId, userId);
       if (!token) {
@@ -46,7 +48,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      accounts = [{ id: token.id, outlook_email: token.outlook_email, last_sync_at: token.last_sync_at }];
+      accounts = [{ id: token.id, outlook_email: token.outlook_email, last_sync_at: token.last_sync_at, email_action_board_id: token.email_action_board_id }];
     } else {
       const tokens = await getOutlookTokensForTenant(userId);
       if (tokens.length === 0) {
@@ -55,13 +57,13 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      accounts = tokens.map((t) => ({ id: t.id, outlook_email: t.outlook_email, last_sync_at: t.last_sync_at }));
+      accounts = tokens.map((t) => ({ id: t.id, outlook_email: t.outlook_email, last_sync_at: t.last_sync_at, email_action_board_id: t.email_action_board_id }));
     }
 
     let totalInserted = 0;
     let totalSkipped = 0;
     let totalMessages = 0;
-    const newEmails: { id: string; sender: string; recipients: string[]; subject: string | null; bodyPlainText: string | null }[] = [];
+    const newEmails: { id: string; sender: string; recipients: string[]; subject: string | null; bodyPlainText: string | null; receivedAt: string; accountBoardId: string | null }[] = [];
     const results: { accountId: string; email: string; total: number; inserted: number; skipped: number; error?: string }[] = [];
 
     for (const account of accounts) {
@@ -93,6 +95,8 @@ export async function POST(request: NextRequest) {
               recipients: msg.to,
               subject: msg.subject ?? null,
               bodyPlainText: msg.bodyPlainText ?? null,
+              receivedAt: msg.receivedDateTime ?? new Date().toISOString(),
+              accountBoardId: account.email_action_board_id,
             });
           } catch (err) {
             if (
@@ -135,11 +139,33 @@ export async function POST(request: NextRequest) {
     if (newEmails.length > 0) {
       after(async () => {
         for (const email of newEmails) {
+          const content = buildEmailContent(email);
+
+          // Smart label classification
           try {
-            const content = buildEmailContent(email);
             await classifyItem("email", email.id, userId, { content });
           } catch (err) {
             console.error(`[Outlook Sync] Smart label classification failed for ${email.id}:`, err);
+          }
+
+          // Page smart rule classification
+          try {
+            await classifyItemForPages("email", email.id, userId, { content });
+          } catch (err) {
+            console.error(`[Outlook Sync] Page rule classification failed for ${email.id}:`, err);
+          }
+
+          // Auto-create Kanban tickets (per-account board)
+          try {
+            await autoProcessEmailActions(userId, {
+              sender: email.sender,
+              recipients: email.recipients,
+              subject: email.subject,
+              bodyPlainText: email.bodyPlainText,
+              receivedAt: email.receivedAt,
+            }, { boardId: email.accountBoardId });
+          } catch (err) {
+            console.error(`[Outlook Sync] Auto-process actions failed for ${email.id}:`, err);
           }
 
           // Extract contacts from sender and recipients

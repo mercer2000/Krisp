@@ -1,7 +1,7 @@
 {
   "category": "Uncategorized",
   "description": "When new email arrives, we want to automaticaly us AI to extract the action item assigned to the current user and to create new kanban tickets. You need to scan for action items for the currently logged in user. On each of the email integration settings pages, add a Kanban board name so you know what board to add new action items too. Use openrouter for the API. You have been asked to do this a few times so there maybe some existing code to leverage. \n",
-  "title": "",
+  "title": "Extract email action items to Kanban board",
   "images": [],
   "imagePaths": [],
   "textFilePaths": [],

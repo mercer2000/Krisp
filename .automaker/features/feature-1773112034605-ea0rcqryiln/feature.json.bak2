@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "http://localhost:3000/decisions  we can remove this page. We have moved the functionality into individual pages versus a standalone dedicated page just for decisions. \n",
+  "title": "Remove decisions page, consolidate into individual pages",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-10T03:07:14.605Z",
+  "id": "feature-1773112034605-ea0rcqryiln",
+  "descriptionHistory": [
+    {
+      "description": "http://localhost:3000/decisions  we can remove this page. We have moved the functionality into individual pages versus a standalone dedicated page just for decisions. \n",
+      "timestamp": "2026-03-10T03:07:15.276Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-10T03:11:13.430Z",
+  "justFinishedAt": "2026-03-10T03:11:13.430Z"
+}

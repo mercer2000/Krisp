@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772901155168-46f5715c",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-07T16:32:35.168Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772900611512-vc6sdj1hbz",
+  "featureName": "Link tasks to original meeting conversations",
+  "passes": true
+}

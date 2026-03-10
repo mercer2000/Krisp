@@ -2,6 +2,1441 @@
   "version": 1,
   "events": [
     {
+      "id": "evt-1773113432859-7fba94fa",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:30:32.859Z",
+      "featureName": "Add email account switcher to inbox view",
+      "featureId": "feature-1772827890671-ky40tz6k9k"
+    },
+    {
+      "id": "evt-1773113424760-d648361e",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:30:24.760Z",
+      "featureName": "Implement password reset flow with Resend email delivery",
+      "featureId": "feature-1772315391401-82tu0yelank"
+    },
+    {
+      "id": "evt-1773113413330-d8392c89",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:30:13.330Z",
+      "featureName": "Forward message via email with draft generation",
+      "featureId": "feature-1772900004300-af34f2e2anp"
+    },
+    {
+      "id": "evt-1773113407623-672ac603",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:30:07.623Z",
+      "featureName": "Optimize inbox performance with secure local storage caching",
+      "featureId": "feature-1772900207608-4swge4196rg"
+    },
+    {
+      "id": "evt-1773113398146-ca59f9bb",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:29:58.146Z",
+      "featureName": "I'll help you investigate why the heatmap isn't appearing. Let me explore the dashboard and menu system to understand the current state.",
+      "featureId": "feature-1772907610983-0bf47r4zb78"
+    },
+    {
+      "id": "evt-1773113388631-172b5b6b",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:29:48.631Z",
+      "featureName": "Unify dashboard and workspace analytics views",
+      "featureId": "feature-1772914755822-71q47ibjvvt"
+    },
+    {
+      "id": "evt-1773113384388-5a151c25",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:29:44.389Z",
+      "featureName": "Optimize mobile UI with bottom navigation and responsive AI chat",
+      "featureId": "feature-1772916361828-vfyj3gej7nr"
+    },
+    {
+      "id": "evt-1773113379317-eb43e1c0",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:29:39.317Z",
+      "featureName": "Create mobile-optimized inbox layout with responsive design",
+      "featureId": "feature-1772937421113-766zwn77p3h"
+    },
+    {
+      "id": "evt-1773113374098-dea85cf0",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:29:34.098Z",
+      "featureName": "Combine inbox tabs with pinnable accounts and labels",
+      "featureId": "feature-1772943228465-g0zeghzrfp6"
+    },
+    {
+      "id": "evt-1773113365835-80ab0303",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:29:25.835Z",
+      "featureName": "Send emails to pages with selective copying",
+      "featureId": "feature-1772943540489-zwycmg8qmm"
+    },
+    {
+      "id": "evt-1773113359314-70ad26fa",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:29:19.314Z",
+      "featureName": "Remove Brain Knowledge and Graph features",
+      "featureId": "feature-1772943593430-yy0u8ml8g6c"
+    },
+    {
+      "id": "evt-1773113355772-8844f011",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:29:15.772Z",
+      "featureName": "Combine Detect and Spam into Classify All",
+      "featureId": "feature-1772944176392-tmtkgado9jr"
+    },
+    {
+      "id": "evt-1773113345256-7a0b5e10",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:29:05.257Z",
+      "featureName": "Create Chrome extension for web clip HTML storage",
+      "featureId": "feature-1772945468696-i8le7a989g"
+    },
+    {
+      "id": "evt-1773113341785-0523f02e",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:29:01.785Z",
+      "featureName": "Add settings page with sub-menus for organization",
+      "featureId": "feature-1772946409356-xgqjyb6mdu"
+    },
+    {
+      "id": "evt-1773113331554-52e611f5",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:28:51.554Z",
+      "featureName": "Add page reordering capability",
+      "featureId": "feature-1773104748096-wkk4mgmuhxj"
+    },
+    {
+      "id": "evt-1773113329040-7141beca",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:28:49.040Z",
+      "featureName": "Add secure local storage support for Pages",
+      "featureId": "feature-1772947744445-jp2ifn0b8t"
+    },
+    {
+      "id": "evt-1773113319801-5ab636d3",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:28:39.801Z",
+      "featureName": "Investigate and fix AI usage widget disappearance from header",
+      "featureId": "feature-1772948046117-u4adpsgqo7p"
+    },
+    {
+      "id": "evt-1773113310743-a406a88a",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:28:30.743Z",
+      "featureName": "Make page mobile responsive for better viewing",
+      "featureId": "feature-1772948104617-jae0fyixprb"
+    },
+    {
+      "id": "evt-1773113287112-9fd13c09",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:28:07.112Z",
+      "featureName": "Add tabbed interface with Knowledge, Decisions, Smart Rules, and Activity tabs",
+      "featureId": "feature-1773065078312-tlwb51ee8hc"
+    },
+    {
+      "id": "evt-1773113253013-1bfbb6e3",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:27:33.013Z",
+      "featureName": "Add AI question prompt to every page",
+      "featureId": "feature-1773096761697-q2t7vd372se"
+    },
+    {
+      "id": "evt-1773113172371-e842852a",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:26:12.371Z",
+      "featureName": "Add Smart Rules to Labels dropdown for topic filtering",
+      "featureId": "feature-1773104867786-52sulsg5ywr"
+    },
+    {
+      "id": "evt-1773113136463-841f271b",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:25:36.463Z",
+      "featureName": "Add read/unread message tracking",
+      "featureId": "feature-1773112110898-x3ulgbp0ov"
+    },
+    {
+      "id": "evt-1773113104179-6344bc77",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:25:04.179Z",
+      "featureName": "Remove decisions page, consolidate into individual pages",
+      "featureId": "feature-1773112034605-ea0rcqryiln"
+    },
+    {
+      "id": "evt-1773112273449-a2d34392",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:11:13.449Z",
+      "featureName": "Remove decisions page, consolidate into individual pages",
+      "featureId": "feature-1773112034605-ea0rcqryiln"
+    },
+    {
+      "id": "evt-1773112122565-2a5cfa5a",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T03:08:42.565Z",
+      "featureName": "Add page reordering capability",
+      "featureId": "feature-1773104748096-wkk4mgmuhxj"
+    },
+    {
+      "id": "evt-1773112111421-fb5d40e8",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-10T03:08:31.421Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1773112110898-x3ulgbp0ov"
+    },
+    {
+      "id": "evt-1773112035281-996f860e",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-10T03:07:15.281Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1773112034605-ea0rcqryiln"
+    },
+    {
+      "id": "evt-1773106263505-d2f926a9",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T01:31:03.505Z",
+      "featureName": "Add item count indicator to workspace page labels",
+      "featureId": "feature-1773106019701-rq2cfhork3g"
+    },
+    {
+      "id": "evt-1773106020039-467f993f",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-10T01:27:00.039Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1773106019701-rq2cfhork3g"
+    },
+    {
+      "id": "evt-1773106014144-ba19c10d",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T01:26:54.144Z",
+      "featureName": "Add Smart Rules to Labels dropdown for topic filtering",
+      "featureId": "feature-1773104867786-52sulsg5ywr"
+    },
+    {
+      "id": "evt-1773105281314-3423ae75",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-10T01:14:41.314Z",
+      "featureName": "Add page reordering capability",
+      "featureId": "feature-1773104748096-wkk4mgmuhxj"
+    },
+    {
+      "id": "evt-1773104868503-c9cd847b",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-10T01:07:48.503Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1773104867786-52sulsg5ywr"
+    },
+    {
+      "id": "evt-1773104748651-2821ee73",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-10T01:05:48.651Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1773104748096-wkk4mgmuhxj"
+    },
+    {
+      "id": "evt-1773097285656-608f390a",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-09T23:01:25.656Z",
+      "featureName": "Add page context modal with AI-powered smart rule setup",
+      "featureId": "feature-1773096651650-db0rqwpb5bk"
+    },
+    {
+      "id": "evt-1773097190315-33379b3f",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-09T22:59:50.315Z",
+      "featureName": "Add AI question prompt to every page",
+      "featureId": "feature-1773096761697-q2t7vd372se"
+    },
+    {
+      "id": "evt-1773097126898-68d031ef",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-09T22:58:46.898Z",
+      "featureName": "Add page context modal with AI-powered smart rule setup",
+      "featureId": "feature-1773096651650-db0rqwpb5bk"
+    },
+    {
+      "id": "evt-1773096762394-34068a72",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-09T22:52:42.394Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1773096761697-q2t7vd372se"
+    },
+    {
+      "id": "evt-1773096652285-b1b5c6be",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-09T22:50:52.285Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1773096651650-db0rqwpb5bk"
+    },
+    {
+      "id": "evt-1773065853494-8b23c7ad",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-09T14:17:33.495Z",
+      "featureName": "Create activity feed to track user actions",
+      "featureId": "feature-1773064809162-ctfvjsoyr77"
+    },
+    {
+      "id": "evt-1773065777503-fbb2167f",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-09T14:16:17.503Z",
+      "featureName": "Add tabbed interface with Knowledge, Decisions, Smart Rules, and Activity tabs",
+      "featureId": "feature-1773065078312-tlwb51ee8hc"
+    },
+    {
+      "id": "evt-1773065425170-791d08da",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-09T14:10:25.170Z",
+      "featureName": "Implement Smart Label Sync with Outlook Folder Auto-Creation",
+      "featureId": "feature-1773003654435-ccg7ql0hb35"
+    },
+    {
+      "id": "evt-1773065078960-7893ab6f",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-09T14:04:38.960Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1773065078312-tlwb51ee8hc"
+    },
+    {
+      "id": "evt-1773064809687-8aef9244",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-09T14:00:09.687Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1773064809162-ctfvjsoyr77"
+    },
+    {
+      "id": "evt-1773027292218-19fc5628",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-09T03:34:52.218Z",
+      "featureName": "Implement Smart Label Sync with Outlook Folder Auto-Creation",
+      "featureId": "feature-1773003654435-ccg7ql0hb35"
+    },
+    {
+      "id": "evt-1773004597681-4e0791d1",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T21:16:37.681Z",
+      "featureName": "Implement Smart Label Sync with Outlook Folder Auto-Creation",
+      "featureId": "feature-1773003654435-ccg7ql0hb35"
+    },
+    {
+      "id": "evt-1773003654959-ef422b18",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-08T21:00:54.959Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1773003654435-ccg7ql0hb35"
+    },
+    {
+      "id": "evt-1772948790567-64e8069a",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T05:46:30.567Z",
+      "featureName": "Admin subscriptions management page",
+      "featureId": "feature-1772948342073-djxmg6x98a"
+    },
+    {
+      "id": "evt-1772948554221-b63c6ac4",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T05:42:34.221Z",
+      "featureName": "Optimize mobile UI with bottom navigation and responsive AI chat",
+      "featureId": "feature-1772916361828-vfyj3gej7nr"
+    },
+    {
+      "id": "evt-1772948342602-34905967",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-08T05:39:02.602Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772948342073-djxmg6x98a"
+    },
+    {
+      "id": "evt-1772948324951-d556f9f1",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T05:38:44.951Z",
+      "featureName": "Make page mobile responsive for better viewing",
+      "featureId": "feature-1772948104617-jae0fyixprb"
+    },
+    {
+      "id": "evt-1772948289702-967837da",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T05:38:09.702Z",
+      "featureName": "Investigate and fix AI usage widget disappearance from header",
+      "featureId": "feature-1772948046117-u4adpsgqo7p"
+    },
+    {
+      "id": "evt-1772948137921-cdbd5316",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T05:35:37.921Z",
+      "featureName": "Add secure local storage support for Pages",
+      "featureId": "feature-1772947744445-jp2ifn0b8t"
+    },
+    {
+      "id": "evt-1772948110036-69d701e1",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T05:35:10.036Z",
+      "featureName": "Investigate and fix AI usage widget disappearance from header",
+      "featureId": "feature-1772948046117-u4adpsgqo7p"
+    },
+    {
+      "id": "evt-1772948104932-ac8c6b7d",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-08T05:35:04.932Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772948104617-jae0fyixprb"
+    },
+    {
+      "id": "evt-1772948046531-21181783",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-08T05:34:06.531Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772948046117-u4adpsgqo7p"
+    },
+    {
+      "id": "evt-1772947951469-a098685f",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-08T05:32:31.469Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772947951243-38lruw0xcnc"
+    },
+    {
+      "id": "evt-1772947930663-90fd6486",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T05:32:10.663Z",
+      "featureName": "Implement Stripe subscription management system",
+      "featureId": "feature-1772902384859-t9hexh8hnhq"
+    },
+    {
+      "id": "evt-1772947887866-9b8f9a69",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T05:31:27.866Z",
+      "featureName": "Add settings page with sub-menus for organization",
+      "featureId": "feature-1772946409356-xgqjyb6mdu"
+    },
+    {
+      "id": "evt-1772947745265-cef95f4d",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-08T05:29:05.265Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772947744445-jp2ifn0b8t"
+    },
+    {
+      "id": "evt-1772947390596-96a8f691",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T05:23:10.596Z",
+      "featureName": "Implement Stripe subscription management system",
+      "featureId": "feature-1772902384859-t9hexh8hnhq"
+    },
+    {
+      "id": "evt-1772946971953-5791913e",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T05:16:11.953Z",
+      "featureName": "Add settings page with sub-menus for organization",
+      "featureId": "feature-1772946409356-xgqjyb6mdu"
+    },
+    {
+      "id": "evt-1772946842370-08d2948b",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T05:14:02.370Z",
+      "featureName": "Create Chrome extension for web clip HTML storage",
+      "featureId": "feature-1772945468696-i8le7a989g"
+    },
+    {
+      "id": "evt-1772946409876-d5fd3950",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-08T05:06:49.876Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772946409356-xgqjyb6mdu"
+    },
+    {
+      "id": "evt-1772946220016-0c1b84e1",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T05:03:40.016Z",
+      "featureName": "Implement SaaS subscription billing with Stripe",
+      "featureId": "feature-1772945013422-h98ouxyh3d6"
+    },
+    {
+      "id": "evt-1772945963890-3f0d4605",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T04:59:23.890Z",
+      "featureName": "Create Chrome extension for web clip HTML storage",
+      "featureId": "feature-1772945468696-i8le7a989g"
+    },
+    {
+      "id": "evt-1772945600901-80b99e10",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T04:53:20.901Z",
+      "featureName": "Implement selective account data deletion with confirmation gate",
+      "featureId": "feature-1772944992478-2zbpmr48ar"
+    },
+    {
+      "id": "evt-1772945469682-8585c246",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-08T04:51:09.682Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772945468696-i8le7a989g"
+    },
+    {
+      "id": "evt-1772945014237-4032a2be",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-08T04:43:34.237Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772945013422-h98ouxyh3d6"
+    },
+    {
+      "id": "evt-1772944993005-4617abc9",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-08T04:43:13.005Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772944992478-2zbpmr48ar"
+    },
+    {
+      "id": "evt-1772944882545-1bcf0cae",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T04:41:22.545Z",
+      "featureName": "Remove Brain Knowledge and Graph features",
+      "featureId": "feature-1772943593430-yy0u8ml8g6c"
+    },
+    {
+      "id": "evt-1772944806060-dcd9a5b3",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T04:40:06.060Z",
+      "featureName": "Combine Detect and Spam into Classify All",
+      "featureId": "feature-1772944176392-tmtkgado9jr"
+    },
+    {
+      "id": "evt-1772944590227-ca75e3d7",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T04:36:30.227Z",
+      "featureName": "Display API key usage statistics in header",
+      "featureId": "feature-1772943696379-lq568gi6jh"
+    },
+    {
+      "id": "evt-1772944512172-8a32119f",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T04:35:12.172Z",
+      "featureName": "Send emails to pages with selective copying",
+      "featureId": "feature-1772943540489-zwycmg8qmm"
+    },
+    {
+      "id": "evt-1772944177009-226672f5",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-08T04:29:37.009Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772944176392-tmtkgado9jr"
+    },
+    {
+      "id": "evt-1772944005321-07983cb6",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T04:26:45.321Z",
+      "featureName": "Display API key usage statistics in header",
+      "featureId": "feature-1772943696379-lq568gi6jh"
+    },
+    {
+      "id": "evt-1772943980186-03795874",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T04:26:20.186Z",
+      "featureName": "Remove Brain Knowledge and Graph features",
+      "featureId": "feature-1772943593430-yy0u8ml8g6c"
+    },
+    {
+      "id": "evt-1772943944853-df7ee4c8",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T04:25:44.853Z",
+      "featureName": "Combine inbox tabs with pinnable accounts and labels",
+      "featureId": "feature-1772943228465-g0zeghzrfp6"
+    },
+    {
+      "id": "evt-1772943696876-36e37e09",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-08T04:21:36.876Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772943696379-lq568gi6jh"
+    },
+    {
+      "id": "evt-1772943645145-ad129732",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T04:20:45.145Z",
+      "featureName": "Combine inbox tabs with pinnable accounts and labels",
+      "featureId": "feature-1772943228465-g0zeghzrfp6"
+    },
+    {
+      "id": "evt-1772943594039-ed2c6a64",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-08T04:19:54.039Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772943593430-yy0u8ml8g6c"
+    },
+    {
+      "id": "evt-1772943540954-6b1ba570",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-08T04:19:00.954Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772943540489-zwycmg8qmm"
+    },
+    {
+      "id": "evt-1772943228885-9cadf221",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-08T04:13:48.885Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772943228465-g0zeghzrfp6"
+    },
+    {
+      "id": "evt-1772942780935-38504fec",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T04:06:20.935Z",
+      "featureName": "Create mobile-optimized inbox layout with responsive design",
+      "featureId": "feature-1772937421113-766zwn77p3h"
+    },
+    {
+      "id": "evt-1772942612537-174a36cf",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T04:03:32.537Z",
+      "featureName": "Integrate knowledge and decisions into customizable smart label pages",
+      "featureId": "feature-1772937956830-4c6ny1z8d6r"
+    },
+    {
+      "id": "evt-1772942382158-ba138dc9",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T03:59:42.158Z",
+      "featureName": "Integrate knowledge and decisions into customizable smart label pages",
+      "featureId": "feature-1772937956830-4c6ny1z8d6r"
+    },
+    {
+      "id": "evt-1772942305764-206f4b7b",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T03:58:25.764Z",
+      "featureName": "Create mobile-optimized inbox layout with responsive design",
+      "featureId": "feature-1772937421113-766zwn77p3h"
+    },
+    {
+      "id": "evt-1772941880957-87dd463e",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T03:51:20.957Z",
+      "featureName": "Integrate knowledge and decisions into customizable smart label pages",
+      "featureId": "feature-1772937956830-4c6ny1z8d6r"
+    },
+    {
+      "id": "evt-1772941811724-ef5aa0d1",
+      "trigger": "feature_error",
+      "timestamp": "2026-03-08T03:50:11.724Z",
+      "featureName": "Integrate knowledge and decisions into customizable smart label pages",
+      "featureId": "feature-1772937956830-4c6ny1z8d6r"
+    },
+    {
+      "id": "evt-1772938867278-090b9c09",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T03:01:07.278Z",
+      "featureName": "Integrate knowledge and decisions into customizable smart label pages",
+      "featureId": "feature-1772937956830-4c6ny1z8d6r"
+    },
+    {
+      "id": "evt-1772938049607-5ddf0e21",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-08T02:47:29.607Z",
+      "featureName": "Create mobile-optimized inbox layout with responsive design",
+      "featureId": "feature-1772937421113-766zwn77p3h"
+    },
+    {
+      "id": "evt-1772937957848-d53704d6",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-08T02:45:57.848Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772937956830-4c6ny1z8d6r"
+    },
+    {
+      "id": "evt-1772937421544-5ca5e3bd",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-08T02:37:01.544Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772937421113-766zwn77p3h"
+    },
+    {
+      "id": "evt-1772916935784-b7f627f5",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T20:55:35.784Z",
+      "featureName": "Optimize mobile UI with bottom navigation and responsive AI chat",
+      "featureId": "feature-1772916361828-vfyj3gej7nr"
+    },
+    {
+      "id": "evt-1772916362277-b764e6ba",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-07T20:46:02.278Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772916361828-vfyj3gej7nr"
+    },
+    {
+      "id": "evt-1772915352753-33d554cc",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T20:29:12.753Z",
+      "featureName": "Unify dashboard and workspace analytics views",
+      "featureId": "feature-1772914755822-71q47ibjvvt"
+    },
+    {
+      "id": "evt-1772914756231-4ff4a206",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-07T20:19:16.231Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772914755822-71q47ibjvvt"
+    },
+    {
+      "id": "evt-1772908564678-a884f707",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T18:36:04.678Z",
+      "featureName": "Personal Productivity Analytics Dashboard",
+      "featureId": "workspace-analytics"
+    },
+    {
+      "id": "evt-1772908547821-5a3dcda0",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T18:35:47.822Z",
+      "featureName": "Create Per-Tenant OpenRouter API Keys Automatically",
+      "featureId": "feature-1772907903229-nbq0e0z0wj"
+    },
+    {
+      "id": "evt-1772907903647-1102b6bc",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-07T18:25:03.647Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772907903229-nbq0e0z0wj"
+    },
+    {
+      "id": "evt-1772907803217-5cd08391",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T18:23:23.217Z",
+      "featureName": "I'll help you investigate why the heatmap isn't appearing. Let me explore the dashboard and menu system to understand the current state.",
+      "featureId": "feature-1772907610983-0bf47r4zb78"
+    },
+    {
+      "id": "evt-1772907611423-6b7aa8f7",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-07T18:20:11.423Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772907610983-0bf47r4zb78"
+    },
+    {
+      "id": "evt-1772907338253-05bd9f95",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T18:15:38.253Z",
+      "featureName": "Add bulk delete for Kanban cards with selection",
+      "featureId": "feature-1772900654430-fc4ty5g7km"
+    },
+    {
+      "id": "evt-1772907336218-aa1daa15",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T18:15:36.218Z",
+      "featureName": "Link tasks to original meeting conversations",
+      "featureId": "feature-1772900611512-vc6sdj1hbz"
+    },
+    {
+      "id": "evt-1772907304323-6dc3f965",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T18:15:04.323Z",
+      "featureName": "Implement spam detection with one-click unsubscribe",
+      "featureId": "feature-1772897428668-tlzwxb3ftjj"
+    },
+    {
+      "id": "evt-1772907300304-9c615b8b",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T18:15:00.304Z",
+      "featureName": "Classify all visible messages on current page",
+      "featureId": "feature-1772896861958-z5l84rgbe"
+    },
+    {
+      "id": "evt-1772907295496-396233b5",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T18:14:55.496Z",
+      "featureName": "Add calendar sync for Google, Gmail, and Outlook accounts",
+      "featureId": "feature-1772830373902-qsigveg9au"
+    },
+    {
+      "id": "evt-1772907290304-66f98799",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T18:14:50.304Z",
+      "featureName": "Add Google OAuth Gmail inbox integration",
+      "featureId": "feature-1772822043063-v5hr8zfnft7"
+    },
+    {
+      "id": "evt-1772907284231-7913f67d",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T18:14:44.231Z",
+      "featureName": "Update Mail inbox with multi-account filter and sort",
+      "featureId": "feature-1772821945537-zxji2k8ea3"
+    },
+    {
+      "id": "evt-1772907280837-5b70c527",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T18:14:40.837Z",
+      "featureName": "Automate Action Item Extraction and Kanban Integration",
+      "featureId": "feature-1772458326353-qorq6munbk"
+    },
+    {
+      "id": "evt-1772907275734-4d36f53e",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T18:14:35.734Z",
+      "featureName": "Implement Zoom Chat integration with multi-tenant support",
+      "featureId": "feature-1772425478861-bhnqtrn6opt"
+    },
+    {
+      "id": "evt-1772907272972-2f4af7cf",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T18:14:32.972Z",
+      "featureName": "Create default Kanban board for action items",
+      "featureId": "feature-1772406328272-x8jr1l28u3j"
+    },
+    {
+      "id": "evt-1772907265961-3f8ade96",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T18:14:25.961Z",
+      "featureName": "Implement Gmail email ingestion via Pub/Sub",
+      "featureId": "feature-1772315935958-xuspggepvk"
+    },
+    {
+      "id": "evt-1772904469981-6fad89f1",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T17:27:49.981Z",
+      "featureName": "Cross-Entity Thought Linking",
+      "featureId": "open-brain-thought-linking"
+    },
+    {
+      "id": "evt-1772903430964-be45fb73",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T17:10:30.964Z",
+      "featureName": "VIP Contact Priority Inbox Filter",
+      "featureId": "email-vip-contacts"
+    },
+    {
+      "id": "evt-1772903406858-8d50fe86",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T17:10:06.858Z",
+      "featureName": "Auto-Built Contact Book from Email History",
+      "featureId": "email-contact-book"
+    },
+    {
+      "id": "evt-1772903353970-c917de46",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T17:09:13.970Z",
+      "featureName": "Thought Reminder & Resurfacing Scheduler",
+      "featureId": "open-brain-reminder-scheduling"
+    },
+    {
+      "id": "evt-1772903190623-b08630fa",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T17:06:30.623Z",
+      "featureName": "Card Sub-Task Checklist",
+      "featureId": "kanban-card-checklist"
+    },
+    {
+      "id": "evt-1772903095639-b26db360",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T17:04:55.639Z",
+      "featureName": "Personal Productivity Heatmap",
+      "featureId": "user-activity-heatmap"
+    },
+    {
+      "id": "evt-1772903052376-670a1e4b",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T17:04:12.376Z",
+      "featureName": "Knowledge Graph Visualization",
+      "featureId": "open-brain-graph-view"
+    },
+    {
+      "id": "evt-1772902385573-28e2eb2b",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-07T16:53:05.573Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772902384859-t9hexh8hnhq"
+    },
+    {
+      "id": "evt-1772901850458-5da8ea9d",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-07T16:44:10.458Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772901850138-j6tz0r3qqyi"
+    },
+    {
+      "id": "evt-1772901826215-b5a92de0",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T16:43:46.215Z",
+      "featureName": "Add bulk delete for Kanban cards with selection",
+      "featureId": "feature-1772900654430-fc4ty5g7km"
+    },
+    {
+      "id": "evt-1772901656589-52394d87",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T16:40:56.589Z",
+      "featureName": "Forward message via email with draft generation",
+      "featureId": "feature-1772900004300-af34f2e2anp"
+    },
+    {
+      "id": "evt-1772901520116-5912fbdb",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T16:38:40.116Z",
+      "featureName": "Forward message via email with draft generation",
+      "featureId": "feature-1772900004300-af34f2e2anp"
+    },
+    {
+      "id": "evt-1772901155168-46f5715c",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T16:32:35.168Z",
+      "featureName": "Link tasks to original meeting conversations",
+      "featureId": "feature-1772900611512-vc6sdj1hbz"
+    },
+    {
+      "id": "evt-1772901105537-7e8c2756",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T16:31:45.537Z",
+      "featureName": "Add bulk delete for Kanban cards with selection",
+      "featureId": "feature-1772900654430-fc4ty5g7km"
+    },
+    {
+      "id": "evt-1772900879563-ee61d035",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T16:27:59.563Z",
+      "featureName": "Forward message via email with draft generation",
+      "featureId": "feature-1772900004300-af34f2e2anp"
+    },
+    {
+      "id": "evt-1772900684556-67a425b6",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T16:24:44.556Z",
+      "featureName": "Optimize inbox performance with secure local storage caching",
+      "featureId": "feature-1772900207608-4swge4196rg"
+    },
+    {
+      "id": "evt-1772900655138-4512adc8",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-07T16:24:15.138Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772900654430-fc4ty5g7km"
+    },
+    {
+      "id": "evt-1772900612126-2edb847c",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-07T16:23:32.126Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772900611512-vc6sdj1hbz"
+    },
+    {
+      "id": "evt-1772900207986-90ee3210",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-07T16:16:47.987Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772900207608-4swge4196rg"
+    },
+    {
+      "id": "evt-1772900004697-50af4b8c",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-07T16:13:24.697Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772900004300-af34f2e2anp"
+    },
+    {
+      "id": "evt-1772898633534-0af0ea8a",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T15:50:33.534Z",
+      "featureName": "Generate AI Draft Replies for Smart Labels",
+      "featureId": "feature-1772897317865-7ptpvq39827"
+    },
+    {
+      "id": "evt-1772898180754-4c268e63",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T15:43:00.754Z",
+      "featureName": "Implement spam detection with one-click unsubscribe",
+      "featureId": "feature-1772897428668-tlzwxb3ftjj"
+    },
+    {
+      "id": "evt-1772898037290-ca5f4519",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T15:40:37.290Z",
+      "featureName": "Add smart label creation button to inbox messages",
+      "featureId": "feature-1772897566882-opqvr1zz4eq"
+    },
+    {
+      "id": "evt-1772897640628-eec74f74",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T15:34:00.628Z",
+      "featureName": "Add smart label categorizations to inbox filters",
+      "featureId": "feature-1772897363351-ogxewu0n1j"
+    },
+    {
+      "id": "evt-1772897567386-87531913",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-07T15:32:47.386Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772897566882-opqvr1zz4eq"
+    },
+    {
+      "id": "evt-1772897429428-22857979",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-07T15:30:29.428Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772897428668-tlzwxb3ftjj"
+    },
+    {
+      "id": "evt-1772897363944-a02244fc",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-07T15:29:23.944Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772897363351-ogxewu0n1j"
+    },
+    {
+      "id": "evt-1772897345185-97933605",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T15:29:05.185Z",
+      "featureName": "Classify all visible messages on current page",
+      "featureId": "feature-1772896861958-z5l84rgbe"
+    },
+    {
+      "id": "evt-1772897318279-657f64e9",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-07T15:28:38.279Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772897317865-7ptpvq39827"
+    },
+    {
+      "id": "evt-1772897187851-bd17dad3",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T15:26:27.851Z",
+      "featureName": "Implement AI-powered smart label engine for automatic classification",
+      "featureId": "feature-1772858802258-c8xj8p7vi6o"
+    },
+    {
+      "id": "evt-1772896862349-d639af47",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-07T15:21:02.349Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772896861958-z5l84rgbe"
+    },
+    {
+      "id": "evt-1772860275135-9f072cfb",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-07T05:11:15.135Z",
+      "featureName": "Implement AI-powered smart label engine for automatic classification",
+      "featureId": "feature-1772858802258-c8xj8p7vi6o"
+    },
+    {
+      "id": "evt-1772858802745-1a967a96",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-07T04:46:42.745Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772858802258-c8xj8p7vi6o"
+    },
+    {
+      "id": "evt-1772831474392-0163f232",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-06T21:11:14.392Z",
+      "featureName": "Global Command Palette (Cmd+K)",
+      "featureId": "global-command-palette"
+    },
+    {
+      "id": "evt-1772831324439-ee526834",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-06T21:08:44.439Z",
+      "featureName": "AI Daily Briefing Generation",
+      "featureId": "ai-daily-briefing"
+    },
+    {
+      "id": "evt-1772831273943-895d4bea",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-06T21:07:53.943Z",
+      "featureName": "Newsletter & Marketing Email Filter",
+      "featureId": "email-newsletter-filter"
+    },
+    {
+      "id": "evt-1772830930612-b58339b2",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-06T21:02:10.612Z",
+      "featureName": "Upcoming Events Widget on Dashboard",
+      "featureId": "calendar-upcoming-widget"
+    },
+    {
+      "id": "evt-1772830851891-811f3196",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-06T21:00:51.891Z",
+      "featureName": "Add calendar sync for Google, Gmail, and Outlook accounts",
+      "featureId": "feature-1772830373902-qsigveg9au"
+    },
+    {
+      "id": "evt-1772830374803-eeaf78d6",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-06T20:52:54.803Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772830373902-qsigveg9au"
+    },
+    {
+      "id": "evt-1772828604169-f626110c",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-06T20:23:24.169Z",
+      "featureName": "Add email account switcher to inbox view",
+      "featureId": "feature-1772827890671-ky40tz6k9k"
+    },
+    {
+      "id": "evt-1772828328956-49ac0d42",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-06T20:18:48.956Z",
+      "featureName": "Google Calendar Event Ingestion",
+      "featureId": "google-calendar-integration"
+    },
+    {
+      "id": "evt-1772827891414-80442f66",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-06T20:11:31.414Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772827890671-ky40tz6k9k"
+    },
+    {
+      "id": "evt-1772824722447-d40c780f",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-06T19:18:42.447Z",
+      "featureName": "Add Google OAuth Gmail inbox integration",
+      "featureId": "feature-1772822043063-v5hr8zfnft7"
+    },
+    {
+      "id": "evt-1772822731170-77598ce0",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-06T18:45:31.170Z",
+      "featureName": "Update Mail inbox with multi-account filter and sort",
+      "featureId": "feature-1772821945537-zxji2k8ea3"
+    },
+    {
+      "id": "evt-1772822600000-f00dddec",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-06T18:43:20.000Z",
+      "featureName": "Add Google OAuth Gmail inbox integration",
+      "featureId": "feature-1772822043063-v5hr8zfnft7"
+    },
+    {
+      "id": "evt-1772822043513-75794a86",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-06T18:34:03.513Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772822043063-v5hr8zfnft7"
+    },
+    {
+      "id": "evt-1772821946055-7eefd92e",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-06T18:32:26.055Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772821945537-zxji2k8ea3"
+    },
+    {
+      "id": "evt-1772771011456-5af19990",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-06T04:23:31.456Z",
+      "featureName": "Improve Kanban boards",
+      "featureId": "feature-1772426033337-jqx5ylorfpj"
+    },
+    {
+      "id": "evt-1772770999082-cee9c5c4",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-06T04:23:19.083Z",
+      "featureName": "Lightweight email client",
+      "featureId": "feature-1772428172151-inmc4zahya"
+    },
+    {
+      "id": "evt-1772770989355-4d6d7387",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-06T04:23:09.355Z",
+      "featureName": "Implement Zapier webhook integration for cross-system message ingestion",
+      "featureId": "feature-1772688276317-t7fo1gy5cjo"
+    },
+    {
+      "id": "evt-1772770983091-c924d0e8",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-06T04:23:03.091Z",
+      "featureName": "Create Chrome extension for Krisp web content capture",
+      "featureId": "feature-1772719432682-qiojsrz3xnn"
+    },
+    {
+      "id": "evt-1772770976338-6dd73c16",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-06T04:22:56.338Z",
+      "featureName": "Add AI system prompt management to admin settings",
+      "featureId": "feature-1772723033714-l6qblw2qky"
+    },
+    {
+      "id": "evt-1772770974026-fa66cbca",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-06T04:22:54.026Z",
+      "featureName": "Setup Neon database Row Level Security",
+      "featureId": "feature-1772745956493-o1wrmszebcf"
+    },
+    {
+      "id": "evt-1772770969608-94e67716",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-06T04:22:49.609Z",
+      "featureName": "Add calendar sync for Outlook integration",
+      "featureId": "feature-1772751207574-vlw5eh0xh1a"
+    },
+    {
+      "id": "evt-1772770962585-8ad0ee29",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-06T04:22:42.585Z",
+      "featureName": "Add support for multiple Outlook.com accounts",
+      "featureId": "feature-1772763891300-1znokfcn1sei"
+    },
+    {
+      "id": "evt-1772764518366-2fcb2c89",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-06T02:35:18.366Z",
+      "featureName": "Add support for multiple Outlook.com accounts",
+      "featureId": "feature-1772763891300-1znokfcn1sei"
+    },
+    {
+      "id": "evt-1772763891865-435ea628",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-06T02:24:51.865Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772763891300-1znokfcn1sei"
+    },
+    {
+      "id": "evt-1772752078099-8e5ed0f2",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T23:07:58.099Z",
+      "featureName": "Add calendar sync for Outlook integration",
+      "featureId": "feature-1772751207574-vlw5eh0xh1a"
+    },
+    {
+      "id": "evt-1772751207902-09abddbe",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-05T22:53:27.902Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772751207574-vlw5eh0xh1a"
+    },
+    {
+      "id": "evt-1772748760238-d7bcde61",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T22:12:40.238Z",
+      "featureName": "Setup Neon database Row Level Security",
+      "featureId": "feature-1772745956493-o1wrmszebcf"
+    },
+    {
+      "id": "evt-1772747354800-b8921eec",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T21:49:14.800Z",
+      "featureName": "Setup Neon database Row Level Security",
+      "featureId": "feature-1772745956493-o1wrmszebcf"
+    },
+    {
+      "id": "evt-1772746263245-db7c706e",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T21:31:03.245Z",
+      "featureName": "Setup Neon database Row Level Security",
+      "featureId": "feature-1772745956493-o1wrmszebcf"
+    },
+    {
+      "id": "evt-1772745957024-7a96cda0",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-05T21:25:57.024Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772745956493-o1wrmszebcf"
+    },
+    {
+      "id": "evt-1772732115277-92f6e0a5",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T17:35:15.277Z",
+      "featureName": "Create Chrome extension for Krisp web content capture",
+      "featureId": "feature-1772719432682-qiojsrz3xnn"
+    },
+    {
+      "id": "evt-1772731152541-a38cef0d",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T17:19:12.541Z",
+      "featureName": "Create Chrome extension for Krisp web content capture",
+      "featureId": "feature-1772719432682-qiojsrz3xnn"
+    },
+    {
+      "id": "evt-1772730725107-37bc573e",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T17:12:05.107Z",
+      "featureName": "Meeting Transcript Vector Embeddings for Semantic Search",
+      "featureId": "meeting-vector-embeddings"
+    },
+    {
+      "id": "evt-1772729886499-3b381b82",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T16:58:06.499Z",
+      "featureName": "Add AI system prompt management to admin settings",
+      "featureId": "feature-1772723033714-l6qblw2qky"
+    },
+    {
+      "id": "evt-1772729862107-a11f4b73",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T16:57:42.107Z",
+      "featureName": "Create Chrome extension for Krisp web content capture",
+      "featureId": "feature-1772719432682-qiojsrz3xnn"
+    },
+    {
+      "id": "evt-1772724607244-2f6ee2d3",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T15:30:07.244Z",
+      "featureName": "Create Chrome extension for Krisp web content capture",
+      "featureId": "feature-1772719432682-qiojsrz3xnn"
+    },
+    {
+      "id": "evt-1772724501081-55f35414",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T15:28:21.081Z",
+      "featureName": "Add AI system prompt management to admin settings",
+      "featureId": "feature-1772723033714-l6qblw2qky"
+    },
+    {
+      "id": "evt-1772724379592-fe9c9717",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T15:26:19.592Z",
+      "featureName": "Add AI system prompt management to admin settings",
+      "featureId": "feature-1772723033714-l6qblw2qky"
+    },
+    {
+      "id": "evt-1772723335854-3bae3dd5",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T15:08:55.854Z",
+      "featureName": "Create Chrome extension for Krisp web content capture",
+      "featureId": "feature-1772719432682-qiojsrz3xnn"
+    },
+    {
+      "id": "evt-1772723034371-2720f156",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-05T15:03:54.371Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772723033714-l6qblw2qky"
+    },
+    {
+      "id": "evt-1772720383380-df296f60",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T14:19:43.380Z",
+      "featureName": "Create Chrome extension for Krisp web content capture",
+      "featureId": "feature-1772719432682-qiojsrz3xnn"
+    },
+    {
+      "id": "evt-1772719433244-af0fa8c1",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-05T14:03:53.244Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772719432682-qiojsrz3xnn"
+    },
+    {
+      "id": "evt-1772689997868-5c49203c",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T05:53:17.868Z",
+      "featureName": "Implement Zapier webhook integration for cross-system message ingestion",
+      "featureId": "feature-1772688276317-t7fo1gy5cjo"
+    },
+    {
+      "id": "evt-1772689722942-a0d84f82",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T05:48:42.942Z",
+      "featureName": "Zapier & Make Outbound Webhook Triggers",
+      "featureId": "zapier-webhook-trigger"
+    },
+    {
+      "id": "evt-1772689169962-2b7248ed",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T05:39:29.962Z",
+      "featureName": "Add delete button to cards for quick removal",
+      "featureId": "feature-1772491932411-6izz5cotiu"
+    },
+    {
+      "id": "evt-1772689159483-a05ce95b",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T05:39:19.484Z",
+      "featureName": "Add quick return to last viewed Kanban board",
+      "featureId": "feature-1772459316662-8jfwvwe0z9i"
+    },
+    {
+      "id": "evt-1772689153226-04c3709b",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T05:39:13.226Z",
+      "featureName": "Implement semantic email search with OpenAI embeddings",
+      "featureId": "feature-1772430206239-lpeevpxscc8"
+    },
+    {
+      "id": "evt-1772689142434-bbfe44d8",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T05:39:02.434Z",
+      "featureName": "Build a lightweight Notion-like workspace app",
+      "featureId": "feature-1772557161411-k9qedsdhry"
+    },
+    {
+      "id": "evt-1772689134299-ef00ce27",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T05:38:54.299Z",
+      "featureName": "Add Microsoft Outlook integration",
+      "featureId": "feature-1772547367316-pvxrugwfnfk"
+    },
+    {
+      "id": "evt-1772689128618-31649eea",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T05:38:48.618Z",
+      "featureName": "Auto-extract action items from meetings to Kanban",
+      "featureId": "feature-1772510932215-hqktsfco60u"
+    },
+    {
+      "id": "evt-1772689121588-63250357",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T05:38:41.588Z",
+      "featureName": "Add AI agent chat interface for second brain queries",
+      "featureId": "feature-1772544423330-vrg1q6htako"
+    },
+    {
+      "id": "evt-1772689116340-900a6dfd",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T05:38:36.340Z",
+      "featureName": "Add color-coded speaker segmentation to meeting transcripts",
+      "featureId": "feature-1772555497240-u9eebgrxafj"
+    },
+    {
+      "id": "evt-1772689108418-72f89eeb",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T05:38:28.418Z",
+      "featureName": "Add meeting list filtering and search interface",
+      "featureId": "feature-1772555569604-a49ui93voxd"
+    },
+    {
+      "id": "evt-1772689106402-b46a600c",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T05:38:26.402Z",
+      "featureName": "Enable Telegram integration for brain AI chat",
+      "featureId": "feature-1772602997136-0gj0abxstyp"
+    },
+    {
+      "id": "evt-1772689102538-9e4c0c1b",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T05:38:22.538Z",
+      "featureName": "Extract email action items to Kanban board",
+      "featureId": "feature-1772602726954-gknpd67phfn"
+    },
+    {
+      "id": "evt-1772689096787-a71b61a3",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T05:38:16.787Z",
+      "featureName": "Implement application-layer encryption for sensitive user data",
+      "featureId": "feature-1772684051084-dn8cqixhos4"
+    },
+    {
+      "id": "evt-1772688276730-d275eb69",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-05T05:24:36.730Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772688276317-t7fo1gy5cjo"
+    },
+    {
+      "id": "evt-1772687565890-8ee37f2c",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-05T05:12:45.890Z",
+      "featureName": "Implement application-layer encryption for sensitive user data",
+      "featureId": "feature-1772684051084-dn8cqixhos4"
+    },
+    {
+      "id": "evt-1772684051915-d4a4ea9c",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-05T04:14:11.915Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1772684051084-dn8cqixhos4"
+    },
+    {
+      "id": "evt-1772606154929-9c5f67a8",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-04T06:35:54.929Z",
+      "featureName": "Enable Telegram integration for brain AI chat",
+      "featureId": "feature-1772602997136-0gj0abxstyp"
+    },
+    {
       "id": "evt-1772604394538-cfba5f53",
       "trigger": "feature_success",
       "timestamp": "2026-03-04T06:06:34.538Z",

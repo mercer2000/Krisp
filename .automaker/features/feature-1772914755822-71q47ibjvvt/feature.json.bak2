@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "Merge the concepts of dashboard and workspace analytics.",
+  "title": "Unify dashboard and workspace analytics views",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-07T20:19:15.822Z",
+  "id": "feature-1772914755822-71q47ibjvvt",
+  "descriptionHistory": [
+    {
+      "description": "Merge the concepts of dashboard and workspace analytics.",
+      "timestamp": "2026-03-07T20:19:16.227Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-07T20:29:12.736Z",
+  "justFinishedAt": "2026-03-07T20:29:12.736Z"
+}

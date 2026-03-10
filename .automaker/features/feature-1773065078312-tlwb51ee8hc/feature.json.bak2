@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "I want to change how we think about pages. When a new page is created, I think there should be tabs across the top, and the tabs across the top would be for the notes. I think there would be additional tabs that are specific to the actual AI:\n- Knowledge: these would be all of the key learnings\n- Decisions: which would list out all of the key decisions that are made\n- Smart rules: which tracks all of the smart rules associated with that page\nI think we may want to create an activity page, another tab called Activity, where there's just a log of everything to make it easier to debug and to have users have more confidence in the system.",
+  "title": "Add tabbed interface with Knowledge, Decisions, Smart Rules, and Activity tabs",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-09T14:04:38.312Z",
+  "id": "feature-1773065078312-tlwb51ee8hc",
+  "descriptionHistory": [
+    {
+      "description": "I want to change how we think about pages. When a new page is created, I think there should be tabs across the top, and the tabs across the top would be for the notes. I think there would be additional tabs that are specific to the actual AI:\n- Knowledge: these would be all of the key learnings\n- Decisions: which would list out all of the key decisions that are made\n- Smart rules: which tracks all of the smart rules associated with that page\nI think we may want to create an activity page, another tab called Activity, where there's just a log of everything to make it easier to debug and to have users have more confidence in the system.",
+      "timestamp": "2026-03-09T14:04:38.955Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-09T14:16:17.480Z",
+  "justFinishedAt": "2026-03-09T14:16:17.480Z"
+}

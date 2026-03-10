@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772903430964-be45fb73",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-07T17:10:30.964Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "email-vip-contacts",
+  "featureName": "VIP Contact Priority Inbox Filter",
+  "passes": true
+}

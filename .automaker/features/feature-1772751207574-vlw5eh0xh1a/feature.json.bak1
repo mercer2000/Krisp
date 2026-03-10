@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "Now that we have an outlook.com integration and have settings on the integration page, add new logic to sync the user's calendar information. \n\nhttps://krisp-khaki.vercel.app/calendar\n",
+  "title": "Add calendar sync for Outlook integration",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "id": "feature-1772751207574-vlw5eh0xh1a",
+  "descriptionHistory": [
+    {
+      "description": "Now that we have an outlook.com integration and have settings on the integration page, add new logic to sync the user's calendar information. \n\nhttps://krisp-khaki.vercel.app/calendar\n",
+      "timestamp": "2026-03-05T22:53:27.895Z",
+      "source": "initial"
+    }
+  ],
+  "startedAt": "2026-03-05T22:53:51.466Z",
+  "updatedAt": "2026-03-05T23:07:58.100Z",
+  "justFinishedAt": "2026-03-05T23:07:58.082Z",
+  "summary": "## Summary: Outlook Calendar Sync Integration\n\n### Changes Implemented\n- **Added `Calendars.Read` OAuth scope** to both the authorization URL builder and token refresh flow, enabling calendar access for Outlook OAuth connections\n- **Created `lib/outlook/calendar.ts`** — new library module that fetches calendar events from Microsoft Graph's `/me/calendarView` endpoint using delegated auth, maps them to the existing `calendar_events` database schema, and upserts with encryption\n- **Created `app/api/outlook/calendar/route.ts`** — new API route with POST (trigger calendar sync with configurable daysBack/daysForward) and GET (check Outlook calendar connection status) handlers\n- **Added new React Query hooks** (`useOutlookCalendarStatus`, `useOutlookCalendarSync`) to `lib/hooks/useCalendar.ts` for frontend integration\n- **Updated the Calendar page** (`app/(app)/calendar/page.tsx`) to detect both Graph API credentials AND Outlook OAuth connections as calendar sources, with unified sync button that triggers all available sources\n- **Updated the Integrations page** (`app/(app)/admin/integrations/IntegrationsClient.tsx`) Outlook tab with:\n  - New \"Sync Calendar Now\" button alongside existing \"Sync Emails Now\"\n  - Calendar sync result display\n  - Updated descriptions mentioning calendar sync capability\n  - Updated \"How It Works\" table with Calendar Sync row\n  - Updated \"Important Notes\" with guidance on reconnecting for calendar permissions\n\n### Files Modified\n- `lib/outlook/oauth.ts` — added `Calendars.Read` to OAuth scopes (both auth URL and token refresh)\n- `lib/hooks/useCalendar.ts` — added `useOutlookCalendarStatus` and `useOutlookCalendarSync` hooks\n- `app/(app)/calendar/page.tsx` — rewritten to support dual calendar sources (Graph API + Outlook OAuth)\n- `app/(app)/admin/integrations/IntegrationsClient.tsx` — added calendar sync UI to Outlook section\n\n### Files Created\n- `lib/outlook/calendar.ts` — Outlook calendar fetch, mapping, and sync logic\n- `app/api/outlook/calendar/route.ts` — API route for Outlook calendar sync\n\n### Notes for Developer\n- Users who connected their Outlook account before this change will need to **disconnect and reconnect** to grant the new `Calendars.Read` permission\n- Calendar events from Outlook OAuth syncs are stored in the same `calendar_events` table as Graph API syncs, with `credentialId = null` to differentiate them\n- The sync uses the existing `outlook_oauth_tokens.last_sync_at` field to track when the last sync occurred\n- TypeScript compilation passes with no errors"
+}

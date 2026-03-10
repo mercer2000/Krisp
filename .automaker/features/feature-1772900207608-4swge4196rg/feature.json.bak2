@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "For the inbox, can we leverage local storage securely so we can improve performance of how the inbox performs?",
+  "title": "Optimize inbox performance with secure local storage caching",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-07T16:16:47.607Z",
+  "id": "feature-1772900207608-4swge4196rg",
+  "descriptionHistory": [
+    {
+      "description": "For the inbox, can we leverage local storage securely so we can improve performance of how the inbox performs?",
+      "timestamp": "2026-03-07T16:16:47.981Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-07T16:24:44.535Z",
+  "justFinishedAt": "2026-03-07T16:24:44.535Z"
+}

@@ -1,0 +1,11 @@
+{
+  "id": "evt-1772941811724-7f36a4e8",
+  "trigger": "feature_error",
+  "timestamp": "2026-03-08T03:50:11.724Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772937956830-4c6ny1z8d6r",
+  "featureName": "Integrate knowledge and decisions into customizable smart label pages",
+  "error": "already running",
+  "errorType": "execution"
+}

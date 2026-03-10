@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "Now that we have an outlook.com integration and have settings on the integration page, add new logic to sync the user's calendar information. \n\nhttps://krisp-khaki.vercel.app/calendar\n",
+  "title": "Add calendar sync for Outlook integration",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "id": "feature-1772751207574-vlw5eh0xh1a",
+  "descriptionHistory": [
+    {
+      "description": "Now that we have an outlook.com integration and have settings on the integration page, add new logic to sync the user's calendar information. \n\nhttps://krisp-khaki.vercel.app/calendar\n",
+      "timestamp": "2026-03-05T22:53:27.895Z",
+      "source": "initial"
+    }
+  ],
+  "startedAt": "2026-03-05T22:53:51.466Z",
+  "updatedAt": "2026-03-05T23:07:58.082Z",
+  "justFinishedAt": "2026-03-05T23:07:58.082Z"
+}

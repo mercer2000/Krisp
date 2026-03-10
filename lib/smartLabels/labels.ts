@@ -8,6 +8,7 @@ export async function getSmartLabels(tenantId: string): Promise<SmartLabel[]> {
   const rows = await sql`
     SELECT id, tenant_id, name, prompt, color, active,
            auto_draft_enabled, context_window_max,
+           graph_folder_id, folder_sync_status, outlook_account_id,
            created_at, updated_at
     FROM smart_labels
     WHERE tenant_id = ${tenantId}
@@ -23,6 +24,7 @@ export async function getActiveSmartLabels(tenantId: string): Promise<SmartLabel
   const rows = await sql`
     SELECT id, tenant_id, name, prompt, color, active,
            auto_draft_enabled, context_window_max,
+           graph_folder_id, folder_sync_status, outlook_account_id,
            created_at, updated_at
     FROM smart_labels
     WHERE tenant_id = ${tenantId} AND active = true
@@ -41,6 +43,7 @@ export async function getSmartLabelById(
   const rows = await sql`
     SELECT id, tenant_id, name, prompt, color, active,
            auto_draft_enabled, context_window_max,
+           graph_folder_id, folder_sync_status, outlook_account_id,
            created_at, updated_at
     FROM smart_labels
     WHERE id = ${labelId} AND tenant_id = ${tenantId}
@@ -60,7 +63,10 @@ export async function createSmartLabel(
   const rows = await sql`
     INSERT INTO smart_labels (tenant_id, name, prompt, color)
     VALUES (${tenantId}, ${name}, ${prompt}, ${color})
-    RETURNING id, tenant_id, name, prompt, color, active, created_at, updated_at
+    RETURNING id, tenant_id, name, prompt, color, active,
+              auto_draft_enabled, context_window_max,
+              graph_folder_id, folder_sync_status, outlook_account_id,
+              created_at, updated_at
   `;
   return rows[0] as SmartLabel;
 }
@@ -111,6 +117,7 @@ export async function updateSmartLabel(
     WHERE id = $${values.length + 1} AND tenant_id = $${values.length + 2}
     RETURNING id, tenant_id, name, prompt, color, active,
               auto_draft_enabled, context_window_max,
+              graph_folder_id, folder_sync_status, outlook_account_id,
               created_at, updated_at
   `;
   values.push(labelId, tenantId);

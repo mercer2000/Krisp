@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772689159483-a05ce95b",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-05T05:39:19.484Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772459316662-8jfwvwe0z9i",
+  "featureName": "Add quick return to last viewed Kanban board",
+  "passes": true
+}

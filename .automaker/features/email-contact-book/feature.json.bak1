@@ -1,0 +1,16 @@
+{
+  "id": "email-contact-book",
+  "category": "Email",
+  "title": "Auto-Built Contact Book from Email History",
+  "description": "Automatically extract and deduplicate sender/recipient addresses from all stored emails to build a contacts table. Displays a searchable contact list with email frequency stats, recent messages, and associated meetings. Enables auto-complete when composing new emails.",
+  "status": "verified",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [
+    "email-compose"
+  ],
+  "createdAt": "2026-03-02T19:00:34.419Z",
+  "updatedAt": "2026-03-07T17:10:06.838Z",
+  "startedAt": "2026-03-07T16:48:14.278Z",
+  "descriptionHistory": []
+}

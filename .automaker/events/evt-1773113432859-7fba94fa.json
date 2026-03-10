@@ -1,0 +1,10 @@
+{
+  "id": "evt-1773113432859-7fba94fa",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-10T03:30:32.859Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772827890671-ky40tz6k9k",
+  "featureName": "Add email account switcher to inbox view",
+  "passes": true
+}

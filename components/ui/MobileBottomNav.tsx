@@ -16,11 +16,11 @@ const BOTTOM_TABS = [
 const MORE_ITEMS = [
   { key: "dashboard", label: "Dashboard", href: "/dashboard", icon: DashboardMoreIcon },
   { key: "boards", label: "Kanban", href: "/boards", icon: KanbanMoreIcon },
-  { key: "decisions", label: "Decisions", href: "/decisions", icon: DecisionsMoreIcon },
   { key: "reviews", label: "Reviews", href: "/weekly-reviews", icon: ReviewsMoreIcon },
   { key: "pages", label: "Pages", href: "/workspace", icon: PagesMoreIcon },
   { key: "contacts", label: "Contacts", href: "/contacts", icon: ContactsMoreIcon },
   { key: "analytics", label: "Analytics", href: "/analytics", icon: AnalyticsMoreIcon },
+  { key: "activity", label: "Activity", href: "/activity", icon: ActivityMoreIcon },
   { key: "integrations", label: "Integrations", href: "/admin/integrations", icon: IntegrationsMoreIcon },
   { key: "prompts", label: "AI Prompts", href: "/admin/prompts", icon: PromptsMoreIcon },
   { key: "extensions", label: "Extensions", href: "/admin/extensions", icon: ExtensionsMoreIcon },
@@ -37,11 +37,11 @@ export function MobileBottomNav() {
     if (href === "/calendar") return pathname.startsWith("/calendar");
     if (href === "/brain") return pathname.startsWith("/brain");
     if (href === "/boards") return pathname.startsWith("/boards");
-    if (href === "/decisions") return pathname.startsWith("/decisions");
     if (href === "/weekly-reviews") return pathname.startsWith("/weekly-reviews");
     if (href === "/workspace") return pathname.startsWith("/workspace");
     if (href === "/contacts") return pathname.startsWith("/contacts");
     if (href === "/analytics") return pathname === "/analytics";
+    if (href === "/activity") return pathname === "/activity";
     if (href === "/admin/integrations") return pathname.startsWith("/admin/integrations");
     if (href === "/admin/prompts") return pathname.startsWith("/admin/prompts");
     if (href === "/admin/extensions") return pathname.startsWith("/admin/extensions");
@@ -232,16 +232,6 @@ function KanbanMoreIcon({ size = 22 }: { size?: number }) {
   );
 }
 
-function DecisionsMoreIcon({ size = 22 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-      <path d="M20 3v4" />
-      <path d="M22 5h-4" />
-    </svg>
-  );
-}
-
 function ReviewsMoreIcon({ size = 22 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -279,6 +269,15 @@ function AnalyticsMoreIcon({ size = 22 }: { size?: number }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 3v18h18" />
       <path d="m19 9-5 5-4-4-3 3" />
+    </svg>
+  );
+}
+
+function ActivityMoreIcon({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 8v4l3 3" />
+      <circle cx="12" cy="12" r="10" />
     </svg>
   );
 }

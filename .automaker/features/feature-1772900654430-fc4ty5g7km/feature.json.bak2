@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "On the Kanban board, I need a super lightweight way to delete multiple to-do items at once. I want to be able to select cards and then press delete, or the other option is I want to be able to drag and drop cards onto a trash can.",
+  "title": "Add bulk delete for Kanban cards with selection",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "in_progress",
+  "startedAt": "2026-03-07T16:42:32.713Z",
+  "id": "feature-1772900654430-fc4ty5g7km",
+  "descriptionHistory": [
+    {
+      "description": "On the Kanban board, I need a super lightweight way to delete multiple to-do items at once. I want to be able to select cards and then press delete, or the other option is I want to be able to drag and drop cards onto a trash can.",
+      "timestamp": "2026-03-07T16:24:15.132Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-07T16:31:45.537Z",
+  "justFinishedAt": "2026-03-07T16:31:45.521Z",
+  "summary": "## Summary: Multi-select bulk delete for Kanban cards\n\n### Changes Implemented\n- Added multi-select card functionality via Ctrl/Cmd+click and checkbox UI\n- Added keyboard shortcuts: Delete/Backspace to delete selected cards, Escape to clear selection\n- Added floating selection toolbar showing count with Delete and Clear buttons\n- Enhanced drag-to-trash to delete all selected cards when dragging a selected card\n- Updated TrashDropZone to display selected card count during drag\n- Added `useDeleteCards` bulk delete hook that fires parallel DELETE requests\n- Cards show blue ring highlight and filled checkbox when selected\n- Checkboxes appear on hover (hidden by default) and stay visible when any card is selected\n\n### Files Modified\n- `lib/hooks/useCards.ts` — Added `useDeleteCards` bulk mutation hook\n- `components/board/Card.tsx` — Added `isSelected`, `hasSelection`, `onSelect` props; checkbox UI; Ctrl+click handler; selected visual state\n- `components/board/Column.tsx` — Added `selectedCardIds` and `onSelectCard` props; passes them through to Card components\n- `components/board/TrashDropZone.tsx` — Added `selectedCount` prop; dynamic label showing card count\n- `components/board/KanbanBoard.tsx` — Added `selectedCardIds` state; keyboard handlers (Delete, Escape); `handleSelectCard` callback; bulk drag-to-delete logic; floating selection toolbar; wired all selection props to columns\n\n### Notes for Developer\n- Selection uses Ctrl+Click (Windows) / Cmd+Click (Mac) to match standard OS conventions\n- Bulk delete fires parallel DELETE requests to the existing `/api/v1/cards/{id}` endpoint — no new API route needed\n- All deletes show a confirmation dialog before proceeding\n- The floating toolbar only appears when cards are selected and no drag is active (to avoid clashing with the TrashDropZone)"
+}

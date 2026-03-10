@@ -58,6 +58,7 @@ export interface GmailEmailRow {
   attachments: object;
   labels: object;
   raw_payload: object | null;
+  is_read: boolean;
   ingested_at: Date;
   updated_at: Date;
 }

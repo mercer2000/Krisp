@@ -1,0 +1,16 @@
+{
+  "id": "user-activity-heatmap",
+  "category": "Analytics",
+  "title": "Personal Productivity Heatmap",
+  "description": "Display a GitHub-style contribution heatmap on the analytics dashboard showing daily capture activity across all sources (cards completed, thoughts captured, meetings attended, emails processed). Hovering a day shows a breakdown by source. Helps users identify productive streaks and gaps in knowledge capture.",
+  "status": "backlog",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [
+    "workspace-analytics"
+  ],
+  "createdAt": "2026-03-02T19:21:47.452Z",
+  "updatedAt": "2026-03-07T17:02:30.831Z",
+  "startedAt": "2026-03-07T16:47:32.183Z",
+  "descriptionHistory": []
+}

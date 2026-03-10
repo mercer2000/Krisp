@@ -9,6 +9,7 @@ export interface OutlookOauthTokenRow {
   token_expiry: string;
   active: boolean;
   last_sync_at: string | null;
+  email_action_board_id: string | null;
   created_at: string;
   updated_at: string;
 }

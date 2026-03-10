@@ -14,7 +14,7 @@
   "planningMode": "spec",
   "requirePlanApproval": false,
   "dependencies": [],
-  "status": "in_progress",
+  "status": "waiting_approval",
   "startedAt": "2026-03-02T13:48:36.661Z",
   "id": "feature-1772459316662-8jfwvwe0z9i",
   "descriptionHistory": [
@@ -23,5 +23,7 @@
       "timestamp": "2026-03-02T13:48:37.097Z",
       "source": "initial"
     }
-  ]
+  ],
+  "updatedAt": "2026-03-02T13:56:58.984Z",
+  "justFinishedAt": "2026-03-02T13:56:58.984Z"
 }

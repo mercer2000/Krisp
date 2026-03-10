@@ -10,6 +10,8 @@ import { eq, and } from "drizzle-orm";
 import { timingSafeEqual } from "crypto";
 import { extractActionItemsForMeeting } from "@/lib/actions/extractActionItems";
 import { dispatchWebhooks } from "@/lib/webhooks/dispatch";
+import { logActivity } from "@/lib/activity/log";
+import { classifyItemForPages } from "@/lib/pageRules/classify";
 
 const SUPPORTED_EVENTS: WebhookEventType[] = [
   "key_points_generated",
@@ -142,6 +144,19 @@ export async function POST(request: NextRequest) {
     // Insert the webhook data with user association
     const result = await insertWebhookKeyPoints(payload, userId);
 
+    logActivity({
+      userId,
+      eventType: "meeting.received",
+      title: `Meeting received: "${payload.data?.meeting?.title || "Untitled meeting"}"`,
+      description: `Krisp webhook ${payload.event} processed`,
+      entityType: "meeting",
+      entityId: String(result.id),
+      metadata: {
+        meetingId: payload.data?.meeting?.id,
+        webhookEvent: payload.event,
+      },
+    });
+
     // Fire outbound webhooks (non-blocking)
     dispatchWebhooks(userId, "meeting.ingested", result.id, {
       meetingTitle: payload.data?.meeting?.title || null,
@@ -171,6 +186,14 @@ export async function POST(request: NextRequest) {
     ).catch((err) =>
       console.error(
         `Auto-extraction failed for meeting ${result.id}:`,
+        err
+      )
+    );
+
+    // Page smart rule classification (non-blocking)
+    classifyItemForPages("meeting", String(result.id), userId).catch((err) =>
+      console.error(
+        `Page rule classification failed for meeting ${result.id}:`,
         err
       )
     );

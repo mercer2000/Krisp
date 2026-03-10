@@ -14,7 +14,7 @@
   "planningMode": "spec",
   "requirePlanApproval": true,
   "dependencies": [],
-  "status": "in_progress",
+  "status": "waiting_approval",
   "startedAt": "2026-03-03T14:50:39.732Z",
   "id": "feature-1772547367316-pvxrugwfnfk",
   "descriptionHistory": [
@@ -24,7 +24,7 @@
       "source": "initial"
     }
   ],
-  "updatedAt": "2026-03-03T14:37:28.918Z",
-  "justFinishedAt": "2026-03-03T14:37:28.896Z",
+  "updatedAt": "2026-03-03T14:51:02.574Z",
+  "justFinishedAt": "2026-03-03T14:51:02.574Z",
   "summary": "## Summary: Add Microsoft Outlook.com Integration\n\n### Changes Implemented\n- Added a new **Outlook.com (personal Microsoft account)** integration using the **OAuth 2.0 authorization code flow** with delegated permissions\n- Created the full OAuth lifecycle: connect, token exchange, token refresh, disconnect\n- Built a pull-based email sync that fetches inbox messages from the Microsoft Graph API using `/me/mailFolders/inbox/messages`\n- Added an \"Outlook.com\" tab to the Integrations admin UI with connection management, sync functionality, setup documentation, and important notes\n- Uses the `/consumers` authority endpoint for personal Microsoft accounts (Outlook.com, Hotmail, Live)\n- Emails are stored in the existing `emails` table with full deduplication\n- Token auto-refresh with error recovery (deactivates token on refresh failure so user sees they need to reconnect)\n- CSRF protection via state parameter with user ID + UUID validation\n\n### Files Modified\n- `lib/db/schema.ts` — Added `outlookOauthTokens` table definition\n- `drizzle/migrations/meta/_journal.json` — Added migration entry for 0017\n- `app/(app)/admin/integrations/IntegrationsClient.tsx` — Added Outlook.com tab, `OutlookIntegrationManager` component with connect/disconnect/sync UI\n\n### Files Created\n- `lib/outlook/db.ts` — Neon serverless database connection\n- `lib/outlook/oauth.ts` — OAuth helpers: `buildOutlookAuthUrl`, `exchangeOutlookCode`, `refreshOutlookToken`, `getValidOutlookAccessToken`, `upsertOutlookTokens`, `deactivateOutlookToken`, `updateOutlookLastSync`\n- `lib/outlook/messages.ts` — `fetchOutlookInboxMessages` (Graph API with delegated auth), `fetchOutlookUserEmail`\n- `app/api/outlook/oauth/route.ts` — GET (status + initiate OAuth), DELETE (disconnect)\n- `app/api/outlook/oauth/callback/route.ts` — GET (handle Microsoft OAuth redirect, exchange code, store tokens)\n- `app/api/outlook/sync/route.ts` — POST (pull recent inbox emails, deduplicate, insert)\n- `drizzle/migrations/0017_add-outlook-oauth.sql` — Database migration\n\n### Notes for Developer\n- **Environment variables required**: `OUTLOOK_CLIENT_ID` and `OUTLOOK_CLIENT_SECRET` from an Azure app registration configured for personal Microsoft accounts\n- **Azure app registration**: Must select \"Accounts in any organizational directory and personal Microsoft accounts\" as the supported account type\n- **Redirect URI**: Must add `{your-domain}/api/outlook/oauth/callback` as a Web redirect URI in Azure Portal\n- **Delegated permissions needed**: `Mail.Read`, `User.Read`, `offline_access`, `openid`, `profile`, `email`\n- **Pull-based sync**: Unlike the Graph API tab (push via subscriptions), this uses manual sync. Click \"Sync Emails Now\" to pull recent messages\n- **Run migration**: Apply `drizzle/migrations/0017_add-outlook-oauth.sql` to create the `outlook_oauth_tokens` table"
 }

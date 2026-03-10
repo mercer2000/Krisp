@@ -16,7 +16,7 @@
   "dependencies": [
     "feature-1772326534400-ishpeuzrf"
   ],
-  "status": "backlog",
+  "status": "in_progress",
   "id": "feature-1772406328272-x8jr1l28u3j",
   "descriptionHistory": [
     {
@@ -24,5 +24,6 @@
       "timestamp": "2026-03-01T23:05:28.640Z",
       "source": "initial"
     }
-  ]
+  ],
+  "startedAt": "2026-03-02T04:03:24.655Z"
 }

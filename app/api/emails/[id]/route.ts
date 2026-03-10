@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/server";
-import { getEmailDetail, deleteEmail } from "@/lib/email/emails";
-import { getGmailEmailById } from "@/lib/gmail/emails";
+import { getEmailDetail, deleteEmail, markEmailRead } from "@/lib/email/emails";
+import { getGmailEmailById, markGmailEmailRead } from "@/lib/gmail/emails";
 import { getZoomMessageById } from "@/lib/zoom/messages";
 import { db } from "@/lib/db";
 import { graphSubscriptions } from "@/lib/db/schema";
@@ -178,6 +178,55 @@ export async function DELETE(
     console.error("Error deleting email:", error);
     return NextResponse.json(
       { error: "Failed to delete email" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { data: session } = await auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const body = await request.json();
+    const { is_read } = body;
+
+    if (typeof is_read !== "boolean") {
+      return NextResponse.json({ error: "is_read must be a boolean" }, { status: 400 });
+    }
+
+    // UUID IDs are Gmail emails
+    if (UUID_REGEX.test(id)) {
+      const updated = await markGmailEmailRead(id, userId, is_read);
+      if (!updated) {
+        return NextResponse.json({ error: "Email not found" }, { status: 404 });
+      }
+      return NextResponse.json({ id, is_read });
+    }
+
+    // Numeric IDs are Outlook emails
+    const emailId = parseInt(id, 10);
+    if (isNaN(emailId) || emailId < 1) {
+      return NextResponse.json({ error: "Invalid email ID" }, { status: 400 });
+    }
+
+    const updated = await markEmailRead(emailId, userId, is_read);
+    if (!updated) {
+      return NextResponse.json({ error: "Email not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ id: emailId, is_read });
+  } catch (error) {
+    console.error("Error updating email read status:", error);
+    return NextResponse.json(
+      { error: "Failed to update email" },
       { status: 500 }
     );
   }

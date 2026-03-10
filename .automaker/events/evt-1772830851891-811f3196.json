@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772830851891-811f3196",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-06T21:00:51.891Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772830373902-qsigveg9au",
+  "featureName": "Add calendar sync for Google, Gmail, and Outlook accounts",
+  "passes": true
+}

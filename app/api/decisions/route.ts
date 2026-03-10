@@ -11,6 +11,7 @@ import {
   DECISION_ENCRYPTED_FIELDS,
   WEBHOOK_ENCRYPTED_FIELDS,
 } from "@/lib/db/encryption-helpers";
+import { logActivity } from "@/lib/activity/log";
 
 export async function GET(request: NextRequest) {
   try {
@@ -133,6 +134,16 @@ export async function POST(request: NextRequest) {
       .returning();
 
     const decrypted = decryptFields(item as Record<string, unknown>, DECISION_ENCRYPTED_FIELDS);
+
+    logActivity({
+      userId,
+      eventType: "decision.created",
+      title: `Recorded decision: "${statement}"`,
+      entityType: "decision",
+      entityId: item.id,
+      metadata: { category: category ?? "other", priority: priority ?? "medium" },
+    });
+
     return NextResponse.json({ decision: decrypted }, { status: 201 });
   } catch (error) {
     console.error("Error creating decision:", error);

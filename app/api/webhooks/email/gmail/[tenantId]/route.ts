@@ -11,6 +11,7 @@ import { eq } from "drizzle-orm";
 import { autoProcessEmailActions } from "@/lib/actions/autoProcessEmailActions";
 import { dispatchWebhooks } from "@/lib/webhooks/dispatch";
 import { classifyItem, buildEmailContent } from "@/lib/smartLabels/classify";
+import { classifyItemForPages } from "@/lib/pageRules/classify";
 
 const GMAIL_WEBHOOK_SECRET = process.env.GMAIL_WEBHOOK_SECRET;
 
@@ -252,18 +253,29 @@ async function handlePubSubPush(
             }
 
             // Smart label classification
+            const content = buildEmailContent({
+              sender: emailData.sender,
+              recipients,
+              subject: emailData.subject ?? null,
+              bodyPlainText: emailData.body_plain ?? null,
+            });
+
             try {
-              const content = buildEmailContent({
-                sender: emailData.sender,
-                recipients,
-                subject: emailData.subject ?? null,
-                bodyPlainText: emailData.body_plain ?? null,
-              });
               await classifyItem("gmail_email", emailData._dbId, tenantId, { content });
             } catch (classifyErr) {
               console.error(
                 `[Gmail Pub/Sub] Smart label classification failed for ${emailData.gmail_message_id}:`,
                 classifyErr instanceof Error ? classifyErr.message : classifyErr
+              );
+            }
+
+            // Page smart rule classification (independent of smart labels)
+            try {
+              await classifyItemForPages("gmail_email", emailData._dbId, tenantId, { content });
+            } catch (pageRuleErr) {
+              console.error(
+                `[Gmail Pub/Sub] Page rule classification failed for ${emailData.gmail_message_id}:`,
+                pageRuleErr instanceof Error ? pageRuleErr.message : pageRuleErr
               );
             }
           }
@@ -377,18 +389,29 @@ async function handleAppsScriptPayload(
     }
 
     // Smart label classification
+    const content = buildEmailContent({
+      sender: payload.sender,
+      recipients: recipientsList,
+      subject: payload.subject ?? null,
+      bodyPlainText: payload.bodyPlain ?? null,
+    });
+
     try {
-      const content = buildEmailContent({
-        sender: payload.sender,
-        recipients: recipientsList,
-        subject: payload.subject ?? null,
-        bodyPlainText: payload.bodyPlain ?? null,
-      });
       await classifyItem("gmail_email", String(result.id), tenantId, { content });
     } catch (err) {
       console.error(
         `[Gmail Apps Script] Smart label classification failed for ${payload.messageId}:`,
         err instanceof Error ? err.message : err
+      );
+    }
+
+    // Page smart rule classification (independent of smart labels)
+    try {
+      await classifyItemForPages("gmail_email", String(result.id), tenantId, { content });
+    } catch (pageRuleErr) {
+      console.error(
+        `[Gmail Apps Script] Page rule classification failed for ${payload.messageId}:`,
+        pageRuleErr instanceof Error ? pageRuleErr.message : pageRuleErr
       );
     }
   });

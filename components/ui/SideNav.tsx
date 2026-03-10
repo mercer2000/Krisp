@@ -37,13 +37,7 @@ const NAV_ITEMS = [
     href: "/boards",
     icon: KanbanIcon,
   },
-  {
-    key: "decisions",
-    label: "Decisions",
-    href: "/decisions",
-    icon: DecisionsIcon,
-  },
-  {
+{
     key: "pages",
     label: "Pages",
     href: "/workspace",
@@ -78,6 +72,12 @@ const NAV_ITEMS = [
     label: "Analytics",
     href: "/analytics",
     icon: AnalyticsIcon,
+  },
+  {
+    key: "activity",
+    label: "Activity",
+    href: "/activity",
+    icon: ActivityFeedIcon,
   },
   {
     key: "settings",
@@ -269,26 +269,6 @@ function BrainIcon({ size = 20 }: { size?: number }) {
   );
 }
 
-function DecisionsIcon({ size = 20 }: { size?: number }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-      <path d="M20 3v4" />
-      <path d="M22 5h-4" />
-    </svg>
-  );
-}
-
 function WeeklyReviewIcon({ size = 20 }: { size?: number }) {
   return (
     <svg
@@ -326,6 +306,25 @@ function AnalyticsIcon({ size = 20 }: { size?: number }) {
     >
       <path d="M3 3v18h18" />
       <path d="m19 9-5 5-4-4-3 3" />
+    </svg>
+  );
+}
+
+function ActivityFeedIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 8v4l3 3" />
+      <circle cx="12" cy="12" r="10" />
     </svg>
   );
 }
@@ -635,9 +634,9 @@ export function SideNav() {
     if (href === "/boards") return pathname.startsWith("/boards");
     if (href === "/workspace") return pathname.startsWith("/workspace");
     if (href === "/brain") return pathname.startsWith("/brain");
-    if (href === "/decisions") return pathname.startsWith("/decisions");
     if (href === "/weekly-reviews") return pathname.startsWith("/weekly-reviews");
     if (href === "/analytics") return pathname === "/analytics";
+    if (href === "/activity") return pathname === "/activity";
     if (href === "/settings") return pathname.startsWith("/settings");
     if (href === "/trash") return pathname === "/trash";
     if (href === "/admin/subscriptions") return pathname.startsWith("/admin");

@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772898180754-4c268e63",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-07T15:43:00.754Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772897428668-tlzwxb3ftjj",
+  "featureName": "Implement spam detection with one-click unsubscribe",
+  "passes": true
+}

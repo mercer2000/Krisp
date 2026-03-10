@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "When manually pressing on the classify button on the inbox page, can it classify all of the messages that are in the current page? Currently I'm not sure how many messages are classified, but it looks like it's only the last 10 or 20. I'd like it to classify all the messages that are currently in view on the current page.  And I'd also like to indicate on messages that they have been checked for classification http://localhost:3000/inbox",
+  "title": "Classify all visible messages on current page",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-07T15:21:01.958Z",
+  "id": "feature-1772896861958-z5l84rgbe",
+  "descriptionHistory": [
+    {
+      "description": "When manually pressing on the classify button on the inbox page, can it classify all of the messages that are in the current page? Currently I'm not sure how many messages are classified, but it looks like it's only the last 10 or 20. I'd like it to classify all the messages that are currently in view on the current page.  And I'd also like to indicate on messages that they have been checked for classification http://localhost:3000/inbox",
+      "timestamp": "2026-03-07T15:21:02.344Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-07T15:29:05.186Z",
+  "justFinishedAt": "2026-03-07T15:29:05.166Z",
+  "summary": "## Summary: Classify all messages on current page with status indicator\n\n### Changes Implemented\n- **Classify button now processes all emails on the current page**: Instead of only classifying the last 10 unclassified emails, the \"Classify\" button now sends all visible email IDs to the API, ensuring every message on the page gets classified\n- **Unified classification**: The classify endpoint now runs both traditional email label classification AND smart label classification for each email, combining both systems in a single button click\n- **Classification status indicator**: A small green checkmark icon appears next to emails that have been checked by the AI classifier, so users can see which messages have been processed\n- **Status persists across page loads**: On page load, the app fetches classification status from the server by checking both `smart_label_items` and `email_label_assignments` tables\n- **Updated button text**: Changed \"Classify\" to \"Classify All\" and the progress text shows the count of emails being processed (e.g., \"Classifying (50)...\")\n- **Updated toast message**: Now shows \"X emails checked, Y labeled\" for clearer feedback\n\n### Files Modified\n- `app/api/emails/classify/route.ts` — Added `emailIds` array parameter support, integrated smart label classification alongside traditional labels, returns `processedIds` in response\n- `app/(app)/inbox/page.tsx` — Updated `handleClassify` to send current page email IDs, added `classifiedIds` state tracking, added green checkmark indicator per email row, fetches classification status on page load\n- `lib/smartLabels/labels.ts` — Added `getClassifiedItemIds()` function that checks both `smart_label_items` and `email_label_assignments` tables\n- `app/api/smart-labels/classified/route.ts` — **New file**: API endpoint to batch-check which email IDs have been classified by AI\n\n### Notes for Developer\n- Both `classifyEmail` and `classifyItem` have idempotency checks, so re-classifying already-processed emails is safe and fast (they skip immediately)\n- The green checkmark only appears for emails that have at least one AI-assigned label entry; emails that were scanned but had no matching labels will show the checkmark after the classify button is pressed (tracked in client state via `processedIds`) but won't persist the indicator across page reloads\n- The `batchClassifySmartLabelsSchema` validator allows up to max 50 items, which matches the default page size"
+}

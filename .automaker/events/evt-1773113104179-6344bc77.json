@@ -1,0 +1,10 @@
+{
+  "id": "evt-1773113104179-6344bc77",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-10T03:25:04.179Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1773112034605-ea0rcqryiln",
+  "featureName": "Remove decisions page, consolidate into individual pages",
+  "passes": true
+}

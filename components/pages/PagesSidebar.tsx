@@ -1,9 +1,28 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { usePages, useCreatePage, useUpdatePage } from "@/lib/hooks/usePages";
+import { useState, useCallback, useMemo } from "react";
+import { usePages, useCreatePage, useUpdatePage, useReorderPages } from "@/lib/hooks/usePages";
 import { useRouter, useParams } from "next/navigation";
+import { NewPageSetupModal } from "@/components/pages/NewPageSetupModal";
 import type { Page } from "@/types";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  DragOverlay,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 function ChevronIcon({ expanded, size = 16 }: { expanded: boolean; size?: number }) {
   return (
@@ -43,6 +62,19 @@ function MoreIcon({ size = 14 }: { size?: number }) {
   );
 }
 
+function GripIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="9" cy="5" r="1" />
+      <circle cx="15" cy="5" r="1" />
+      <circle cx="9" cy="12" r="1" />
+      <circle cx="15" cy="12" r="1" />
+      <circle cx="9" cy="19" r="1" />
+      <circle cx="15" cy="19" r="1" />
+    </svg>
+  );
+}
+
 function SearchIcon({ size = 16 }: { size?: number }) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -61,6 +93,62 @@ function TrashIcon({ size = 16 }: { size?: number }) {
   );
 }
 
+function getPageIcon(page: Page) {
+  return page.icon || (page.pageType === "knowledge" ? "\u{1F9E0}" : page.pageType === "decisions" ? "\u2696\uFE0F" : page.isDatabase ? "\u{1F4CA}" : "\u{1F4C4}");
+}
+
+// ── Sortable page item ──────────────────────────────────────────────────────
+
+interface SortablePageItemProps {
+  page: Page;
+  pages: Page[];
+  level: number;
+  workspaceId: string;
+  activePageId: string | undefined;
+  onNavigate: (pageId: string) => void;
+  isDragOverlay?: boolean;
+}
+
+function SortablePageItem({ page, pages, level, workspaceId, activePageId, onNavigate, isDragOverlay }: SortablePageItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: page.id,
+    data: { type: "page", page },
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={isDragging && !isDragOverlay ? "opacity-30" : ""}
+    >
+      <PageTreeItem
+        page={page}
+        pages={pages}
+        level={level}
+        workspaceId={workspaceId}
+        activePageId={activePageId}
+        onNavigate={onNavigate}
+        dragHandleProps={{ ...attributes, ...listeners }}
+        isDragOverlay={isDragOverlay}
+      />
+    </div>
+  );
+}
+
+// ── Static page item (for drag overlay & children) ──────────────────────────
+
 interface PageTreeItemProps {
   page: Page;
   pages: Page[];
@@ -68,9 +156,11 @@ interface PageTreeItemProps {
   workspaceId: string;
   activePageId: string | undefined;
   onNavigate: (pageId: string) => void;
+  dragHandleProps?: Record<string, unknown>;
+  isDragOverlay?: boolean;
 }
 
-function PageTreeItem({ page, pages, level, workspaceId, activePageId, onNavigate }: PageTreeItemProps) {
+function PageTreeItem({ page, pages, level, workspaceId, activePageId, onNavigate, dragHandleProps, isDragOverlay }: PageTreeItemProps) {
   const [expanded, setExpanded] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const children = pages.filter((p) => p.parentId === page.id && !p.isArchived);
@@ -105,10 +195,18 @@ function PageTreeItem({ page, pages, level, workspaceId, activePageId, onNavigat
           isActive
             ? "bg-[var(--primary)]/10 text-[var(--primary)]"
             : "text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
-        }`}
+        } ${isDragOverlay ? "bg-[var(--card)] border border-[var(--border)] shadow-lg rounded-md" : ""}`}
         style={{ paddingLeft: `${level * 12 + 4}px` }}
         onClick={() => onNavigate(page.id)}
       >
+        {/* Drag handle */}
+        <button
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:bg-[var(--accent)] cursor-grab active:cursor-grabbing"
+          onClick={(e) => e.stopPropagation()}
+          {...(dragHandleProps || {})}
+        >
+          <GripIcon size={12} />
+        </button>
         <button
           className="flex h-5 w-5 shrink-0 items-center justify-center rounded opacity-60 hover:opacity-100 hover:bg-[var(--accent)]"
           onClick={(e) => {
@@ -125,11 +223,16 @@ function PageTreeItem({ page, pages, level, workspaceId, activePageId, onNavigat
           />
         )}
         <span className="shrink-0 text-base leading-none mr-1">
-          {page.icon || (page.pageType === "knowledge" ? "🧠" : page.pageType === "decisions" ? "⚖️" : page.isDatabase ? "📊" : "📄")}
+          {getPageIcon(page)}
         </span>
         <span className="flex-1 truncate">
           {page.title || "Untitled"}
         </span>
+        {(page.entryCount ?? 0) > 0 && (
+          <span className="shrink-0 ml-auto mr-1 text-[10px] leading-none font-medium text-[var(--muted-foreground)] opacity-60 group-hover:hidden">
+            ({page.entryCount})
+          </span>
+        )}
         <div className="hidden items-center gap-0.5 group-hover:flex">
           <button
             className="flex h-5 w-5 items-center justify-center rounded opacity-60 hover:opacity-100 hover:bg-[var(--accent)]"
@@ -187,19 +290,45 @@ function PageTreeItem({ page, pages, level, workspaceId, activePageId, onNavigat
   );
 }
 
+// ── Main sidebar ─────────────────────────────────────────────────────────────
+
 export function PagesSidebar({ workspaceId }: { workspaceId: string }) {
-  const { data: pages } = usePages(workspaceId);
+  const { data: pages, isLoading } = usePages(workspaceId);
   const createPage = useCreatePage();
+  const reorderPages = useReorderPages(workspaceId);
   const router = useRouter();
   const routeParams = useParams();
   const activePageId = routeParams?.pageId as string | undefined;
   const [showTrash, setShowTrash] = useState(false);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [setupModal, setSetupModal] = useState<{ open: boolean; pageId: string; pageName: string }>({
+    open: false,
+    pageId: "",
+    pageName: "",
+  });
 
-  const rootPages = (pages || [])
-    .filter((p) => !p.parentId && !p.isArchived)
-    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const rootPages = useMemo(
+    () =>
+      (pages || [])
+        .filter((p) => !p.parentId && !p.isArchived)
+        .sort((a, b) => a.sortOrder - b.sortOrder),
+    [pages],
+  );
+
+  const rootPageIds = useMemo(() => rootPages.map((p) => p.id), [rootPages]);
 
   const archivedPages = (pages || []).filter((p) => p.isArchived);
+
+  const activeDragPage = activeDragId
+    ? (pages || []).find((p) => p.id === activeDragId)
+    : null;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    }),
+    useSensor(KeyboardSensor),
+  );
 
   const handleNavigate = useCallback(
     (pageId: string) => {
@@ -208,21 +337,38 @@ export function PagesSidebar({ workspaceId }: { workspaceId: string }) {
     [router, workspaceId]
   );
 
-  const [showNewPageMenu, setShowNewPageMenu] = useState(false);
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveDragId(event.active.id as string);
+  }, []);
 
-  const handleNewPage = (pageType: "page" | "knowledge" | "decisions" = "page") => {
-    const defaults: Record<string, { title: string; icon: string }> = {
-      page: { title: "", icon: "" },
-      knowledge: { title: "Knowledge", icon: "🧠" },
-      decisions: { title: "Decisions", icon: "⚖️" },
-    };
-    const d = defaults[pageType];
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setActiveDragId(null);
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      const oldIndex = rootPages.findIndex((p) => p.id === active.id);
+      const newIndex = rootPages.findIndex((p) => p.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      const reordered = arrayMove(rootPages, oldIndex, newIndex);
+      const updates = reordered.map((p, i) => ({
+        id: p.id,
+        sort_order: i,
+      }));
+
+      reorderPages.mutate({ pages: updates });
+    },
+    [rootPages, reorderPages],
+  );
+
+  const handleNewPage = () => {
     createPage.mutate(
-      { workspace_id: workspaceId, title: d.title, icon: d.icon || undefined, page_type: pageType },
+      { workspace_id: workspaceId, title: "", page_type: "page" },
       {
         onSuccess: (page) => {
           handleNavigate(page.id);
-          setShowNewPageMenu(false);
+          setSetupModal({ open: true, pageId: page.id, pageName: "" });
         },
       }
     );
@@ -244,55 +390,50 @@ export function PagesSidebar({ workspaceId }: { workspaceId: string }) {
 
       {/* Page tree */}
       <div className="flex-1 overflow-auto px-1 py-1">
-        {rootPages.map((page) => (
-          <PageTreeItem
-            key={page.id}
-            page={page}
-            pages={pages || []}
-            level={0}
-            workspaceId={workspaceId}
-            activePageId={activePageId}
-            onNavigate={handleNavigate}
-          />
-        ))}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={rootPageIds} strategy={verticalListSortingStrategy}>
+            {rootPages.map((page) => (
+              <SortablePageItem
+                key={page.id}
+                page={page}
+                pages={pages || []}
+                level={0}
+                workspaceId={workspaceId}
+                activePageId={activePageId}
+                onNavigate={handleNavigate}
+              />
+            ))}
+          </SortableContext>
+          <DragOverlay dropAnimation={null}>
+            {activeDragPage ? (
+              <PageTreeItem
+                page={activeDragPage}
+                pages={pages || []}
+                level={0}
+                workspaceId={workspaceId}
+                activePageId={activePageId}
+                onNavigate={() => {}}
+                isDragOverlay
+              />
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       </div>
 
       {/* Bottom actions */}
       <div className="border-t border-[var(--border)] p-2 space-y-1">
-        <div className="relative">
-          <button
-            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
-            onClick={() => setShowNewPageMenu(!showNewPageMenu)}
-          >
-            <PlusIcon size={16} />
-            New Page
-          </button>
-          {showNewPageMenu && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setShowNewPageMenu(false)} />
-              <div className="absolute bottom-full left-0 mb-1 z-50 w-full rounded-lg border border-[var(--border)] bg-[var(--card)] py-1 shadow-lg">
-                <button
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-[var(--foreground)] hover:bg-[var(--accent)]"
-                  onClick={() => handleNewPage("page")}
-                >
-                  📄 Blank Page
-                </button>
-                <button
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-[var(--foreground)] hover:bg-[var(--accent)]"
-                  onClick={() => handleNewPage("knowledge")}
-                >
-                  🧠 Knowledge Page
-                </button>
-                <button
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-[var(--foreground)] hover:bg-[var(--accent)]"
-                  onClick={() => handleNewPage("decisions")}
-                >
-                  ⚖️ Decisions Page
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+        <button
+          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
+          onClick={handleNewPage}
+        >
+          <PlusIcon size={16} />
+          New Page
+        </button>
         <button
           className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
           onClick={() => setShowTrash(!showTrash)}
@@ -313,6 +454,17 @@ export function PagesSidebar({ workspaceId }: { workspaceId: string }) {
           ))}
         </div>
       )}
+
+      {/* New page setup modal */}
+      {setupModal.pageId && (
+        <NewPageSetupModal
+          open={setupModal.open}
+          onClose={() => setSetupModal((s) => ({ ...s, open: false }))}
+          pageId={setupModal.pageId}
+          pageName={setupModal.pageName}
+          onPageNameChange={(name) => setSetupModal((s) => ({ ...s, pageName: name }))}
+        />
+      )}
     </div>
   );
 }
@@ -328,7 +480,7 @@ function TrashItem({ page, workspaceId }: { page: Page; workspaceId: string }) {
   return (
     <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-[var(--muted-foreground)]">
       <span className="shrink-0 text-base leading-none">
-        {page.icon || "📄"}
+        {page.icon || "\u{1F4C4}"}
       </span>
       <span className="flex-1 truncate">{page.title || "Untitled"}</span>
       <button

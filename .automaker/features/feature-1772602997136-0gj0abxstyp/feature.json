@@ -14,8 +14,8 @@
   "planningMode": "spec",
   "requirePlanApproval": false,
   "dependencies": [],
-  "status": "waiting_approval",
-  "startedAt": "2026-03-04T05:43:17.136Z",
+  "status": "verified",
+  "startedAt": "2026-03-04T06:30:33.026Z",
   "id": "feature-1772602997136-0gj0abxstyp",
   "descriptionHistory": [
     {
@@ -24,7 +24,7 @@
       "source": "initial"
     }
   ],
-  "updatedAt": "2026-03-04T06:06:34.539Z",
-  "justFinishedAt": "2026-03-04T06:06:34.515Z",
+  "updatedAt": "2026-03-04T06:35:54.903Z",
+  "justFinishedAt": "2026-03-04T06:35:54.903Z",
   "summary": "## Summary: Telegram Brain AI Integration\n\n### Changes Implemented\n- Added `telegram_bot_tokens` database table to store per-user Telegram bot configurations (token, username, chat ID, webhook secret)\n- Created `lib/telegram/client.ts` - Telegram Bot API helper library with functions for: validating bot tokens (`getMe`), setting/deleting webhooks, sending messages (with Markdown fallback), and sending typing indicators\n- Created `lib/brain/chat.ts` - Extracted shared Brain AI chat processing logic (`processBrainChat`) that can be reused by both the web API and Telegram webhook\n- Created `app/api/webhooks/telegram/route.ts` - Telegram webhook handler that receives messages, validates the secret token, links the chat on first message, handles `/start` and `/help` commands, processes questions through Brain AI, and splits long responses for Telegram's 4096-char limit\n- Created `app/api/telegram/route.ts` - Bot management API with GET (status), POST (connect bot with token validation and automatic webhook registration), and DELETE (disconnect and remove webhook) endpoints\n- Added Telegram tab to the Integrations page UI with connected/disconnected states, setup guide (BotFather instructions), token input, and disconnect functionality\n- Created database migration `0020_add-telegram-bot-tokens.sql`\n- Security: Chat ID is locked to first user who messages the bot; subsequent users from different chat IDs are rejected\n\n### Files Modified\n- `lib/db/schema.ts` - Added `telegramBotTokens` table definition\n- `app/(app)/admin/integrations/IntegrationsClient.tsx` - Added Telegram tab and `TelegramSection` component\n\n### Files Created\n- `lib/telegram/client.ts` - Telegram Bot API client helpers\n- `lib/brain/chat.ts` - Shared Brain AI chat processing function\n- `app/api/webhooks/telegram/route.ts` - Telegram webhook endpoint\n- `app/api/telegram/route.ts` - Bot management API (GET/POST/DELETE)\n- `drizzle/migrations/0020_add-telegram-bot-tokens.sql` - Database migration\n- `drizzle/migrations/meta/_journal.json` - Updated migration journal\n\n### Notes for Developer\n- Requires running migration `0020_add-telegram-bot-tokens.sql` against the database\n- The app's `NEXTAUTH_URL` must be set to a publicly accessible HTTPS URL for Telegram webhooks to work\n- To set up: create a bot via @BotFather on Telegram, paste the token in Integrations > Telegram, then send `/start` to your bot\n- The Telegram integration uses the Brain query flow (meetings, emails, decisions, action items search) but not the Kanban intent classification that the web Brain chat has - this is intentional for the Telegram use case\n- Bot token is stored in plaintext, consistent with how other credentials (Graph, Gmail, Zoom) are stored in this codebase"
 }

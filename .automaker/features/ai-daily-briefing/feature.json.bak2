@@ -1,0 +1,17 @@
+{
+  "id": "ai-daily-briefing",
+  "category": "AI",
+  "title": "AI Daily Briefing Generation",
+  "description": "Generate a personalized morning briefing using Claude that synthesizes overdue Kanban cards, high-priority emails from the last 24 hours, today's meetings from the calendar, and open action items. Briefing is accessible on the main dashboard and can be emailed automatically at a configured time.",
+  "status": "in_progress",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [
+    "meeting-vector-embeddings",
+    "email-smart-labels"
+  ],
+  "createdAt": "2026-03-02T18:35:40.596Z",
+  "updatedAt": "2026-03-02T18:35:40.596Z",
+  "startedAt": "2026-03-06T20:53:28.225Z",
+  "descriptionHistory": []
+}

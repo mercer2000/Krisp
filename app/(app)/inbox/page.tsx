@@ -205,6 +205,11 @@ export default function InboxPage() {
   const [filterSmartLabel, setFilterSmartLabel] = useState<string | null>(null);
   const [allSmartLabels, setAllSmartLabels] = useState<{ id: string; name: string; color: string }[]>([]);
 
+  // Smart rule pages state
+  const [allSmartRulePages, setAllSmartRulePages] = useState<{ id: string; name: string; color: string }[]>([]);
+  const [filterSmartRulePage, setFilterSmartRulePage] = useState<string | null>(null);
+  const [smartRulePageMap, setSmartRulePageMap] = useState<Record<string, { pageId: string; pageName: string; pageColor: string }[]>>({});
+
   // Classification tracking state — IDs of emails processed by the classifier
   const [classifiedIds, setClassifiedIds] = useState<Set<number | string>>(new Set());
 
@@ -382,6 +387,10 @@ export default function InboxPage() {
     fetch("/api/smart-labels")
       .then((r) => r.json())
       .then((d) => { if (d.data) { const mapped = d.data.map((l: { id: string; name: string; color: string }) => ({ id: l.id, name: l.name, color: l.color })); setAllSmartLabels(mapped); cache.cacheSmartLabels(mapped); } })
+      .catch(() => {});
+    fetch("/api/pages/smart-rules")
+      .then((r) => r.json())
+      .then((d) => { if (d.data) setAllSmartRulePages(d.data); })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -579,6 +588,38 @@ export default function InboxPage() {
       });
     }
 
+    // Fetch smart rule page assignments for displayed emails
+    const pageRuleFetches: Promise<Record<string, { pageId: string; pageName: string; pageColor: string }[]>>[] = [];
+    if (outlookIds.length > 0) {
+      pageRuleFetches.push(
+        fetch("/api/pages/smart-rules/items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ itemType: "email", itemIds: outlookIds }),
+        }).then((r) => r.json()).then((d) => d.data || {}).catch(() => ({}))
+      );
+    }
+    if (gmailIds.length > 0) {
+      pageRuleFetches.push(
+        fetch("/api/pages/smart-rules/items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ itemType: "gmail_email", itemIds: gmailIds }),
+        }).then((r) => r.json()).then((d) => d.data || {}).catch(() => ({}))
+      );
+    }
+    if (pageRuleFetches.length > 0) {
+      Promise.all(pageRuleFetches).then((results) => {
+        const merged: Record<string, { pageId: string; pageName: string; pageColor: string }[]> = {};
+        for (const r of results) {
+          for (const [k, v] of Object.entries(r)) {
+            merged[k] = v;
+          }
+        }
+        setSmartRulePageMap(merged);
+      });
+    }
+
     // Batch-check VIP status for displayed senders
     const senders = [...new Set(emails.map((e) => e.sender))];
     if (senders.length > 0) {
@@ -631,6 +672,7 @@ export default function InboxPage() {
     setPage(1);
     setFilterLabel(null);
     setFilterSmartLabel(null);
+    setFilterSmartRulePage(null);
     setFilterAccount(null);
     setFilterProvider(null);
     setActiveFolder("inbox");
@@ -894,6 +936,25 @@ export default function InboxPage() {
     }
   };
 
+  // Toggle read/unread status
+  const handleToggleRead = async (emailId: string | number, currentlyRead: boolean) => {
+    const newRead = !currentlyRead;
+    // Optimistic update
+    setEmails((prev) => prev.map((em) => em.id === emailId ? { ...em, is_read: newRead } : em));
+    try {
+      const res = await fetch(`/api/emails/${emailId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_read: newRead }),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+    } catch {
+      // Revert on failure
+      setEmails((prev) => prev.map((em) => em.id === emailId ? { ...em, is_read: currentlyRead } : em));
+      toast({ title: "Failed to update read status", variant: "destructive" });
+    }
+  };
+
   // Create custom label
   const handleCreateLabel = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1012,8 +1073,11 @@ export default function InboxPage() {
     }
   };
 
-  const hasActiveFilters = query || afterDate || beforeDate || filterLabel || filterAccount || filterSmartLabel;
+  const hasActiveFilters = query || afterDate || beforeDate || filterLabel || filterAccount || filterSmartLabel || filterSmartRulePage;
   const pageNumbers = getPageNumbers(page, totalPages);
+
+  // Unread count from loaded emails
+  const unreadCount = emails.filter((e) => !e.is_read).length;
 
   // Filter emails by selected label, smart label, or VIP (client-side)
   let filteredEmails = emails;
@@ -1026,6 +1090,11 @@ export default function InboxPage() {
   if (filterSmartLabel) {
     filteredEmails = filteredEmails.filter((e) =>
       smartLabelMap[String(e.id)]?.some((l) => l.id === filterSmartLabel)
+    );
+  }
+  if (filterSmartRulePage) {
+    filteredEmails = filteredEmails.filter((e) =>
+      smartRulePageMap[String(e.id)]?.some((p) => p.pageId === filterSmartRulePage)
     );
   }
 
@@ -1198,7 +1267,7 @@ export default function InboxPage() {
                 </svg>
               </button>
               {(() => {
-                const count = [filterAccount, filterLabel, filterSmartLabel, afterDate, beforeDate].filter(Boolean).length;
+                const count = [filterAccount, filterLabel, filterSmartLabel, filterSmartRulePage, afterDate, beforeDate].filter(Boolean).length;
                 return count > 0 ? (
                   <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] text-[10px] font-bold leading-none px-1">
                     {count}
@@ -1248,18 +1317,24 @@ export default function InboxPage() {
                   setFilterProvider(null);
                   setFilterLabel(null);
                   setFilterSmartLabel(null);
+                  setFilterSmartRulePage(null);
                   setActiveFolder(tab.key);
                   setPage(1);
                 }
               }}
               className={`px-3 md:px-4 py-2 text-xs md:text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap ${
-                activeFolder === tab.key && !filterAccount && !filterLabel && !filterSmartLabel
+                activeFolder === tab.key && !filterAccount && !filterLabel && !filterSmartLabel && !filterSmartRulePage
                   ? "text-[var(--primary)] border-b-2 border-[var(--primary)]"
                   : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               }`}
               data-testid={`folder-tab-${tab.key}`}
             >
               {tab.label}
+              {tab.key === "inbox" && unreadCount > 0 && (
+                <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </button>
           ))}
 
@@ -1286,6 +1361,7 @@ export default function InboxPage() {
                     setFilterProvider(account.provider);
                     setFilterLabel(null);
                     setFilterSmartLabel(null);
+                    setFilterSmartRulePage(null);
                   }
                   setPage(1);
                 }}
@@ -1311,26 +1387,31 @@ export default function InboxPage() {
 
           {/* Pinned label tabs */}
           {pinnedLabels.map((labelId) => {
-            const label = allLabels.find((l) => l.id === labelId) || allSmartLabels.find((l) => l.id === labelId);
+            const label = allLabels.find((l) => l.id === labelId) || allSmartLabels.find((l) => l.id === labelId) || allSmartRulePages.find((p) => p.id === labelId);
             if (!label) return null;
             const isSmartLabel = allSmartLabels.some((sl) => sl.id === labelId);
-            const isActive = isSmartLabel ? filterSmartLabel === labelId : filterLabel === labelId;
+            const isSmartRulePage = allSmartRulePages.some((p) => p.id === labelId);
+            const isActive = isSmartRulePage ? filterSmartRulePage === labelId : isSmartLabel ? filterSmartLabel === labelId : filterLabel === labelId;
             return (
               <button
                 key={`pinned-label-${labelId}`}
                 onClick={() => {
                   if (isActive) {
-                    if (isSmartLabel) setFilterSmartLabel(null);
+                    if (isSmartRulePage) setFilterSmartRulePage(null);
+                    else if (isSmartLabel) setFilterSmartLabel(null);
                     else setFilterLabel(null);
                   } else {
                     setFilterAccount(null);
                     setFilterProvider(null);
-                    if (isSmartLabel) {
+                    setFilterLabel(null);
+                    setFilterSmartLabel(null);
+                    setFilterSmartRulePage(null);
+                    if (isSmartRulePage) {
+                      setFilterSmartRulePage(labelId);
+                    } else if (isSmartLabel) {
                       setFilterSmartLabel(labelId);
-                      setFilterLabel(null);
                     } else {
                       setFilterLabel(labelId);
-                      setFilterSmartLabel(null);
                     }
                   }
                   setPage(1);
@@ -1360,7 +1441,7 @@ export default function InboxPage() {
           })}
 
           {/* VIP / Whitelist manage buttons */}
-          {activeFolder === "vip" && !filterAccount && !filterLabel && !filterSmartLabel && (
+          {activeFolder === "vip" && !filterAccount && !filterLabel && !filterSmartLabel && !filterSmartRulePage && (
             <button
               onClick={() => { fetchVipContacts(); setShowVipManager(true); }}
               className="text-xs px-2.5 py-1 rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors flex-shrink-0"
@@ -1369,7 +1450,7 @@ export default function InboxPage() {
               Manage VIPs
             </button>
           )}
-          {activeFolder === "newsletter" && !filterAccount && !filterLabel && !filterSmartLabel && (
+          {activeFolder === "newsletter" && !filterAccount && !filterLabel && !filterSmartLabel && !filterSmartRulePage && (
             <button
               onClick={() => { fetchWhitelist(); setShowWhitelistManager(true); }}
               className="text-xs px-2.5 py-1 rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors flex-shrink-0"
@@ -1426,6 +1507,7 @@ export default function InboxPage() {
                               setFilterProvider(account.provider);
                               setFilterLabel(null);
                               setFilterSmartLabel(null);
+                              setFilterSmartRulePage(null);
                             }
                             setPage(1);
                             setShowAccountDropdown(false);
@@ -1458,12 +1540,12 @@ export default function InboxPage() {
           )}
 
           {/* Label dropdown */}
-          {(allLabels.length > 0 || allSmartLabels.length > 0) && (
+          {(allLabels.length > 0 || allSmartLabels.length > 0 || allSmartRulePages.length > 0) && (
             <div className="relative flex-shrink-0 hidden md:block" ref={labelDropdownRef}>
               <button
                 onClick={() => { setShowLabelDropdown(!showLabelDropdown); setShowAccountDropdown(false); }}
                 className={`px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors flex items-center gap-1 ${
-                  filterLabel || filterSmartLabel
+                  filterLabel || filterSmartLabel || filterSmartRulePage
                     ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
                     : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)]"
                 }`}
@@ -1479,11 +1561,12 @@ export default function InboxPage() {
                     onClick={() => {
                       setFilterLabel(null);
                       setFilterSmartLabel(null);
+                      setFilterSmartRulePage(null);
                       setPage(1);
                       setShowLabelDropdown(false);
                     }}
                     className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                      !filterLabel && !filterSmartLabel ? "text-[var(--primary)] bg-[var(--primary)]/5 font-medium" : "text-[var(--foreground)] hover:bg-[var(--accent)]"
+                      !filterLabel && !filterSmartLabel && !filterSmartRulePage ? "text-[var(--primary)] bg-[var(--primary)]/5 font-medium" : "text-[var(--foreground)] hover:bg-[var(--accent)]"
                     }`}
                   >
                     All labels
@@ -1501,6 +1584,7 @@ export default function InboxPage() {
                           onClick={() => {
                             setFilterLabel(filterLabel === label.id ? null : label.id);
                             setFilterSmartLabel(null);
+                            setFilterSmartRulePage(null);
                             setFilterAccount(null);
                             setFilterProvider(null);
                             setPage(1);
@@ -1542,6 +1626,7 @@ export default function InboxPage() {
                           onClick={() => {
                             setFilterSmartLabel(filterSmartLabel === sl.id ? null : sl.id);
                             setFilterLabel(null);
+                            setFilterSmartRulePage(null);
                             setFilterAccount(null);
                             setFilterProvider(null);
                             setPage(1);
@@ -1557,6 +1642,48 @@ export default function InboxPage() {
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); togglePinLabel(sl.id); }}
+                          className={`px-2 py-2 text-xs transition-colors flex-shrink-0 ${
+                            isPinned ? "text-[var(--primary)]" : "text-[var(--muted-foreground)] opacity-0 group-hover:opacity-100"
+                          } hover:text-[var(--primary)]`}
+                          title={isPinned ? "Unpin from tabs" : "Pin to tabs"}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill={isPinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 17v5" />
+                            <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16h14v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 2-2H6a2 2 0 0 0 2 2 1 1 0 0 1 1 1z" />
+                          </svg>
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {allSmartRulePages.length > 0 && (
+                    <div className="px-3 pt-2 pb-1">
+                      <span className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Smart Rules</span>
+                    </div>
+                  )}
+                  {allSmartRulePages.map((srp) => {
+                    const isPinned = pinnedLabels.includes(srp.id);
+                    return (
+                      <div key={srp.id} className="flex items-center group">
+                        <button
+                          onClick={() => {
+                            setFilterSmartRulePage(filterSmartRulePage === srp.id ? null : srp.id);
+                            setFilterLabel(null);
+                            setFilterSmartLabel(null);
+                            setFilterAccount(null);
+                            setFilterProvider(null);
+                            setPage(1);
+                            setShowLabelDropdown(false);
+                          }}
+                          className={`flex-1 text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${
+                            filterSmartRulePage === srp.id ? "font-medium" : "hover:bg-[var(--accent)]"
+                          }`}
+                          style={{ color: filterSmartRulePage === srp.id ? srp.color : undefined }}
+                        >
+                          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: srp.color }} />
+                          {srp.name}
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); togglePinLabel(srp.id); }}
                           className={`px-2 py-2 text-xs transition-colors flex-shrink-0 ${
                             isPinned ? "text-[var(--primary)]" : "text-[var(--muted-foreground)] opacity-0 group-hover:opacity-100"
                           } hover:text-[var(--primary)]`}
@@ -1710,6 +1837,32 @@ export default function InboxPage() {
                 Send all to Page
               </button>
               <button
+                onClick={async () => {
+                  const ids = Array.from(bulkSelected);
+                  setEmails((prev) => prev.map((em) => ids.includes(em.id) ? { ...em, is_read: true } : em));
+                  await Promise.allSettled(ids.map((id) =>
+                    fetch(`/api/emails/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_read: true }) })
+                  ));
+                  setBulkSelected(new Set());
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md text-[var(--primary)] bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 border border-[var(--primary)]/20 transition-colors"
+              >
+                Mark read
+              </button>
+              <button
+                onClick={async () => {
+                  const ids = Array.from(bulkSelected);
+                  setEmails((prev) => prev.map((em) => ids.includes(em.id) ? { ...em, is_read: false } : em));
+                  await Promise.allSettled(ids.map((id) =>
+                    fetch(`/api/emails/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_read: false }) })
+                  ));
+                  setBulkSelected(new Set());
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md text-[var(--muted-foreground)] bg-[var(--secondary)] hover:bg-[var(--accent)] border border-[var(--border)] transition-colors"
+              >
+                Mark unread
+              </button>
+              <button
                 onClick={() => setBulkSelected(new Set())}
                 className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors ml-auto"
               >
@@ -1724,8 +1877,15 @@ export default function InboxPage() {
               return (
               <div key={email.id}>
               <div
-                className="flex items-start gap-2 md:gap-4 px-3 md:px-6 py-3 md:py-4 hover:bg-[var(--accent)]/50 transition-colors group"
+                className={`flex items-start gap-2 md:gap-4 px-3 md:px-6 py-3 md:py-4 hover:bg-[var(--accent)]/50 transition-colors group ${!email.is_read ? "bg-[var(--primary)]/[0.03]" : ""}`}
               >
+                {/* Unread indicator dot */}
+                <div className="flex-shrink-0 pt-2 w-2 hidden md:flex items-start">
+                  {!email.is_read && (
+                    <span className="block w-2 h-2 rounded-full bg-[var(--primary)]" title="Unread" />
+                  )}
+                </div>
+
                 {/* Bulk selection checkbox */}
                 <div className="hidden md:flex items-center pt-1 flex-shrink-0">
                   <input
@@ -1827,7 +1987,8 @@ export default function InboxPage() {
                 >
                   {/* Mobile layout: sender + time on top, subject below */}
                   <div className="flex items-center gap-2 md:hidden">
-                    <span className="text-sm font-medium text-[var(--foreground)] truncate min-w-0 flex-1 inline-flex items-center gap-1">
+                    <span className={`text-sm text-[var(--foreground)] truncate min-w-0 flex-1 inline-flex items-center gap-1 ${!email.is_read ? "font-semibold" : "font-medium"}`}>
+                      {!email.is_read && <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] flex-shrink-0 md:hidden" />}
                       {email.sender}
                       {vipMap[email.sender] && (
                         <span
@@ -1847,7 +2008,7 @@ export default function InboxPage() {
                     </span>
                   </div>
                   <div className="md:hidden mt-0.5">
-                    <p className="text-sm text-[var(--foreground)] truncate">
+                    <p className={`text-sm text-[var(--foreground)] truncate ${!email.is_read ? "font-semibold" : ""}`}>
                       {email.subject || "(No subject)"}
                     </p>
                   </div>
@@ -1868,7 +2029,7 @@ export default function InboxPage() {
                   {/* Desktop layout: single row */}
                   <div className="hidden md:flex items-baseline gap-3">
                     {/* Sender */}
-                    <span className="text-sm font-medium text-[var(--foreground)] truncate max-w-[200px] inline-flex items-center gap-1">
+                    <span className={`text-sm text-[var(--foreground)] truncate max-w-[200px] inline-flex items-center gap-1 ${!email.is_read ? "font-semibold" : "font-medium"}`}>
                       {email.sender}
                       {vipMap[email.sender] && (
                         <span
@@ -1883,7 +2044,7 @@ export default function InboxPage() {
                     </span>
 
                     {/* Subject */}
-                    <span className="text-sm text-[var(--foreground)] truncate flex-1">
+                    <span className={`text-sm text-[var(--foreground)] truncate flex-1 ${!email.is_read ? "font-semibold" : ""}`}>
                       {email.subject || "(No subject)"}
                     </span>
 
@@ -1953,6 +2114,26 @@ export default function InboxPage() {
 
                 {/* Actions — hidden on mobile (accessible from detail page) */}
                 <div className="flex-shrink-0 hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Read/Unread toggle */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleToggleRead(email.id, !!email.is_read); }}
+                    className="p-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
+                    title={email.is_read ? "Mark as unread" : "Mark as read"}
+                    data-testid="toggle-read-button"
+                  >
+                    {email.is_read ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect width="20" height="16" x="2" y="4" rx="2" />
+                        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M22 13V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12c0 1.1.9 2 2 2h8" />
+                        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                        <path d="m16 19 2 2 4-4" />
+                      </svg>
+                    )}
+                  </button>
                   {/* VIP toggle */}
                   {!vipMap[email.sender] && (
                     <button
@@ -2745,6 +2926,9 @@ export default function InboxPage() {
           allSmartLabels={allSmartLabels}
           filterSmartLabel={filterSmartLabel}
           setFilterSmartLabel={setFilterSmartLabel}
+          allSmartRulePages={allSmartRulePages}
+          filterSmartRulePage={filterSmartRulePage}
+          setFilterSmartRulePage={setFilterSmartRulePage}
           afterDate={afterDate}
           setAfterDate={setAfterDate}
           beforeDate={beforeDate}

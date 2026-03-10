@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "https://myopenbrain.com/admin/integrations  I need a simpler way for end users to be able to connect to Gmail such that we can access their inbox. Can we set this up using Google OAuth authentication, which grants permissions, then be able to access users' mailboxes? ",
+  "title": "Add Google OAuth Gmail inbox integration",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "in_progress",
+  "startedAt": "2026-03-06T19:14:59.345Z",
+  "id": "feature-1772822043063-v5hr8zfnft7",
+  "descriptionHistory": [
+    {
+      "description": "https://myopenbrain.com/admin/integrations  I need a simpler way for end users to be able to connect to Gmail such that we can access their inbox. Can we set this up using Google OAuth authentication, which grants permissions, then be able to access users' mailboxes? ",
+      "timestamp": "2026-03-06T18:34:03.509Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-06T18:43:20.020Z",
+  "justFinishedAt": "2026-03-06T18:43:19.961Z",
+  "summary": "## Summary: Gmail OAuth Connect Flow\n\n### Changes Implemented\n- Created Gmail OAuth initiation route (`GET /api/gmail/oauth?action=connect` redirects to Google OAuth consent screen, `GET /api/gmail/oauth` returns connection status, `DELETE /api/gmail/oauth` disconnects)\n- Created Gmail OAuth callback route (`GET /api/gmail/oauth/callback` exchanges auth code for tokens, fetches user email, auto-sets up Gmail Watch via Pub/Sub)\n- Updated `GmailWatchManager` component to use a one-click \"Connect Gmail\" OAuth button instead of a manual form requiring tokens\n- Added URL parameter handling for `gmail_connected` and `gmail_error` (same pattern as Outlook/Zoom)\n- Replaced the verbose 6-step manual Pub/Sub setup instructions with a concise description of the OAuth flow\n- Kept the Apps Script alternative as a fallback option for users who prefer polling\n- Removed unused `handleStop` function and manual form state (`setupForm`, `showSetup`)\n\n### Files Modified\n- `app/api/gmail/oauth/route.ts` (new) — Gmail OAuth initiation + status + disconnect\n- `app/api/gmail/oauth/callback/route.ts` (new) — OAuth callback with token exchange + auto watch setup\n- `app/(app)/admin/integrations/IntegrationsClient.tsx` — Replaced manual Gmail form with OAuth connect button, simplified instructions\n\n### Notes for Developer\n- Requires 3 environment variables in `.env.local`:\n  - `GOOGLE_CLIENT_ID` — from Google Cloud Console OAuth 2.0 credentials\n  - `GOOGLE_CLIENT_SECRET` — from Google Cloud Console OAuth 2.0 credentials\n  - `GOOGLE_PUBSUB_TOPIC` — e.g. `projects/my-project/topics/gmail-inbound`\n- The Google Cloud OAuth consent screen must have `http://localhost:3000/api/gmail/oauth/callback` (or your production domain) as an authorized redirect URI\n- Gmail API and Pub/Sub API must be enabled in the Google Cloud project\n- The OAuth flow requests `gmail.readonly` and `email` scopes\n- Watch subscriptions expire after 7 days — use the \"Renew Watch\" button in the UI\n- TypeScript compiles cleanly with no errors"
+}

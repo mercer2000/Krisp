@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "On workspaces, add a new item count on the page label. For example \"Disney World  (3)\" indicating 3 new items (notes, knowledge, Decisions) have been added to the page. ",
+  "title": "Add item count indicator to workspace page labels",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-10T01:26:59.701Z",
+  "id": "feature-1773106019701-rq2cfhork3g",
+  "descriptionHistory": [
+    {
+      "description": "On workspaces, add a new item count on the page label. For example \"Disney World  (3)\" indicating 3 new items (notes, knowledge, Decisions) have been added to the page. ",
+      "timestamp": "2026-03-10T01:27:00.035Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-10T01:31:03.506Z",
+  "justFinishedAt": "2026-03-10T01:31:03.488Z",
+  "summary": "## Summary: Page Entry Count Badge in Workspace Sidebar\n\n### Changes Implemented\n- Added a correlated SQL subquery to the `GET /api/pages` endpoint to return an `entryCount` field for each page, counting all rows in `page_entries` for that page\n- Added optional `entryCount` property to the `Page` TypeScript interface\n- Added a count badge `(N)` next to page titles in the workspace sidebar that displays when a page has entries (notes, knowledge, decisions, email summaries)\n- The badge is styled subtly (10px font, muted color, 60% opacity) and hides on hover to avoid clashing with action buttons\n\n### Files Modified\n- `app/api/pages/route.ts` — Added `sql` import and correlated subquery to include `entryCount` in page list response\n- `types/index.ts` — Added optional `entryCount?: number` to `Page` interface\n- `components/pages/PagesSidebar.tsx` — Added entry count badge display in `PageTreeItem` component\n\n### Notes for Developer\n- The entry count is computed via a SQL subquery `(SELECT count(*) FROM page_entries WHERE page_id = pages.id)` which is efficient as it runs in a single database round-trip alongside the main pages query\n- The `page_entries` table already has an index on `(page_id, sort_order)` which covers this count query well\n- The badge only shows when `entryCount > 0`, so empty pages remain clean\n- The count includes all entry types (knowledge, decision, email_summary, manual)"
+}

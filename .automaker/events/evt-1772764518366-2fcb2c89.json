@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772764518366-2fcb2c89",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-06T02:35:18.366Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772763891300-1znokfcn1sei",
+  "featureName": "Add support for multiple Outlook.com accounts",
+  "passes": true
+}

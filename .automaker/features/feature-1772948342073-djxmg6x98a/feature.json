@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "The subscriptions page is for internal admins only. Create a new page just for admins. We may need to add an admin role.   email@michaelpatten.com should be the admin.",
+  "title": "Admin subscriptions management page",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-08T05:39:02.073Z",
+  "id": "feature-1772948342073-djxmg6x98a",
+  "descriptionHistory": [
+    {
+      "description": "The subscriptions page is for internal admins only. Create a new page just for admins. We may need to add an admin role.   email@michaelpatten.com should be the admin.",
+      "timestamp": "2026-03-08T05:39:02.598Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-08T05:46:30.567Z",
+  "justFinishedAt": "2026-03-08T05:46:30.550Z",
+  "summary": "## Summary: Admin Role for Subscriptions Page\n\n### Changes Implemented\n- Created `getRequiredAdmin()` server-side helper that checks if the current user has `role === \"admin\"` in the database, redirecting non-admins to `/boards`\n- Created `/api/auth/me` API endpoint that returns the current user's role (used by client components to conditionally show admin UI)\n- Protected the admin subscriptions page (`/admin/subscriptions`) with `getRequiredAdmin()` — non-admins are now redirected\n- Protected the settings subscriptions page (`/settings/subscriptions`) with `getRequiredAdmin()` — non-admins are now redirected\n- Added conditional \"Admin\" nav link in the SideNav sidebar (shield icon) — only visible to users with `role === \"admin\"`\n- Updated settings layout sidebar to hide the \"Subscriptions\" link from non-admin users using an `adminOnly` flag\n- Added `AdminIcon` component (shield SVG) for the admin nav link\n\n### Files Modified\n- `lib/auth/getRequiredAdmin.ts` — **NEW** — Server-side admin role check helper\n- `app/api/auth/me/route.ts` — **NEW** — API endpoint returning user role\n- `app/(app)/admin/subscriptions/page.tsx` — Changed from `getRequiredUser()` to `getRequiredAdmin()`\n- `app/(app)/settings/subscriptions/page.tsx` — Changed from `getRequiredUser()` to `getRequiredAdmin()`\n- `components/ui/SideNav.tsx` — Added `isAdmin` state, admin role fetch, `AdminIcon`, and conditional admin nav link\n- `app/(app)/settings/layout.tsx` — Added `isAdmin` state, admin role fetch, `adminOnly` flag on nav items, and filtering logic\n\n### Notes for Developer\n- The `users` table already has a `role` column (varchar, default `\"user\"`). To make `email@michaelpatten.com` an admin, run this SQL in the Neon console:\n  ```sql\n  UPDATE users SET role = 'admin' WHERE email = 'email@michaelpatten.com';\n  ```\n- The existing server actions in `app/(app)/admin/subscriptions/actions.ts` already had a `requireAdmin()` check, so those remain protected\n- The existing API route `/api/admin/subscriptions` already had admin role checking, so that also remains protected\n- Non-admin users who navigate directly to `/admin/subscriptions` or `/settings/subscriptions` will be redirected to `/boards`"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "email-vip-contacts",
+  "category": "Email",
+  "title": "VIP Contact Priority Inbox Filter",
+  "description": "Allow users to mark specific email addresses or domains as VIP in the contact book. Emails from VIP contacts are automatically surfaced in a filtered VIP view and receive a gold badge in the unified inbox. Users can configure optional push notifications for new VIP emails.",
+  "status": "verified",
+  "priority": 2,
+  "complexity": "simple",
+  "dependencies": [
+    "email-contact-book"
+  ],
+  "createdAt": "2026-03-02T19:21:47.103Z",
+  "updatedAt": "2026-03-07T17:10:30.944Z",
+  "startedAt": "2026-03-07T16:48:07.873Z",
+  "descriptionHistory": []
+}

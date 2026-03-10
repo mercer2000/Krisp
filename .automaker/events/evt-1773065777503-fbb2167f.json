@@ -1,0 +1,10 @@
+{
+  "id": "evt-1773065777503-fbb2167f",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-09T14:16:17.503Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1773065078312-tlwb51ee8hc",
+  "featureName": "Add tabbed interface with Knowledge, Decisions, Smart Rules, and Activity tabs",
+  "passes": true
+}

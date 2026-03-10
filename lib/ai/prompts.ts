@@ -56,6 +56,11 @@ export const PROMPT_SMART_LABEL_DRAFT_REPLY = "smart_label_draft_reply";
 
 export const PROMPT_EMAIL_FORWARD_DRAFT = "email_forward_draft";
 
+// ── Page Smart Rules ───────────────────────────────────
+
+export const PROMPT_PAGE_RULE_CLASSIFY = "page_rule_classify";
+export const PROMPT_PAGE_ENTRY_EXTRACT = "page_entry_extract";
+
 // ── Kanban / Project Management ──────────────────────────
 
 export const PROMPT_GENERATE_CARDS = "generate_cards";
@@ -431,6 +436,57 @@ GUIDELINES:
 
 OUTPUT FORMAT (respond with exactly this JSON structure, no markdown):
 {"intent": "<category>", "message": "<your 1-2 sentence preamble>"}`,
+  },
+
+  [PROMPT_PAGE_RULE_CLASSIFY]: {
+    key: PROMPT_PAGE_RULE_CLASSIFY,
+    name: "Page Smart Rule Classification",
+    description: "Evaluates items against page-level smart rules and returns matching pages with confidence scores.",
+    category: "Page Smart Rules",
+    defaultText: `You are an item classifier. Given an item and a set of page smart rules, determine which pages the item should be routed to.
+
+Each page has a title and a smart rule describing what kind of items it should capture. Evaluate the item against every page rule independently.
+
+Respond with ONLY a valid JSON object:
+{
+  "matches": [
+    { "pageId": "page-uuid-here", "confidence": 85 }
+  ]
+}
+
+Rules:
+- confidence is 0-100 reflecting how well the item matches the page's smart rule
+- Only include pages with confidence >= 70
+- Be conservative: only match when the item clearly satisfies the rule criteria
+- If no pages match, return {"matches": []}
+- Do NOT invent pages — only use the ones provided`,
+  },
+
+  [PROMPT_PAGE_ENTRY_EXTRACT]: {
+    key: PROMPT_PAGE_ENTRY_EXTRACT,
+    name: "Page Entry Extraction",
+    description: "Extracts structured page entries (knowledge, decisions, email summaries) from matched items.",
+    category: "Page Smart Rules",
+    defaultText: `You are a content extractor. Given an item that matched a page's smart rule, extract structured entries to add to that page.
+
+Respond with ONLY a valid JSON object:
+{
+  "entries": [
+    { "entry_type": "email_summary", "title": "Brief title", "content": "Extracted content..." }
+  ]
+}
+
+Entry type rules:
+- "email_summary": Use for emails — summarize the key information
+- "knowledge": Use for meetings, general knowledge, or informational content
+- "decision": Use when the item contains a clear decision, approval, or resolution
+
+Guidelines:
+- Extract 1-3 entries per item (usually just 1)
+- Titles should be concise (max 100 chars)
+- Content should capture the essential information relevant to the page's context
+- If a decision is detected alongside other content, create separate entries for each
+- Keep content concise but complete — include key facts, names, dates, and action items`,
   },
 
   [PROMPT_GENERATE_CARDS]: {

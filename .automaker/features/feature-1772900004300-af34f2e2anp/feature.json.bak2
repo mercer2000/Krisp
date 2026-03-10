@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "Add the ability to forward a message to an external user via email address and provide an option to automatically generate a draft of the message to include when forwarding.",
+  "title": "Forward message via email with draft generation",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "in_progress",
+  "startedAt": "2026-03-07T16:39:47.747Z",
+  "id": "feature-1772900004300-af34f2e2anp",
+  "descriptionHistory": [
+    {
+      "description": "Add the ability to forward a message to an external user via email address and provide an option to automatically generate a draft of the message to include when forwarding.",
+      "timestamp": "2026-03-07T16:13:24.692Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-07T16:38:40.096Z",
+  "justFinishedAt": "2026-03-07T16:38:40.096Z",
+  "summary": "## Summary: Email Forwarding with AI Draft Generation\n\n### Changes Implemented\n- Added `PROMPT_EMAIL_FORWARD_DRAFT` AI prompt for generating contextual forwarding messages\n- Added `sendGraphMail()` function to send emails via Microsoft Graph API\n- Created `POST /api/emails/[id]/forward` API route that supports:\n  - Forwarding Outlook and Gmail emails to any external email address\n  - AI-generated forwarding message drafts (via `generateDraft: true` flag)\n  - User-written forwarding messages\n  - Standard forwarded email formatting with original email headers (From, Date, Subject, To)\n  - Proper HTML escaping for user content and metadata fields\n- Added Forward button and modal to the email detail page (`/inbox/[id]`)\n- Added Forward button (hover action) and modal to the inbox list page (`/inbox`)\n- Both modals include:\n  - Email context preview (subject, sender)\n  - Recipient email input\n  - Optional message textarea\n  - \"AI Generate\" button that auto-generates a forwarding message using the AI client\n  - Send/Cancel actions with loading states and error handling via toast notifications\n\n### Files Modified\n- `lib/ai/prompts.ts` — Added `PROMPT_EMAIL_FORWARD_DRAFT` constant and prompt definition\n- `lib/graph/messages.ts` — Added `sendGraphMail()` function for Graph API email sending\n\n### Files Created\n- `app/api/emails/[id]/forward/route.ts` — New API route for email forwarding and AI draft generation\n\n### Files Modified (UI)\n- `app/(app)/inbox/[id]/page.tsx` — Added forward state, Forward button in header, and Forward modal\n- `app/(app)/inbox/page.tsx` — Added forward state, Forward hover action button, and Forward modal\n\n### Notes for Developer\n- Forwarding uses the Microsoft Graph API `sendMail` endpoint via client credentials flow (same pattern as email deletion)\n- The Graph API app registration requires `Mail.Send` permission for forwarding to work\n- Gmail-sourced emails can also be forwarded — they are sent through the user's connected Outlook account via Graph API\n- The Outlook OAuth scopes include `Mail.ReadWrite` but not explicitly `Mail.Send` — the app-level credentials (`.default` scope) should include `Mail.Send` if configured in Azure AD\n- The AI draft generation uses the `PROMPT_EMAIL_FORWARD_DRAFT` prompt which can be customized per user via the admin prompts UI"
+}

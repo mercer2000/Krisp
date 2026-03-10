@@ -289,6 +289,3823 @@ Prerequisites
       <name>AI-Powered Card Priority Suggestions</name>
       <description>A Claude-powered assistant that analyses open Kanban cards alongside recent meeting action items and emails to suggest priority changes and due dates. Displays a &apos;Priority Review&apos; panel on the board page with explanations for each suggestion. Users can accept or dismiss each recommendation.</description>
     </feature>
+    <feature>
+      <name>Implement application-layer encryption for sensitive user data</name>
+      <description>Application-Layer Encryption for Sensitive User Data
+
+Implement transparent, application-layer encryption for all database columns that contain sensitive user-owned content, ensuring that Krisp developers and direct database access cannot read plaintext data while the application continues to function normally for authenticated users.
+
+---
+
+Scope &amp; Affected Tables
+
+Identify and encrypt all columns containing sensitive user-authored or user-received content across the following surfaces (audit other tables during implementation for any overlooked PII):
+
+- `emails` table — subject, body, sender name, recipient fields, snippet
+- `meeting_transcripts` table — full transcript text, summary, key points
+- `meetings` table — title, description, participant names/emails
+- `action_items` table — title, description, notes
+- `kanban_cards` table — title, description, markdown body
+- `brain_thoughts` / Open Brain memory table — thought content, metadata, tags
+- `journal_entries` (if present) — all user-authored text fields
+- Any other table containing user-entered free text, names, or contact information
+
+---
+
+Requirements
+
+Encryption Strategy
+- Implement AES-256-GCM symmetric encryption at the application layer, before data is written to Neon PostgreSQL, so the database stores only ciphertext
+- Use a single master encryption key (MEK) stored in a secrets manager (environment variable as minimum viable approach; document upgrade path to AWS KMS, HashiCorp Vault, or Doppler)
+- Generate a unique initialization vector (IV) per field per write; store IV alongside ciphertext (e.g., as a prefixed, base64-encoded string in the same column or a companion column)
+- Do not encrypt columns used for filtering, sorting, or indexing (e.g., foreign keys, timestamps, status enums, boolean flags) — encrypt only free-text and PII payload columns
+
+Key Management
+- Define a `ENCRYPTION_KEY` environment variable (32-byte hex or base64) required at application startup; fail fast with a clear error if absent
+- Document key rotation procedure: introduce a `key_version` column or prefix on each encrypted field, write a migration script that re-encrypts all rows with the new key, and keep the old key available during the rotation window
+- Never log, expose via API response, or include in error traces the raw plaintext of encrypted fields
+
+Encryption Utility Module
+- Create a shared utility (e.g., `lib/encryption.ts`) that exports:
+  - `encrypt(plaintext: string): string` — returns a self-contained ciphertext string (IV + tag + ciphertext, base64-encoded)
+  - `decrypt(ciphertext: string): string` — reverses the above; returns plaintext
+  - `encryptNullable(value: string | null): string | null` — handles nullable columns safely
+  - `decryptNullable(value: string | null): string | null`
+- All encryption/decryption must occur in this single module; no ad-hoc crypto elsewhere in the codebase
+
+Drizzle ORM Integration
+- Apply encryption transparently at the data access layer rather than in individual route handlers or components
+- Introduce typed Drizzle custom column types or repository wrapper functions (`insertEncrypted`, `selectDecrypted`) so callers work with plaintext and encryption is invisible
+- Ensure Drizzle migrations do not alter column types for already-stored ciphertext (columns remain `text`); add a migration comment documenting that these columns store encrypted values
+
+Vector Embeddings &amp; Semantic Search
+- Embeddings (pgvector columns) are generated from plaintext before encryption; the embedding itself is not sensitive in isolation and does not need to be encrypted
+- Ensure the pipeline order is: plaintext → generate embedding → encrypt plaintext → store both; decryption must occur before any re-embedding on update
+
+Search &amp; Filtering Compatibility
+- Full-text Postgres search (`tsvector`, `ILIKE`) will no longer function on encrypted columns — document this explicitly and confirm that all full-text search paths have already migrated to vector embedding search (which operates on the embedding, not the stored text)
+- Any remaining keyword-filter queries against encrypted columns must be replaced with semantic search or moved to application-side filtering post-decryption
+
+---
+
+Implementation Steps
+
+1. Create `lib/encryption.ts` with AES-256-GCM encrypt/decrypt utilities and tests
+2. Audit all Drizzle schema files and produce a definitive list of columns to encrypt
+3. Write and run a one-time migration script to encrypt all existing plaintext rows in production (encrypt-in-place, column by column, with progress logging and a dry-run mode)
+4. Update all Drizzle insert/update call sites to encrypt before write
+5. Update all Drizzle select call sites to decrypt after read
+6. Update the Open Brain MCP server tools to decrypt thought content before returning to AI clients
+7. Update the Krisp webhook ingestion pipeline to encrypt transcript and key-point payloads on arrival
+8. Update the email ingestion pipeline (Graph API + Gmail) to encrypt subject, body, and sender fields on arrival
+9. Add startup validation that confirms `ENCRYPTION_KEY` is present and valid length
+10. Write integration tests that assert: (a) raw database reads return ciphertext, not plaintext; (b) application API responses return correct plaintext; (c) a missing or wrong key causes decryption to throw, not silently return garbage
+
+---
+
+Edge Cases &amp; Considerations
+
+- Null and empty string handling — `null` stays `null`; empty string should encrypt to a non-empty ciphertext (do not special-case as null)
+- Partial migration failure — the in-place migration must be idempotent; detect already-encrypted rows by prefix marker (e.g., `enc:v1:`) and skip them
+- Session and cache invalidation — if any encrypted field values are cached in Redis, Next.js cache, or React Query, ensure cache keys or cache entries are invalidated after re-encryption during key rotation
+- API responses — decryption errors must return a 500 with a generic message, never expose the exception detail or partial plaintext to the client
+- Developer local environments — provide a deterministic test key for local development; document that production and staging must use separate, independently rotated keys
+- Backup and restore — encrypted backups of Neon remain encrypted at rest; document that a database restore without the corresponding `ENCRYPTION_KEY` value renders all user content unrecoverable; enforce key escrow policy</description>
+    </feature>
+    <feature>
+      <name>Extract email action items to Kanban board</name>
+      <description>When new email arrives, we want to automaticaly us AI to extract the action item assigned to the current user and to create new kanban tickets. You need to scan for action items for the currently logged in user. On each of the email integration settings pages, add a Kanban board name so you know what board to add new action items too. Use openrouter for the API. You have been asked to do this a few times so there maybe some existing code to leverage.</description>
+    </feature>
+    <feature>
+      <name>Enable Telegram integration for brain AI chat</name>
+      <description>And with Telegram, you want the user to be able to use Telegram to chat with the existing brain AI that you have set up.</description>
+    </feature>
+    <feature>
+      <name>Add meeting list filtering and search interface</name>
+      <description>Meeting List Filtering &amp; Search Interface
+
+Add a comprehensive filtering and search system to the recorded meetings list view, enabling users to quickly surface relevant meetings from a potentially large history.
+
+Requirements:
+
+Filter Controls to Implement:
+- Date Range — filter meetings by a start and end date (presets: Today, Last 7 Days, Last 30 Days, This Month, Custom Range)
+- Duration — filter by meeting length (e.g., Under 15 min, 15–30 min, 30–60 min, Over 1 hour)
+- Participants / Attendees — multi-select filter by person name or email address extracted from meeting metadata
+- Has Action Items — toggle to show only meetings with one or more extracted action items
+- Action Item Status — filter meetings whose action items contain at least one open, in_progress, completed, or cancelled item
+- Has Transcript — toggle to show only meetings where a full transcript was ingested (vs. metadata-only records)
+- Search by Keyword — free-text search across meeting title, key points, and summary fields (distinct from the existing AI semantic search)
+- Tag / Label — if meetings support tags, allow multi-select filtering by tag
+
+Behavior &amp; UX:
+- All filters should be combinable (AND logic) and update the meeting list in real time or on apply
+- Display an active filter summary bar showing which filters are currently applied, with individual dismiss (×) buttons per filter and a Clear All option
+- Persist applied filters in URL query parameters so filtered views are shareable and survive page refresh
+- Show a result count (&quot;Showing 12 of 47 meetings&quot;) that updates as filters change
+- When no meetings match the active filters, display an empty state with a prompt to clear filters
+- Filter panel should be collapsible to preserve vertical space on smaller screens
+
+Technical Considerations:
+- Filter state should be managed in URL params (useSearchParams / Next.js router) for shareability and back-button support
+- Database queries should apply filters server-side (not client-side JS array filtering) to handle large meeting histories efficiently
+- Add indexes on frequently filtered columns (e.g., start_time, duration) if not already present
+- Reuse or extend existing Drizzle ORM query builders for meeting retrieval
+- Ensure filter controls are accessible (keyboard navigable, ARIA-labeled)
+
+Edge Cases:
+- Meetings with missing or null duration/participant data should not be excluded by default — handle gracefully in filter logic
+- Date range filter should account for user timezone, not UTC only
+- Participant filter should normalize names/emails to avoid duplicate entries from minor formatting differences</description>
+    </feature>
+    <feature>
+      <name>Add color-coded speaker segmentation to meeting transcripts</name>
+      <description>Meeting Transcript Speaker Visualization with Color-Coded Turn Segmentation
+
+Enhance the Transcript tab within the Meeting Details flyout/sidebar panel to visually differentiate speakers using color coding and restructure the raw transcript text into discrete, speaker-attributed turn segments.
+
+Requirements:
+
+Speaker Color Assignment:
+- Dynamically assign a distinct color per unique speaker detected in the transcript data
+- Use a predefined palette of accessible, high-contrast colors that work in both light and dark mode (leverage existing color system tokens)
+- Ensure color assignments are stable within a session (same speaker always gets same color throughout the transcript)
+- Support gracefully degrading to a neutral color for unidentified or &quot;Unknown&quot; speakers
+
+Speaker Turn Segmentation:
+- Parse the transcript and group consecutive lines/sentences by speaker into discrete turn blocks
+- Each turn block must display: speaker name (or label), timestamp or time range of the turn, and the spoken content
+- Merge consecutive segments from the same speaker into a single visual block (avoid fragmenting one speaker&apos;s turn into multiple cards)
+- Preserve chronological order of the full conversation
+
+Visual Design:
+- Display a colored left-border or avatar/badge beside each turn block to indicate the speaker
+- Show the speaker name as a label above or beside each turn block, styled in their assigned color
+- Render timestamps in a muted, secondary style to avoid visual noise
+- Ensure turn blocks are clearly separated with adequate whitespace
+- Do not alter the existing tab navigation structure (Transcript / Key Points / Action Items tabs remain unchanged)
+
+Speaker Legend:
+- Add a compact speaker legend or key at the top of the transcript tab listing each speaker and their assigned color
+- Clicking a speaker name in the legend should filter/highlight only that speaker&apos;s turns (others dimmed), with a toggle to show all
+
+Edge Cases to Handle:
+- Transcripts with a single speaker (no segmentation needed; still apply color)
+- Very long speaker turns spanning many paragraphs
+- Speaker names that are long strings or contain special characters
+- Transcripts where speaker metadata is absent or malformed — fall back gracefully to unsegmented plain text rendering
+- Empty transcript state (no change to existing empty state UI)
+
+Data Considerations:
+- Audit the existing transcript data shape returned from the Krisp webhook and stored in Neon PostgreSQL to confirm whether speaker attribution is already structured (e.g., array of `{ speaker, timestamp, text }` objects) or needs to be parsed from a raw string
+- If parsing is required, implement a robust regex or split strategy that handles common Krisp transcript formats (e.g., &quot;Speaker Name: text&quot; or timestamped blocks)
+- No new API endpoints required if transcript data is already fetched for the flyout; extend the existing data pipeline only if speaker fields are missing
+
+Accessibility:
+- Do not rely on color alone to distinguish speakers — pair color with speaker name labels and/or distinct avatar initials
+- Ensure color contrast ratios meet WCAG AA standards for text on background</description>
+    </feature>
+    <feature>
+      <name>Add AI agent chat interface for second brain queries</name>
+      <description>For my second brain project, I want to add an AI agent chat interface such that I could chat in and ask questions about all the things that are in my second brain.</description>
+    </feature>
+    <feature>
+      <name>Auto-extract action items from meetings to Kanban</name>
+      <description>Auto-Extract Action Items from Meetings into Kanban
+
+When a new meeting is ingested via the Krisp webhook, automatically trigger an AI pipeline that extracts action items from the transcript and key points, persists them to the database, and creates corresponding Kanban cards on the user&apos;s configured board — eliminating the need for manual extraction on the meeting details page.
+
+Requirements:
+
+Webhook Trigger &amp; Pipeline Entry Point
+- Extend the existing Krisp webhook ingestion handler to invoke the action item extraction pipeline immediately after a meeting is saved
+- Ensure idempotency: if the webhook fires more than once for the same meeting, do not duplicate action items or Kanban cards
+- Queue or defer the AI extraction step if necessary to avoid blocking the webhook response (target &lt; 500ms webhook acknowledgement)
+
+AI Extraction
+- Reuse the existing extraction logic currently exposed via the manual &quot;Extract Action Items&quot; button on the meeting details page — refactor it into a shared service function callable from both the webhook handler and the UI
+- Pass the full transcript and key points to the AI (claude-sonnet-4) to identify action items
+- For each extracted action item, capture: title, description, assignee (if determinable from speaker/participant data), due date (if mentioned), and priority (inferred from language urgency)
+- If no transcript is available yet at webhook time (e.g., processing delay), schedule a retry or trigger extraction when the transcript becomes available
+
+Database Persistence
+- Save extracted action items to the existing action items table, linked to the source meeting ID and the authenticated user
+- Mark each record with an extraction source field (e.g., auto_webhook) to distinguish from manually extracted items
+- Set initial status to open
+
+Kanban Card Creation
+- For each persisted action item, create a Kanban card on the board configured in the user&apos;s Krisp meeting integration settings
+- Place new cards in a sensible default column (e.g., &quot;To Do&quot; or the first column of the configured board)
+- Populate card fields from action item data: title, description, due date, priority
+- Link the Kanban card back to the source action item and meeting (for traceability)
+
+Deduplication &amp; Conflict Handling
+- Before creating a Kanban card, check if a card already exists for the same action item (by meeting ID + action item fingerprint) to handle retries and manual extractions that may have already run
+- If a user has already manually extracted action items for a meeting, skip auto-creation for that meeting or merge gracefully without duplication
+
+UI / UX Updates
+- Update the meeting details page to reflect auto-extracted action items, showing their linked Kanban cards with status
+- Adjust or relabel the manual &quot;Extract Action Items&quot; button to &quot;Re-extract Action Items&quot; (or hide it) if auto-extraction has already run for that meeting
+- Show a non-blocking notification or meeting detail badge (e.g., &quot;3 action items auto-added to Kanban&quot;) confirming successful auto-extraction
+
+Edge Cases to Consider
+- Meeting arrives with no transcript (audio-only or processing lag) — handle gracefully with a retry mechanism or fallback to key points only
+- Krisp integration is configured but no Kanban board is selected — log a warning, save action items to the database, and surface a prompt in the UI to configure a board
+- AI returns zero action items — record a completed extraction attempt with zero results so retries do not re-run unnecessarily
+- Partial failure (action items saved but Kanban card creation fails) — ensure the action item record is preserved and card creation can be retried independently
+
+Dependencies &amp; Prerequisites
+- Krisp webhook integration must be active and correctly storing meeting data
+- User must have a Kanban board configured in Krisp integration settings
+- Existing manual extraction logic must be successfully refactored into a reusable service before wiring up the automated trigger</description>
+    </feature>
+    <feature>
+      <name>Add Microsoft Outlook integration</name>
+      <description>Add a new Microsoft Outlook integration.
+
+Great question, Michael! Yes, you can absolutely build an app that reads Outlook.com (personal Microsoft account) emails. Given your recent work with Microsoft Graph and Azure AD, you&apos;re already on the right track. Here&apos;s the landscape:
+
+**Microsoft Graph API** is the way to do it. It provides unified access to Outlook.com mailboxes (personal Microsoft accounts) as well as Microsoft 365/Exchange mailboxes. The endpoint you&apos;d use is `/me/messages` or `/me/mailFolders/{id}/messages`.
+
+**Key considerations for personal (consumer) accounts:**
+
+The auth flow differs slightly from organizational (Azure AD) accounts. For personal Microsoft accounts, you need to use the **Microsoft identity platform v2.0 endpoint**, which supports both work/school and personal accounts. When registering your app in Azure portal, you&apos;d select &quot;Accounts in any organizational directory and personal Microsoft accounts&quot; as the supported account type.
+
+**Delegated permissions** you&apos;d typically request include `Mail.Read` or `Mail.ReadWrite`. The user signs in via OAuth 2.0 and consents to the scopes. This is essentially what you&apos;ve been exploring with your Graph/Azure AD integration work — the main difference is ensuring your app registration supports the &quot;consumers&quot; or &quot;common&quot; tenant.
+
+**Auth flow options:**
+
+For a server-side app or CLI tool, the **authorization code flow** works well. For a webhook-based ingestion pipeline (like you&apos;ve been exploring), you can use **Graph subscriptions** to get notified of new messages, though there are some nuances with personal accounts — change notifications for personal mailboxes have historically had some limitations compared to M365 mailboxes.
+
+**Practical steps:**
+
+1. Register the app in Azure portal with multi-tenant + personal account support
+2. Configure redirect URIs for your auth flow
+3. Request `Mail.Read` (delegated) scope
+4. Use the `/common` or `/consumers` authority endpoint for token acquisition
+5. Call `https://graph.microsoft.com/v1.0/me/messages` with the bearer token
+
+**Watch out for:** Rate limits on personal accounts tend to be more restrictive than M365, and some Graph features (like rich filtering or extended properties) may behave differently on consumer mailboxes.
+
+Would you like me to help you scaffold something specific — like an auth flow, a webhook listener, or a quick prototype to pull messages?</description>
+    </feature>
+    <feature>
+      <name>Build a lightweight Notion-like workspace app</name>
+      <description># Notion-Like MVP — Technical Specification
+
+## Overview
+
+Build a lightweight, self-contained Notion-like workspace app called **&quot;Pages&quot;**. The MVP focuses on three core primitives that make Notion powerful: **pages**, **blocks**, and **databases**. The app should feel fast, minimal, and keyboard-friendly.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 15+ (App Router) |
+| Language | TypeScript (strict mode) |
+| Database | PostgreSQL (via Neon serverless or local Postgres) |
+| ORM | Drizzle ORM |
+| Auth | NextAuth 5 (Credentials provider, JWT sessions) |
+| Styling | Tailwind CSS 4 |
+| State | React 19 (useState/useReducer for local; SWR or React Query for server) |
+| Rich Text | TipTap (ProseMirror-based) or custom block editor |
+| Icons | Lucide React |
+| Drag &amp; Drop | @dnd-kit/core |
+
+---
+
+## Data Model
+
+### Tables
+
+#### `users`
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK, default `gen_random_uuid()` |
+| email | varchar(255) | unique, not null |
+| name | varchar(255) | not null |
+| password_hash | varchar(255) | not null |
+| avatar_url | text | nullable |
+| created_at | timestamp | default `now()` |
+| updated_at | timestamp | default `now()` |
+
+#### `workspaces`
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| name | varchar(255) | not null |
+| owner_id | uuid | FK → users.id |
+| created_at | timestamp | default `now()` |
+
+#### `pages`
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| workspace_id | uuid | FK → workspaces.id, not null |
+| parent_id | uuid | FK → pages.id, nullable (for nesting) |
+| title | varchar(500) | default `&apos;&apos;` |
+| icon | varchar(50) | nullable (emoji or icon name) |
+| cover_url | text | nullable |
+| is_database | boolean | default `false` |
+| database_config | jsonb | nullable (see Database Config section) |
+| is_archived | boolean | default `false` |
+| created_by | uuid | FK → users.id |
+| sort_order | integer | for ordering among siblings |
+| created_at | timestamp | default `now()` |
+| updated_at | timestamp | default `now()` |
+
+**Indexes:** `(workspace_id, parent_id, sort_order)`, `(workspace_id, is_archived)`
+
+#### `blocks`
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| page_id | uuid | FK → pages.id, not null, on delete cascade |
+| parent_block_id | uuid | FK → blocks.id, nullable (for nested blocks) |
+| type | varchar(50) | not null (see Block Types) |
+| content | jsonb | not null, default `{}` |
+| sort_order | integer | position within parent |
+| created_at | timestamp | default `now()` |
+| updated_at | timestamp | default `now()` |
+
+**Indexes:** `(page_id, parent_block_id, sort_order)`
+
+#### `database_rows`
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK |
+| database_page_id | uuid | FK → pages.id (the page with `is_database=true`) |
+| properties | jsonb | not null, default `{}` (key-value map of property values) |
+| sort_order | integer | manual sort position |
+| created_at | timestamp | default `now()` |
+| updated_at | timestamp | default `now()` |
+
+**Indexes:** `(database_page_id, sort_order)`
+
+Each database row is also linked to a page (the row *is* a page that can contain blocks). Add a `row_page_id` column (FK → pages.id) to allow opening a row as a full page with its own blocks.
+
+---
+
+## Block Types
+
+The `blocks.type` field accepts these values. The `blocks.content` JSONB stores type-specific data.
+
+| Type | `content` shape | Description |
+|------|----------------|-------------|
+| `paragraph` | `{ &quot;text&quot;: &quot;&lt;rich text&gt;&quot; }` | Standard text block |
+| `heading_1` | `{ &quot;text&quot;: &quot;&lt;rich text&gt;&quot; }` | H1 heading |
+| `heading_2` | `{ &quot;text&quot;: &quot;&lt;rich text&gt;&quot; }` | H2 heading |
+| `heading_3` | `{ &quot;text&quot;: &quot;&lt;rich text&gt;&quot; }` | H3 heading |
+| `bulleted_list` | `{ &quot;text&quot;: &quot;&lt;rich text&gt;&quot; }` | Bulleted list item |
+| `numbered_list` | `{ &quot;text&quot;: &quot;&lt;rich text&gt;&quot; }` | Numbered list item |
+| `to_do` | `{ &quot;text&quot;: &quot;&lt;rich text&gt;&quot;, &quot;checked&quot;: false }` | Checkbox item |
+| `toggle` | `{ &quot;text&quot;: &quot;&lt;rich text&gt;&quot; }` | Collapsible toggle (children are nested blocks) |
+| `code` | `{ &quot;text&quot;: &quot;&lt;plain text&gt;&quot;, &quot;language&quot;: &quot;javascript&quot; }` | Code block |
+| `quote` | `{ &quot;text&quot;: &quot;&lt;rich text&gt;&quot; }` | Block quote |
+| `divider` | `{}` | Horizontal rule |
+| `callout` | `{ &quot;text&quot;: &quot;&lt;rich text&gt;&quot;, &quot;icon&quot;: &quot;💡&quot; }` | Callout box |
+| `image` | `{ &quot;url&quot;: &quot;&lt;url&gt;&quot;, &quot;caption&quot;: &quot;&lt;text&gt;&quot; }` | Image embed |
+| `bookmark` | `{ &quot;url&quot;: &quot;&lt;url&gt;&quot;, &quot;title&quot;: &quot;&lt;text&gt;&quot;, &quot;description&quot;: &quot;&lt;text&gt;&quot; }` | URL bookmark |
+
+### Rich Text Format
+
+Rich text is stored as a JSON array of segments:
+
+```json
+[
+  { &quot;text&quot;: &quot;Hello &quot;, &quot;bold&quot;: false, &quot;italic&quot;: false },
+  { &quot;text&quot;: &quot;world&quot;, &quot;bold&quot;: true, &quot;italic&quot;: false, &quot;code&quot;: true },
+  { &quot;text&quot;: &quot;!&quot;, &quot;bold&quot;: false, &quot;italic&quot;: false }
+]
+```
+
+Supported marks: `bold`, `italic`, `underline`, `strikethrough`, `code`, `link` (with `href` field).
+
+---
+
+## Database Config
+
+When `pages.is_database = true`, the `database_config` JSONB stores:
+
+```json
+{
+  &quot;properties&quot;: [
+    { &quot;id&quot;: &quot;prop_1&quot;, &quot;name&quot;: &quot;Status&quot;, &quot;type&quot;: &quot;select&quot;, &quot;options&quot;: [
+      { &quot;id&quot;: &quot;opt_1&quot;, &quot;name&quot;: &quot;Not Started&quot;, &quot;color&quot;: &quot;gray&quot; },
+      { &quot;id&quot;: &quot;opt_2&quot;, &quot;name&quot;: &quot;In Progress&quot;, &quot;color&quot;: &quot;blue&quot; },
+      { &quot;id&quot;: &quot;opt_3&quot;, &quot;name&quot;: &quot;Done&quot;, &quot;color&quot;: &quot;green&quot; }
+    ]},
+    { &quot;id&quot;: &quot;prop_2&quot;, &quot;name&quot;: &quot;Priority&quot;, &quot;type&quot;: &quot;select&quot;, &quot;options&quot;: [
+      { &quot;id&quot;: &quot;opt_4&quot;, &quot;name&quot;: &quot;High&quot;, &quot;color&quot;: &quot;red&quot; },
+      { &quot;id&quot;: &quot;opt_5&quot;, &quot;name&quot;: &quot;Medium&quot;, &quot;color&quot;: &quot;yellow&quot; },
+      { &quot;id&quot;: &quot;opt_6&quot;, &quot;name&quot;: &quot;Low&quot;, &quot;color&quot;: &quot;gray&quot; }
+    ]},
+    { &quot;id&quot;: &quot;prop_3&quot;, &quot;name&quot;: &quot;Due Date&quot;, &quot;type&quot;: &quot;date&quot;, &quot;options&quot;: [] },
+    { &quot;id&quot;: &quot;prop_4&quot;, &quot;name&quot;: &quot;Assignee&quot;, &quot;type&quot;: &quot;text&quot;, &quot;options&quot;: [] },
+    { &quot;id&quot;: &quot;prop_5&quot;, &quot;name&quot;: &quot;Tags&quot;, &quot;type&quot;: &quot;multi_select&quot;, &quot;options&quot;: [] }
+  ],
+  &quot;views&quot;: [
+    { &quot;id&quot;: &quot;view_1&quot;, &quot;name&quot;: &quot;Table&quot;, &quot;type&quot;: &quot;table&quot;, &quot;filters&quot;: [], &quot;sorts&quot;: [] },
+    { &quot;id&quot;: &quot;view_2&quot;, &quot;name&quot;: &quot;Board&quot;, &quot;type&quot;: &quot;board&quot;, &quot;group_by&quot;: &quot;prop_1&quot;, &quot;filters&quot;: [], &quot;sorts&quot;: [] }
+  ]
+}
+```
+
+### Property Types for MVP
+
+| Type | Value stored in `database_rows.properties` |
+|------|-------------------------------------------|
+| `text` | `&quot;string value&quot;` |
+| `number` | `123` |
+| `select` | `&quot;option_id&quot;` |
+| `multi_select` | `[&quot;option_id_1&quot;, &quot;option_id_2&quot;]` |
+| `date` | `&quot;2025-01-15&quot;` or `{ &quot;start&quot;: &quot;2025-01-15&quot;, &quot;end&quot;: &quot;2025-01-20&quot; }` |
+| `checkbox` | `true` / `false` |
+| `url` | `&quot;https://...&quot;` |
+
+---
+
+## API Routes
+
+All routes under `/api/`. All require authentication (NextAuth session). Return JSON. Use standard HTTP status codes.
+
+### Auth
+| Method | Route | Description |
+|--------|-------|-------------|
+| POST | `/api/auth/register` | Create account (email, name, password). Hash with bcrypt. Create default workspace. |
+| * | `/api/auth/[...nextauth]` | NextAuth handler (login, session, etc.) |
+
+### Workspaces
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET | `/api/workspaces` | List user&apos;s workspaces |
+| POST | `/api/workspaces` | Create workspace |
+
+### Pages
+| Method | Route | Body / Params | Description |
+|--------|-------|--------------|-------------|
+| GET | `/api/pages?workspace_id=X` | query: `workspace_id` | List all non-archived pages (flat list, client builds tree from `parent_id`) |
+| POST | `/api/pages` | `{ workspace_id, parent_id?, title?, icon?, is_database? }` | Create page |
+| GET | `/api/pages/[id]` | — | Get page with all its blocks (ordered by sort_order) |
+| PATCH | `/api/pages/[id]` | `{ title?, icon?, cover_url?, parent_id?, sort_order?, is_archived? }` | Update page metadata |
+| DELETE | `/api/pages/[id]` | — | Hard delete page and all child pages/blocks (cascade) |
+
+### Blocks
+| Method | Route | Body | Description |
+|--------|-------|------|-------------|
+| POST | `/api/pages/[pageId]/blocks` | `{ type, content, parent_block_id?, sort_order }` | Create block |
+| PATCH | `/api/blocks/[id]` | `{ content?, type?, sort_order?, parent_block_id? }` | Update block |
+| DELETE | `/api/blocks/[id]` | — | Delete block and children |
+| POST | `/api/pages/[pageId]/blocks/reorder` | `{ blocks: [{ id, sort_order, parent_block_id }] }` | Batch reorder blocks |
+
+### Database Rows
+| Method | Route | Body / Params | Description |
+|--------|-------|--------------|-------------|
+| GET | `/api/databases/[pageId]/rows` | query: `filters?`, `sorts?`, `view_id?` | List rows with optional filtering/sorting |
+| POST | `/api/databases/[pageId]/rows` | `{ properties }` | Create row (also creates a linked page) |
+| PATCH | `/api/databases/[pageId]/rows/[rowId]` | `{ properties }` | Update row properties |
+| DELETE | `/api/databases/[pageId]/rows/[rowId]` | — | Delete row and linked page |
+| PATCH | `/api/databases/[pageId]/config` | `{ properties?, views? }` | Update database schema/views |
+
+---
+
+## Frontend Routes &amp; Pages
+
+```
+/                           → Redirect to /workspace/[default_workspace_id]
+/login                      → Login form
+/register                   → Registration form
+/workspace/[workspaceId]    → Main app shell (sidebar + content area)
+/workspace/[workspaceId]/[pageId]  → View/edit a specific page
+```
+
+---
+
+## UI Components
+
+### App Shell (`/workspace/[workspaceId]` layout)
+
+```
+┌──────────────────────────────────────────────────┐
+│ Sidebar (260px, collapsible)  │  Content Area     │
+│                               │                   │
+│  [Workspace Name]             │  [Page Title]     │
+│  ─────────────────            │  [Block 1]        │
+│  🔍 Quick Find               │  [Block 2]        │
+│  📄 Page 1                   │  [Block 3]        │
+│    📄 Nested Page            │  ...              │
+│  📊 Database 1               │                   │
+│  📄 Page 2                   │                   │
+│  ─────────────────            │                   │
+│  + New Page                   │                   │
+│  🗑️ Trash                    │                   │
+└──────────────────────────────────────────────────┘
+```
+
+### Component Tree
+
+```
+AppShell
+├── Sidebar
+│   ├── WorkspaceHeader (name, settings dropdown)
+│   ├── QuickFind (Cmd+K search dialog)
+│   ├── PageTree (recursive, drag-to-reorder, drag-to-nest)
+│   │   └── PageTreeItem (icon, title, expand/collapse, context menu)
+│   ├── NewPageButton
+│   └── TrashSection (list archived pages, restore/delete)
+│
+├── ContentArea
+│   ├── PageHeader
+│   │   ├── IconPicker (click icon to change)
+│   │   ├── CoverImage (optional, click to change)
+│   │   └── TitleInput (inline editable, large text)
+│   │
+│   ├── BlockEditor (if not a database page)
+│   │   ├── Block (recursive for nested blocks)
+│   │   │   ├── BlockHandle (drag handle, appears on hover)
+│   │   │   ├── BlockContent (renders based on type)
+│   │   │   └── BlockMenu (slash command menu, appears on &quot;/&quot; key)
+│   │   └── AddBlockButton (appears at bottom, or between blocks on hover)
+│   │
+│   └── DatabaseView (if is_database page)
+│       ├── ViewTabs (Table | Board | toggle between views)
+│       ├── FilterBar (add/remove filters)
+│       ├── SortBar (add/remove sorts)
+│       ├── TableView
+│       │   ├── TableHeader (column names, click to sort, drag to resize)
+│       │   └── TableRow (inline-editable cells)
+│       ├── BoardView
+│       │   ├── BoardColumn (grouped by select property)
+│       │   └── BoardCard (drag between columns)
+│       └── NewRowButton
+│
+└── Modals/Overlays
+    ├── QuickFindDialog (Cmd+K)
+    ├── SlashCommandMenu (block type selector)
+    ├── EmojiPicker (for page icons)
+    └── RowDetailModal (open database row as page)
+```
+
+---
+
+## Block Editor Behavior
+
+This is the core of the app. It must feel fast and intuitive.
+
+### Text Editing
+- Each block is an independently editable region
+- Pressing **Enter** at end of a block creates a new `paragraph` block below
+- Pressing **Enter** in the middle of a block splits it into two blocks
+- Pressing **Backspace** at the start of an empty block deletes it and moves cursor to previous block
+- Pressing **Backspace** at the start of a non-empty block merges it with the previous block
+- **Arrow Up/Down** at the top/bottom of a block moves cursor to adjacent block
+
+### Slash Commands
+- Typing `/` at the start of an empty block (or after a space) opens the slash command menu
+- Menu shows block types, filterable by typing (e.g., `/h1` filters to Heading 1)
+- Selecting a type converts the current block to that type
+- **Escape** closes the menu
+
+### Block Manipulation
+- **Tab** indents block (makes it a child of the previous sibling block)
+- **Shift+Tab** outdents block (moves it up one nesting level)
+- Hover over a block shows a drag handle on the left
+- Drag handle allows reordering and nesting via drag and drop
+- Click drag handle to open block action menu (Delete, Duplicate, Turn into..., Move to..., Color)
+
+### Inline Formatting
+- `Cmd+B` → bold
+- `Cmd+I` → italic
+- `Cmd+U` → underline
+- `Cmd+E` → inline code
+- `Cmd+K` → add link
+- Selecting text shows a floating toolbar with formatting options
+
+### Markdown Shortcuts (auto-convert on space)
+| Input | Converts to |
+|-------|------------|
+| `# ` | heading_1 |
+| `## ` | heading_2 |
+| `### ` | heading_3 |
+| `- ` or `* ` | bulleted_list |
+| `1. ` | numbered_list |
+| `[] ` or `[ ] ` | to_do |
+| `&gt; ` | quote |
+| `---` | divider |
+| ` ``` ` | code |
+
+---
+
+## Database Views
+
+### Table View
+- Spreadsheet-like grid
+- Columns correspond to database properties
+- First column is always the row title (links to row-as-page)
+- Click cell to edit inline
+- Click column header to sort ascending/descending
+- Drag column borders to resize
+- Click &quot;+&quot; at end of header row to add new property
+- Click property name to rename, change type, or delete
+
+### Board View (Kanban)
+- Cards grouped by a `select` property (e.g., Status)
+- Drag cards between columns to update the grouped property
+- Each card shows: title + up to 3 preview properties
+- Click card to open as page in a modal/side panel
+- &quot;+&quot; button at bottom of each column to add new row with that status pre-filled
+
+### Filtering
+- UI to add filter rules: `[Property] [operator] [value]`
+- Operators by type:
+  - text: is, is not, contains, does not contain, is empty, is not empty
+  - select: is, is not
+  - multi_select: contains, does not contain
+  - date: is, is before, is after, is between
+  - checkbox: is checked, is not checked
+  - number: =, !=, &gt;, &lt;, &gt;=, &lt;=
+
+### Sorting
+- Sort by any property, ascending or descending
+- Multiple sort levels (primary, secondary, etc.)
+
+---
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Cmd+K` | Open Quick Find |
+| `Cmd+N` | New page |
+| `Cmd+Shift+N` | New page as child of current |
+| `Cmd+Z` / `Cmd+Shift+Z` | Undo / Redo |
+| `Cmd+B/I/U/E/K` | Bold / Italic / Underline / Code / Link |
+| `Esc` | Close any open menu/modal |
+| `/` | Open slash command menu |
+| `Tab` / `Shift+Tab` | Indent / outdent block |
+
+---
+
+## Quick Find (Cmd+K)
+
+- Modal dialog with search input
+- Searches page titles across the workspace
+- Results show page icon, title, and breadcrumb path
+- Navigate results with arrow keys, Enter to open
+- Debounced search (200ms) via API: `GET /api/pages/search?q=&lt;query&gt;&amp;workspace_id=&lt;id&gt;`
+- API performs case-insensitive `ILIKE` search on page titles
+
+Add this route:
+
+| Method | Route | Params | Description |
+|--------|-------|--------|-------------|
+| GET | `/api/pages/search` | `q`, `workspace_id` | Search pages by title, return top 20 matches |
+
+---
+
+## Authentication Flow
+
+1. **Register**: POST email, name, password → hash password with bcrypt → insert user → create default workspace &quot;My Workspace&quot; → create a default &quot;Getting Started&quot; page with sample blocks → return session
+2. **Login**: Email + password → verify with bcrypt → issue JWT session
+3. **Session**: JWT stored in HTTP-only cookie, includes `{ userId, email, workspaceId }`
+4. **Middleware**: Protect all `/api/*` routes (except auth) and `/workspace/*` routes. Redirect unauthenticated users to `/login`.
+
+---
+
+## File Structure
+
+```
+app/
+├── (auth)/
+│   ├── login/page.tsx
+│   └── register/page.tsx
+├── (app)/
+│   └── workspace/
+│       └── [workspaceId]/
+│           ├── layout.tsx          (AppShell with Sidebar)
+│           ├── page.tsx            (redirect to first page or empty state)
+│           └── [pageId]/
+│               └── page.tsx        (PageView: header + editor or database)
+├── api/
+│   ├── auth/
+│   │   ├── [...nextauth]/route.ts
+│   │   └── register/route.ts
+│   ├── workspaces/route.ts
+│   ├── pages/
+│   │   ├── route.ts               (GET list, POST create)
+│   │   ├── search/route.ts        (GET search)
+│   │   └── [id]/
+│   │       ├── route.ts           (GET, PATCH, DELETE)
+│   │       └── blocks/
+│   │           ├── route.ts       (POST create)
+│   │           └── reorder/route.ts (POST batch reorder)
+│   ├── blocks/
+│   │   └── [id]/route.ts          (PATCH, DELETE)
+│   └── databases/
+│       └── [pageId]/
+│           ├── rows/
+│           │   ├── route.ts       (GET list, POST create)
+│           │   └── [rowId]/route.ts (PATCH, DELETE)
+│           └── config/route.ts    (PATCH update schema)
+├── layout.tsx
+└── globals.css
+
+components/
+├── sidebar/
+│   ├── Sidebar.tsx
+│   ├── PageTree.tsx
+│   ├── PageTreeItem.tsx
+│   └── QuickFind.tsx
+├── editor/
+│   ├── BlockEditor.tsx            (main editor container)
+│   ├── Block.tsx                  (single block renderer)
+│   ├── blocks/
+│   │   ├── ParagraphBlock.tsx
+│   │   ├── HeadingBlock.tsx
+│   │   ├── ListBlock.tsx
+│   │   ├── TodoBlock.tsx
+│   │   ├── CodeBlock.tsx
+│   │   ├── QuoteBlock.tsx
+│   │   ├── CalloutBlock.tsx
+│   │   ├── DividerBlock.tsx
+│   │   ├── ToggleBlock.tsx
+│   │   ├── ImageBlock.tsx
+│   │   └── BookmarkBlock.tsx
+│   ├── SlashCommandMenu.tsx
+│   ├── FloatingToolbar.tsx        (inline formatting toolbar)
+│   ├── BlockHandle.tsx            (drag handle + menu)
+│   └── useBlockEditor.ts          (core editor hook: key handling, block CRUD)
+├── database/
+│   ├── DatabaseView.tsx
+│   ├── TableView.tsx
+│   ├── BoardView.tsx
+│   ├── FilterBar.tsx
+│   ├── SortBar.tsx
+│   ├── PropertyEditor.tsx         (edit property name/type)
+│   ├── CellRenderer.tsx           (renders property value by type)
+│   └── RowDetailModal.tsx         (open row as page)
+├── page/
+│   ├── PageHeader.tsx
+│   ├── IconPicker.tsx
+│   └── CoverPicker.tsx
+└── ui/
+    ├── Button.tsx
+    ├── Input.tsx
+    ├── Dialog.tsx
+    ├── DropdownMenu.tsx
+    ├── Popover.tsx
+    └── Tooltip.tsx
+
+lib/
+├── db/
+│   ├── index.ts                   (Drizzle client)
+│   └── schema.ts                  (all table definitions)
+├── auth/
+│   └── config.ts                  (NextAuth config)
+├── hooks/
+│   ├── usePages.ts                (SWR hooks for page CRUD)
+│   ├── useBlocks.ts               (SWR hooks for block CRUD)
+│   └── useDatabaseRows.ts         (SWR hooks for database CRUD)
+└── utils.ts                       (shared utilities: cn, generateId, etc.)
+
+drizzle.config.ts
+```
+
+---
+
+## Styling Guidelines
+
+- Use Tailwind CSS exclusively; no CSS modules or styled-components
+- Light mode only for MVP (dark mode is a follow-up)
+- Color palette: neutral grays for chrome, subtle blue for selections/active states
+- Typography: system font stack (`font-sans`), page titles in 2.5rem bold
+- Blocks should have subtle hover states (light gray background)
+- Sidebar: light warm gray background (`bg-stone-50` or similar), 260px width
+- Content area: max-width 720px, centered with generous padding
+- Transitions: 150ms ease for hover states, 200ms for modals
+- Focus rings on all interactive elements for accessibility
+
+---
+
+## Behavior Specifications
+
+### Page Creation
+1. Click &quot;+ New Page&quot; in sidebar
+2. A new untitled page is created immediately (POST to API)
+3. Page appears in sidebar tree and is selected
+4. Cursor is placed in the title input
+5. A single empty paragraph block is created automatically
+
+### Block Creation
+1. User presses Enter in any block → new paragraph block inserted below
+2. User types `/` → slash command menu appears
+3. User selects block type → current empty paragraph converts to that type
+4. Blocks are saved on every change with a 500ms debounce to prevent excessive API calls
+5. Use optimistic updates — update UI immediately, sync to server in background
+
+### Page Nesting
+- Drag a page onto another page in the sidebar to nest it
+- Nested pages appear indented under parent with expand/collapse toggle
+- Maximum nesting depth: 5 levels (enforce in UI)
+- Moving a page updates its `parent_id` and `sort_order`
+
+### Database Row as Page
+- Every database row has a linked page
+- Clicking a row title opens the row detail modal
+- The modal shows: property fields at top, then a full block editor below
+- This allows rich content inside database rows (like Notion)
+
+### Trash / Archive
+- Deleting a page sets `is_archived = true` (soft delete)
+- Trash section in sidebar lists archived pages
+- &quot;Restore&quot; moves page back (sets `is_archived = false`)
+- &quot;Delete permanently&quot; hard-deletes the page and all children/blocks
+- Pages in trash are excluded from search and sidebar tree
+
+---
+
+## Optimistic Updates &amp; Caching Strategy
+
+- Use SWR (or React Query) for all data fetching
+- Mutate local cache immediately on user action (optimistic update)
+- Revalidate from server on error (rollback on failure)
+- Debounce block content saves at 500ms
+- Page list is cached per workspace and revalidated on mutations
+- Block list is cached per page
+
+---
+
+## Error Handling
+
+- API routes return consistent error format: `{ error: string, details?: any }`
+- 400 for validation errors, 401 for auth, 403 for forbidden, 404 for not found, 500 for server errors
+- Frontend shows toast notifications for errors (use a simple toast component)
+- Network failures during block saves should queue and retry (up to 3 retries with exponential backoff)
+
+---
+
+## Implementation Order
+
+Build in this exact sequence. Each phase should be fully functional before moving to the next.
+
+### Phase 1: Foundation
+1. Initialize Next.js project with TypeScript, Tailwind CSS, ESLint
+2. Set up Drizzle ORM with schema and migrations
+3. Configure NextAuth with Credentials provider
+4. Build login and registration pages
+5. Create auth middleware for protected routes
+
+### Phase 2: Page Management
+1. Build the AppShell layout (sidebar + content area)
+2. Implement page CRUD API routes
+3. Build PageTree component in sidebar (recursive, with expand/collapse)
+4. Build PageHeader (title editing, icon picker)
+5. Implement page creation, renaming, and deletion
+6. Implement drag-to-reorder and drag-to-nest in sidebar
+
+### Phase 3: Block Editor
+1. Build the Block component system (renderer for each type)
+2. Implement BlockEditor with keyboard handling (Enter, Backspace, Arrow keys)
+3. Build slash command menu with filtering
+4. Implement inline text formatting (bold, italic, etc.) with floating toolbar
+5. Implement markdown shortcuts (auto-convert on space)
+6. Add block drag-and-drop reordering
+7. Add Tab/Shift+Tab indentation
+8. Implement debounced auto-save for block changes
+
+### Phase 4: Databases
+1. Build database creation flow (convert page to database or create new)
+2. Implement database config API (properties, views)
+3. Build TableView with inline cell editing
+4. Build property type renderers (text, select, date, checkbox, etc.)
+5. Build BoardView (Kanban) with drag between columns
+6. Implement filter and sort UI
+7. Build RowDetailModal (properties + block editor)
+
+### Phase 5: Polish
+1. Implement Quick Find (Cmd+K) with search API
+2. Implement trash/archive with restore
+3. Add loading skeletons and empty states
+4. Add toast notifications for errors/success
+5. Keyboard shortcut registration and help modal
+6. Responsive adjustments (collapse sidebar on small screens)
+
+---
+
+## Out of Scope for MVP
+
+These features are explicitly **not** included in the MVP:
+
+- Real-time collaboration / multiplayer
+- Comments and discussions
+- Page sharing / public pages
+- File uploads (images are URL-only)
+- Version history / page history
+- Templates
+- Dark mode
+- Calendar view, timeline view, gallery view
+- Formulas and rollups in databases
+- Linked databases / relations between databases
+- Import/export
+- Mobile app
+- Workspace members / team features (single-user only for MVP)
+- AI features (summarize, generate, etc.)
+- Embeds (video, maps, etc.) beyond bookmarks
+- Page analytics
+
+---
+
+## Environment Variables
+
+```env
+DATABASE_URL=postgresql://user:pass@host:5432/dbname
+NEXTAUTH_SECRET=&lt;random 32+ char string&gt;
+NEXTAUTH_URL=http://localhost:3000
+```
+
+---
+
+## Testing Strategy (Optional but Recommended)
+
+- **API routes**: Test with Vitest + supertest-like fetch calls against route handlers
+- **Components**: Test critical interactions with React Testing Library
+- **E2E**: Playwright tests for core flows (create page → add blocks → create database → add rows)
+
+Focus E2E tests on:
+1. Register → login → see workspace
+2. Create page → type title → add heading + paragraph blocks
+3. Create database → add rows → switch to board view → drag card
+4. Search for page via Cmd+K → navigate to it
+5. Archive page → find in trash → restore</description>
+    </feature>
+    <feature>
+      <name>Implement semantic email search with OpenAI embeddings</name>
+      <description># Semantic Email Search — Mini Spec
+
+**Parent spec:** Email Viewer v1.0  
+**Feature:** Semantic search via OpenAI embeddings + pgvector  
+**Scope:** Additive — no breaking changes to existing schema or routes
+
+---
+
+## What We&apos;re Building
+
+A search experience where users can describe what they&apos;re looking for in natural language and get back relevant emails — even when the exact words don&apos;t match. Layered on top of (not replacing) the existing keyword search.
+
+---
+
+## Schema Changes
+
+### 1. Enable pgvector
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+### 2. Add embedding column to emails table
+
+```sql
+ALTER TABLE emails
+  ADD COLUMN embedding vector(1536),
+  ADD COLUMN embedding_generated_at TIMESTAMPTZ;
+```
+
+`vector(1536)` matches OpenAI&apos;s `text-embedding-3-small` output dimensions.  
+`embedding_generated_at` tracks processing state — null means not yet embedded.
+
+### 3. Add HNSW index for fast similarity search
+
+```sql
+CREATE INDEX idx_emails_embedding
+  ON emails
+  USING hnsw (embedding vector_cosine_ops)
+  WITH (m = 16, ef_construction = 64);
+```
+
+HNSW is preferred over IVFFlat for this use case — no training step required and handles incremental inserts cleanly.
+
+---
+
+## What Gets Embedded
+
+Concatenate these fields into a single string before sending to OpenAI:
+
+```
+Subject: {subject}
+From: {sender}
+{body_plain_text truncated to 6000 characters}
+```
+
+- Use `body_plain_text` over `body_html` — cleaner signal, no tag noise
+- Truncate to stay within the 8192 token limit of `text-embedding-3-small`
+- Strip excessive whitespace and newlines before embedding
+
+---
+
+## Embedding Pipeline
+
+Embeddings are generated **asynchronously** — never on the ingest request path.
+
+```
+Email saved to DB
+      │
+      ▼
+Queue job (BullMQ / pg-boss / etc.)
+      │
+      ▼
+Worker pulls emails WHERE embedding IS NULL
+      │
+      ▼
+Calls OpenAI Embeddings API (batch up to 100 at a time)
+      │
+      ▼
+UPDATE emails SET embedding = $1, embedding_generated_at = now()
+WHERE id = $2
+```
+
+### Worker implementation notes
+
+- **Batch size:** Up to 100 emails per API call (OpenAI supports array input)
+- **Retry logic:** Exponential backoff on 429 rate limit responses
+- **Backfill:** On first deploy, queue all existing emails with `embedding IS NULL`
+- **Frequency:** Process new emails within 60 seconds of insert — near real-time is fine, instant is not required
+
+---
+
+## New API Route
+
+### `GET /api/emails/search?q=your+query&amp;limit=20`
+
+**Flow:**
+
+1. Receive query string from user
+2. Call OpenAI to embed the query (same model, same dimensions)
+3. Run cosine similarity search against `emails` table scoped to `tenant_id`
+4. Return ranked results
+
+**Query:**
+
+```sql
+SELECT
+  id, sender, subject, received_at, recipients,
+  attachments_metadata,
+  LEFT(body_plain_text, 200) AS preview,
+  1 - (embedding &lt;=&gt; $2) AS similarity
+FROM emails
+WHERE
+  tenant_id = $1
+  AND embedding IS NOT NULL
+ORDER BY embedding &lt;=&gt; $2
+LIMIT $3;
+```
+
+**Response:**
+
+```json
+{
+  &quot;query&quot;: &quot;invoice payment overdue&quot;,
+  &quot;data&quot;: [
+    {
+      &quot;id&quot;: 88,
+      &quot;sender&quot;: &quot;billing@vendor.com&quot;,
+      &quot;subject&quot;: &quot;Outstanding Balance Reminder&quot;,
+      &quot;received_at&quot;: &quot;2026-02-14T09:00:00Z&quot;,
+      &quot;similarity&quot;: 0.91,
+      &quot;preview&quot;: &quot;This is a reminder that your account has an unpaid...&quot;
+    }
+  ]
+}
+```
+
+---
+
+## Hybrid Search (Recommended)
+
+Pure vector search occasionally misses obvious keyword matches. Run both in parallel and merge:
+
+```typescript
+async function hybridSearch(tenantId: string, query: string, limit: number) {
+  const [vectorResults, keywordResults] = await Promise.all([
+    vectorSearch(tenantId, query, limit),
+    keywordSearch(tenantId, query, limit),   // existing ILIKE query
+  ]);
+
+  // Merge by id, boost items that appear in both result sets
+  return mergeAndRank(vectorResults, keywordResults, limit);
+}
+```
+
+Simple merge strategy: deduplicate by `id`, assign a combined score where appearing in both lists gets a 1.2x boost. No ML required.
+
+---
+
+## UI Changes
+
+### Search bar behavior
+
+- Single search input replaces the existing `q` param search
+- On submit, call `/api/emails/search` instead of the list endpoint
+- Show a &quot;Searching…&quot; skeleton while the OpenAI embedding call resolves (typically 200–400 ms)
+
+### Results display
+
+- Same `MessageRow` component — no new UI needed
+- Optional: show a subtle similarity confidence indicator (e.g. a muted percentage badge) — omit if it confuses non-technical users
+- Show &quot;Semantic search powered by OpenAI&quot; attribution in the footer of results
+
+### Fallback state
+
+If `embedding IS NULL` for a large portion of the tenant&apos;s emails (e.g. backfill still running), show a banner:
+
+&gt; &quot;Search index is still building — results may be incomplete.&quot;
+
+---
+
+## Environment Variables
+
+```bash
+OPENAI_API_KEY=sk-...
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small   # 1536 dims, $0.02/1M tokens
+EMBEDDING_BATCH_SIZE=100
+```
+
+---
+
+## Cost Estimate
+
+| Scenario | Emails | Avg tokens/email | Total tokens | Cost |
+|---|---|---|---|---|
+| Initial backfill | 50,000 | 400 | 20M | ~$0.40 |
+| Initial backfill | 500,000 | 400 | 200M | ~$4.00 |
+| Ongoing (per email) | 1 | 400 | 400 | ~$0.000008 |
+| Per search query | 1 | ~20 | 20 | ~$0.0000004 |
+
+Cost is not a meaningful concern at any reasonable scale.
+
+---
+
+## Out of Scope
+
+- Storing embeddings in a separate vector database (Pinecone, Weaviate) — pgvector is sufficient here
+- Re-embedding when email content is updated (emails are immutable once received)
+- Embedding attachments content (would require OCR / file parsing pipeline)
+- Fine-tuning or custom embedding models</description>
+    </feature>
+    <feature>
+      <name>Add quick return to last viewed Kanban board</name>
+      <description>http://localhost:3001/boards 
+
+We want to make it easier to switch between Kanban boards and to return to the most currently selected Kanban board. Right now, when you select on the Kanban tab, you get a list of your boards and then you can select one of the boards. I want to eliminate the extra step of having to select your board after clicking on the Kanban. You should just go back to the last board that you were looking at.</description>
+    </feature>
+    <feature>
+      <name>Add delete button to cards for quick removal</name>
+      <description>http://localhost:3001/boards/1337ed31-9f0f-4101-a57d-d0ad3c051a2c
+
+Add the ability to quickly delete a card without having to view the card details. Probably a delete button directly on the card.</description>
+    </feature>
+    <feature>
+      <name>Zapier &amp; Make Outbound Webhook Triggers</name>
+      <description>Allow users to register outbound webhook URLs (for Zapier, Make, or custom endpoints) that are called when specific events occur: new card created, meeting ingested, email received, or thought captured. Payloads are JSON with event type, entity ID, and snapshot data. Configurable from the integrations admin panel.</description>
+    </feature>
+    <feature>
+      <name>Meeting Transcript Vector Embeddings for Semantic Search</name>
+      <description>Generate OpenAI embeddings for meeting transcripts and key points and store them in a pgvector column on the webhook_key_points table. Replace the current full-text Claude search with a hybrid approach: vector similarity pre-filter followed by Claude synthesis, reducing token usage and improving relevance.
+
+Thought the project was already using open AI embeddings. Can you review and see if there&apos;s additional work that we need to do here?</description>
+    </feature>
+    <feature>
+      <name>Add support for multiple Outlook.com accounts</name>
+      <description>Add the ability to connect to multiple outlook.com accounts.</description>
+    </feature>
+    <feature>
+      <name>Add calendar sync for Outlook integration</name>
+      <description>Now that we have an outlook.com integration and have settings on the integration page, add new logic to sync the user&apos;s calendar information. 
+
+https://krisp-khaki.vercel.app/calendar</description>
+    </feature>
+    <feature>
+      <name>Setup Neon database Row Level Security</name>
+      <description>Help me setup Neon database RLS</description>
+    </feature>
+    <feature>
+      <name>Add AI system prompt management to admin settings</name>
+      <description>AI System Prompt Management — Admin Settings Page
+
+Build an admin settings page that gives users full visibility and control over the AI system prompts powering their Krisp experience, enabling them to fine-tune how their Open Brain and AI features interpret, classify, and respond to their personal context.
+
+Requirements:
+
+**Settings Page Structure**
+- Add a new &quot;AI &amp; Prompts&quot; section within the existing settings or admin area
+- Display a list of all system prompts in use across the application, grouped by feature (e.g., Open Brain / MCP Retrieval, Meeting Intelligence Search, Daily Briefing, Decision Register, Email Extraction, Card Priority Suggestions, etc.)
+- Each prompt entry shows: feature name, a short description of what the prompt controls, the current active prompt text, and last-modified timestamp
+
+**Prompt Viewing**
+- Render each system prompt in a readable, syntax-highlighted or monospace code block
+- Allow the user to expand/collapse individual prompts to avoid visual clutter
+- Show a &quot;default&quot; badge when the prompt matches the original factory default
+
+**Prompt Editing**
+- Provide an inline editor (leveraging the existing @uiw/react-md-editor or a plain monospace textarea) for each prompt
+- Include a character/token count indicator to help users stay within model context limits
+- Validate that the prompt is non-empty before saving
+- Require an explicit &quot;Save Changes&quot; confirmation action per prompt — no auto-save
+- On save, persist the custom prompt to the Neon PostgreSQL database tied to the authenticated user, so it survives sessions and deployments
+
+**Reset &amp; Safety**
+- Offer a &quot;Reset to Default&quot; button per prompt that restores the original factory value after a confirmation dialog
+- Maintain the factory defaults as constants in the codebase (not database-dependent) so resets are always possible
+- Display a warning banner if a saved prompt deviates significantly in length or structure from the default, as a guardrail against accidental breakage
+
+**Runtime Integration**
+- All existing AI-powered features that currently use hardcoded system prompts must read from the database at request time, falling back to the hardcoded default if no user customization exists
+- Ensure prompt resolution is consistent across server actions, API routes, and MCP tool handlers
+
+**Audit &amp; History**
+- Store a lightweight version history (last 5 versions) per prompt so users can view previous values and revert to any prior version without needing to retype
+- Log each prompt change to the existing immutable audit trail
+
+**Edge Cases**
+- If a user&apos;s custom prompt causes an AI call to fail (e.g., model refusal, malformed output), surface a clear error in the relevant feature UI and include a link back to the prompt settings page
+- Ensure prompt editing is accessible only to the authenticated account owner — no prompt data is exposed to unauthenticated requests
+- Handle concurrent edits gracefully (last-write-wins with timestamp, or optimistic lock conflict message)</description>
+    </feature>
+    <feature>
+      <name>Create Chrome extension for Krisp web content capture</name>
+      <description>Web Clipper Chrome Extension for Open Brain Knowledge Capture
+
+Build a Chrome extension that allows users to clip web page content directly into the Krisp Open Brain knowledge system, transforming any web page into a structured, searchable memory entry — just as Slack captures spoken thoughts, the extension captures discovered knowledge.
+
+---
+
+Architecture Overview
+
+The feature spans three layers:
+
+1. Chrome Extension (frontend capture layer)
+2. Krisp API endpoint (ingestion + storage layer)
+3. Open Brain database + MCP (retrieval layer)
+
+---
+
+Sub-Tasks
+
+1. Chrome Extension — Content Extraction
+
+- Scaffold a Manifest V3 Chrome extension with a popup UI and a content script
+- Content script extracts clean plain text from the active tab using a Readability-style parsing strategy (strip nav, footer, ads, scripts, and boilerplate; retain meaningful body text, headings, and structure)
+- Capture metadata automatically: page title, canonical URL, domain, and timestamp
+- Allow the user to optionally highlight a selection before clipping — if a selection exists, clip only the highlighted passage rather than the full page
+- Display a small popup with: a preview of the extracted text (truncated), an editable title field (pre-filled with the page title), a tags input field (comma-separated), and a Clip to Krisp button
+- Show success or error state inline in the popup after submission
+
+2. Krisp API — Ingestion Endpoint
+
+- Create a new API route: POST /api/brain/clips
+- Accept payload: { title, url, domain, plain_text, tags[], clipped_at }
+- Authenticate the request using the user&apos;s Personal API Key (already exists in the system) passed as a Bearer token in the Authorization header — this allows the extension to work without a browser session
+- Truncate plain_text to a safe maximum (e.g., 12,000 characters) before embedding to stay within token limits; store the full text separately
+- Generate a vector embedding of the plain text using the existing OpenAI Embeddings pipeline (same 1536-dimensional pgvector flow used for emails)
+- Insert a new record into the brain_entries table (or equivalent Open Brain storage table) with source type set to web_clip
+
+3. Database — Schema Extension
+
+- Add a source_type enum value: web_clip (alongside existing values such as slack, manual, etc.)
+- Add a source_url column (text, nullable) to store the origin URL of the clip
+- Add a source_domain column (text, nullable) for domain-level filtering and analytics
+- Ensure the new columns are included in existing MCP retrieval queries and semantic search indexes
+
+4. MCP — Retrieval Awareness
+
+- Update the semantic search tool to surface web_clip entries with their source_url as a citation link in results
+- Update the list recent tool to display web clips with a 🌐 source indicator and the origin domain
+- Update the stats tool to include web_clips as a tracked capture source in pattern analysis
+
+5. Chrome Extension — Authentication Flow
+
+- On first install, display an onboarding screen prompting the user to paste their Krisp Personal API Key (link directly to the key management page in the Krisp app)
+- Store the key securely in chrome.storage.local (never in localStorage or plaintext cookies)
+- Provide a way to update or revoke the stored key from the extension settings panel
+
+6. Krisp UI — Web Clips in the Brain Dashboard
+
+- Display web_clip entries in the Open Brain feed with a distinct clip icon and the source domain shown as a secondary label
+- Make the source URL clickable (opens original page in a new tab)
+- Add web_clip as a filterable source type in any existing brain entry filter controls
+
+---
+
+Edge Cases to Handle
+
+- Pages that block content scripts (e.g., Chrome Web Store, PDF viewer) — show a graceful &quot;This page cannot be clipped&quot; message
+- Very long pages — enforce client-side truncation before sending; inform the user if content was trimmed
+- Duplicate clips — if the same URL has already been clipped (check via source_url on the backend), return a warning but still allow the user to save if they confirm
+- No meaningful text extracted — disable the Clip button and show an &quot;Unable to extract content from this page&quot; message
+- API key missing or invalid — show a clear authentication error with a link to the Krisp key management page
+- Offline or API unreachable — surface a network error and offer a retry button
+
+---
+
+Acceptance Criteria
+
+- A user can install the extension, authenticate with their API key, visit any standard web page, and clip its content to Krisp in under 15 seconds
+- Clipped entries appear immediately in the Open Brain feed and are semantically searchable via both the Krisp UI and any MCP-connected AI client
+- The MCP semantic search tool returns web clip entries with their source URL as a citation
+- The extension gracefully handles all listed edge cases without crashing or silently failing
+- No user session cookie or password is stored in the extension — authentication relies solely on the Personal API Key</description>
+    </feature>
+    <feature>
+      <name>Implement Zapier webhook integration for cross-system message ingestion</name>
+      <description>Add Zapier Integration for Cross-System Message Ingestion
+
+Implement a Zapier webhook receiver that allows external systems (Slack, Notion, Linear, Jira, HubSpot, etc.) to push messages, notes, and structured data into Krisp&apos;s Open Brain persistent memory system and/or Kanban board — without requiring direct API integrations for each source.
+
+Requirements:
+
+Webhook Receiver Endpoint
+- Create a POST /api/integrations/zapier/ingest route secured with a per-user HMAC-signed token or static secret key (consistent with the existing HMAC signing infrastructure)
+- Accept a flexible JSON payload schema covering: message body (required), source system name, author/sender, timestamp, tags, and an optional routing_target field (brain | kanban | both)
+- Validate incoming payloads with Zod, returning structured 400 errors for malformed requests
+
+Payload Routing Logic
+- If routing_target is brain or unspecified: store the message as an Open Brain thought — generate a vector embedding via OpenAI, extract metadata (topic, sentiment, urgency), and persist to the thoughts table
+- If routing_target is kanban: parse the payload and create a new Kanban card with title, description, source label, priority (default: medium), and auto-assigned tag (e.g., &quot;zapier&quot;)
+- If routing_target is both: execute both pipelines concurrently
+
+Zapier-Side Configuration
+- Document the exact Zapier Webhooks (POST) action configuration: endpoint URL, authentication header format, and a canonical payload schema users should map their Zap fields to
+- Provide a sample payload and field mapping guide for at least three common source apps (e.g., Slack, Gmail, Notion)
+
+User-Facing Setup UI
+- Add a &quot;Zapier&quot; section under an Integrations settings page (or extend an existing one if present)
+- Display the user&apos;s unique ingest webhook URL with a one-click copy button
+- Allow the user to regenerate the webhook secret, which invalidates the previous token
+- Show a log of the last N ingest events (timestamp, source, routing target, status: success/failed) for debugging
+
+Security &amp; Reliability
+- Verify the shared secret on every inbound request before processing; return 401 for invalid signatures
+- Enforce per-user rate limiting on the ingest endpoint consistent with the existing rate-limiting infrastructure
+- Idempotency: include an optional idempotency_key field in the payload to prevent duplicate ingestion if Zapier retries a failed delivery
+- Log all ingest attempts (success and failure) to the existing structured error logging system
+
+Edge Cases to Handle
+- Payload body exceeds token limit for embedding — truncate with a stored warning flag
+- Missing or null message body — reject with a descriptive error
+- routing_target set to kanban but no meaningful title can be derived — fall back to a truncated message body as the card title
+- Clock skew on inbound timestamp — store both the source timestamp and server-received timestamp
+
+Prerequisites
+- Existing HMAC signing infrastructure and rate-limiting middleware must be confirmed compatible with this new route
+- OpenAI embedding pipeline (used by email search) must be reusable for thought ingestion without duplication
+- Personal API Key Management feature must be evaluated as a potential authentication alternative to a separate webhook secret</description>
+    </feature>
+    <feature>
+      <name>Lightweight email client</name>
+      <description># Lightweight Email Viewer — Product Specification
+
+**Project:** Read-only email client built with Next.js  
+**Version:** 1.0  
+**Status:** Draft
+
+---
+
+## Overview
+
+A lightweight, read-only email viewer that surfaces messages stored in a PostgreSQL `emails` table. The app is tenant-scoped, meaning each authenticated user sees only messages belonging to their `tenant_id`. There is no compose, reply, or delete functionality in this version — the sole focus is fast, readable message browsing.
+
+---
+
+## Goals &amp; Non-Goals
+
+**Goals**
+- Display a paginated, sortable inbox list for the authenticated tenant
+- Render individual messages with full header metadata and body content (HTML preferred, plain text fallback)
+- Support basic search and filtering
+- Handle attachments metadata display (no file download in v1)
+- Be fast — target &lt; 200 ms server response on list queries
+
+**Non-Goals (v1)**
+- Compose, reply, forward, or delete
+- File attachment download
+- Multi-tenant admin views
+- Real-time push / WebSocket updates
+- Mobile-native UI (responsive web only)
+
+---
+
+## Database Schema (Reference)
+
+```sql
+CREATE TABLE emails (
+  id               SERIAL PRIMARY KEY,
+  tenant_id        UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  message_id       VARCHAR(512) NOT NULL,
+  sender           VARCHAR(512) NOT NULL,
+  recipients       JSONB NOT NULL DEFAULT &apos;[]&apos;,
+  cc               JSONB NOT NULL DEFAULT &apos;[]&apos;,
+  bcc              JSONB NOT NULL DEFAULT &apos;[]&apos;,
+  subject          TEXT,
+  body_plain_text  TEXT,
+  body_html        TEXT,
+  received_at      TIMESTAMPTZ NOT NULL,
+  attachments_metadata JSONB NOT NULL DEFAULT &apos;[]&apos;,
+  raw_payload      JSONB NOT NULL,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT uq_emails_tenant_message UNIQUE (tenant_id, message_id)
+);
+
+-- Indexes leveraged by this app
+-- idx_emails_tenant_id
+-- idx_emails_received_at
+-- idx_emails_tenant_received  (composite — primary sort index)
+```
+
+**JSONB array shapes assumed**
+
+| Field | Element shape |
+|---|---|
+| `recipients` / `cc` / `bcc` | `{ &quot;email&quot;: &quot;...&quot;, &quot;name&quot;: &quot;...&quot; }` |
+| `attachments_metadata` | `{ &quot;filename&quot;: &quot;...&quot;, &quot;content_type&quot;: &quot;...&quot;, &quot;size&quot;: 12345 }` |
+
+---
+
+## Architecture
+
+```
+Next.js App Router (v14+)
+├── app/
+│   ├── (auth)/
+│   │   └── login/           # Auth entry point (outside scope — stub only)
+│   ├── inbox/
+│   │   ├── page.tsx          # Inbox list (Server Component)
+│   │   └── [id]/
+│   │       └── page.tsx      # Message detail (Server Component)
+│   └── api/
+│       ├── emails/
+│       │   ├── route.ts      # GET /api/emails  — list
+│       │   └── [id]/
+│       │       └── route.ts  # GET /api/emails/:id — single message
+├── lib/
+│   ├── db.ts                 # pg / postgres.js client singleton
+│   ├── auth.ts               # Session helper — exposes tenantId
+│   └── emails.ts             # Query functions
+├── components/
+│   ├── InboxList.tsx
+│   ├── MessageRow.tsx
+│   ├── MessageDetail.tsx
+│   ├── AttachmentBadge.tsx
+│   └── SearchBar.tsx
+└── types/
+    └── email.ts              # TypeScript interfaces
+```
+
+**Database client:** `postgres` (postgres.js) or `@vercel/postgres` — avoid an ORM to keep queries transparent and exploit the composite index directly.
+
+**Auth:** Any session mechanism that exposes `tenantId: string` (UUID). NextAuth, Clerk, or a custom JWT middleware are all acceptable. The spec assumes a `getSession()` helper returning `{ tenantId }`.
+
+---
+
+## Pages &amp; Routes
+
+### 1. Inbox List — `GET /inbox`
+
+**Purpose:** Paginated, reverse-chronological list of messages for the authenticated tenant.
+
+**URL Parameters**
+
+| Param | Type | Default | Description |
+|---|---|---|---|
+| `page` | number | 1 | Page number (1-indexed) |
+| `limit` | number | 50 | Rows per page (max 100) |
+| `q` | string | — | Full-text search across `sender` and `subject` |
+| `after` | ISO date | — | Filter messages received after this date |
+| `before` | ISO date | — | Filter messages received before this date |
+
+**SQL (core list query)**
+
+```sql
+SELECT
+  id, sender, subject, received_at,
+  recipients,
+  attachments_metadata,
+  LEFT(body_plain_text, 200) AS preview
+FROM emails
+WHERE
+  tenant_id = $1
+  AND ($2::text IS NULL OR sender ILIKE &apos;%&apos; || $2 || &apos;%&apos; OR subject ILIKE &apos;%&apos; || $2 || &apos;%&apos;)
+  AND ($3::timestamptz IS NULL OR received_at &gt;= $3)
+  AND ($4::timestamptz IS NULL OR received_at &lt;= $4)
+ORDER BY received_at DESC
+LIMIT $5 OFFSET $6;
+```
+
+This query uses `idx_emails_tenant_received`. For full-text search at scale, promote `subject` and `sender` to a `tsvector` generated column with a GIN index.
+
+**UI Layout**
+
+```
+┌─────────────────────────────────────────────────────┐
+│  📧 Inbox                    [Search...]   [Filters] │
+├────┬──────────────────────┬──────────┬──────────────┤
+│    │ Sender               │ Subject  │ Received     │
+├────┼──────────────────────┼──────────┼──────────────┤
+│ 📎 │ alice@example.com    │ Q3 Repor…│ Mar 1, 10:42 │
+│    │ bob@example.com      │ Re: Invo…│ Feb 28, 9:15 │
+│    │ …                    │ …        │ …            │
+└────┴──────────────────────┴──────────┴──────────────┘
+                          ← 1 2 3 … →
+```
+
+- Rows are clickable links to `/inbox/[id]`
+- Paperclip icon appears when `attachments_metadata` array is non-empty
+- Subject and preview text truncated to single line with `text-overflow: ellipsis`
+- Relative timestamps (&quot;2 hours ago&quot;) with absolute tooltip on hover
+
+---
+
+### 2. Message Detail — `GET /inbox/[id]`
+
+**Purpose:** Full message view for a single email.
+
+**SQL**
+
+```sql
+SELECT *
+FROM emails
+WHERE id = $1 AND tenant_id = $2
+LIMIT 1;
+```
+
+The `AND tenant_id = $2` guard is mandatory — prevents cross-tenant access by ID enumeration.
+
+**UI Layout**
+
+```
+┌──────────────────────────────────────────────────────┐
+│ ← Back to Inbox                                      │
+├──────────────────────────────────────────────────────┤
+│ Subject: Q3 Financial Report                         │
+│ From:    alice@example.com                           │
+│ To:      bob@example.com, carol@example.com          │
+│ CC:      dave@example.com                            │
+│ Date:    March 1, 2026 at 10:42 AM                   │
+├──────────────────────────────────────────────────────┤
+│ 📎 report.pdf  (124 KB)   📎 data.xlsx  (48 KB)      │
+├──────────────────────────────────────────────────────┤
+│                                                      │
+│  [Rendered HTML body or plain text fallback]         │
+│                                                      │
+└──────────────────────────────────────────────────────┘
+```
+
+**Body rendering rules**
+
+1. If `body_html` is non-null, render inside a sandboxed `&lt;iframe srcdoc&gt;` or sanitize with DOMPurify before `dangerouslySetInnerHTML`.
+2. Otherwise render `body_plain_text` inside a `&lt;pre&gt;` with `white-space: pre-wrap`.
+3. If both are null, show a &quot;No message body&quot; placeholder.
+
+**Security note:** Never render `body_html` without sanitization. Recommended: `isomorphic-dompurify` on the server before sending to the client, stripping `&lt;script&gt;`, `on*` event attributes, and external resource loads (`&lt;img src&gt;` to external domains should be blocked or proxied).
+
+**Attachments panel**
+
+Display each entry from `attachments_metadata` as a badge:
+- Filename
+- Human-readable size
+- MIME type icon
+- No download link in v1 — badge is informational only
+
+---
+
+## API Routes
+
+### `GET /api/emails`
+
+Returns the same payload as the inbox list query, as JSON. Useful for client-side pagination without a full page reload.
+
+**Response**
+```json
+{
+  &quot;data&quot;: [
+    {
+      &quot;id&quot;: 42,
+      &quot;sender&quot;: &quot;alice@example.com&quot;,
+      &quot;subject&quot;: &quot;Q3 Report&quot;,
+      &quot;received_at&quot;: &quot;2026-03-01T10:42:00Z&quot;,
+      &quot;recipients&quot;: [{ &quot;email&quot;: &quot;bob@example.com&quot;, &quot;name&quot;: &quot;Bob&quot; }],
+      &quot;has_attachments&quot;: true,
+      &quot;preview&quot;: &quot;Please find attached the Q3 financial…&quot;
+    }
+  ],
+  &quot;total&quot;: 312,
+  &quot;page&quot;: 1,
+  &quot;limit&quot;: 50
+}
+```
+
+### `GET /api/emails/[id]`
+
+Returns the full email record minus `raw_payload` (excluded to reduce payload size and avoid leaking raw MIME headers to the client).
+
+---
+
+## Data Access Layer — `lib/emails.ts`
+
+```typescript
+export interface EmailRow {
+  id: number;
+  tenant_id: string;
+  message_id: string;
+  sender: string;
+  recipients: { email: string; name?: string }[];
+  cc: { email: string; name?: string }[];
+  bcc: { email: string; name?: string }[];
+  subject: string | null;
+  body_plain_text: string | null;
+  body_html: string | null;
+  received_at: Date;
+  attachments_metadata: { filename: string; content_type: string; size: number }[];
+  created_at: Date;
+  updated_at: Date;
+}
+
+export async function listEmails(
+  tenantId: string,
+  opts: { page: number; limit: number; q?: string; after?: Date; before?: Date }
+): Promise&lt;{ rows: Partial&lt;EmailRow&gt;[]; total: number }&gt;
+
+export async function getEmail(
+  id: number,
+  tenantId: string
+): Promise&lt;EmailRow | null&gt;
+```
+
+---
+
+## Security Requirements
+
+| Requirement | Implementation |
+|---|---|
+| Tenant isolation | Every query includes `AND tenant_id = $tenantId`; enforced in the data layer, not just the UI |
+| HTML sanitization | `isomorphic-dompurify` strips scripts and dangerous attributes server-side before render |
+| Auth on all routes | Middleware redirects unauthenticated requests to `/login`; API routes return 401 |
+| No raw_payload exposure | Excluded from all API responses |
+| Input validation | `zod` schema on all query params; invalid input returns 400 |
+| Rate limiting | 60 req/min per session on API routes (e.g., `@upstash/ratelimit` or similar) |
+
+---
+
+## Performance Considerations
+
+- The composite index `idx_emails_tenant_received (tenant_id, received_at)` is the primary sort index for the inbox query — no additional indexes needed for baseline performance.
+- For tenants with &gt; 100 k messages, add keyset pagination (`WHERE received_at &lt; $cursor`) instead of `OFFSET` to avoid deep-page slowdowns.
+- Cache the inbox list response in Next.js with `revalidate: 30` (ISR) if the data is not real-time critical, or use `no-store` for live inbox behavior.
+- `body_html` and `body_plain_text` are excluded from the list query; only fetched on the detail page.
+
+---
+
+## Tech Stack Summary
+
+| Layer | Choice |
+|---|---|
+| Framework | Next.js 14+ (App Router) |
+| Language | TypeScript |
+| Database client | `postgres` (postgres.js) |
+| Auth | NextAuth or Clerk (pluggable) |
+| Styling | Tailwind CSS |
+| HTML sanitization | `isomorphic-dompurify` |
+| Validation | `zod` |
+| Deployment | Vercel or any Node.js host |
+
+---
+
+## Out of Scope (Future Versions)
+
+- Compose / Reply / Forward
+- Folder / label management
+- Mark as read / unread (requires a `read_at` column)
+- Attachment download (requires a file storage layer)
+- Real-time new message notifications
+- Mobile app</description>
+    </feature>
+    <feature>
+      <name>Improve Kanban boards</name>
+      <description>Let me look at both your running app and the AutoMaker reference code simultaneously.Now let me look at the AutoMaker source code for reference:I have a clear picture of your current board. Now I&apos;ll craft a comprehensive prompt for the AI agent:
+
+---
+
+Here&apos;s a well-structured prompt you can send to your AI coding agent:
+
+---
+
+## AI Agent Prompt
+
+```
+You are updating an existing Next.js Kanban board application to match the visual design and 
+interaction patterns of the AutoMaker open-source project&apos;s board-view component.
+
+---
+
+### REFERENCE SOURCE
+AutoMaker board-view components live at:
+  automaker/apps/ui/src/components/views/board-view (main branch)
+
+Key files to study:
+  - board-view/index.tsx         (top-level board layout)
+  - board-view/column.tsx        (individual column component)
+  - board-view/card.tsx          (task card component)
+  - board-view/board-header.tsx  (board title/controls bar)
+
+---
+
+### CURRENT STATE OF OUR BOARD
+Our board is at: http://localhost:3000/boards/1337ed31-9f0f-4101-a57d-d0ad3c051a2c
+
+The board currently has:
+  - 4 columns: &quot;TO DO&quot; (2 cards), &quot;In Progress&quot; (1 card), &quot;Blocked&quot; (0), &quot;Done&quot; (0)
+  - Cards display: title, priority badge (Medium/High with color), due date (&quot;7d left&quot;)
+  - Column header shows: name, card count, delete icon
+  - Footer of each column has: &quot;+ Add a card&quot; link
+  - An &quot;Add Column&quot; button at the far right (dashed border)
+  - Drag-and-drop is already wired up (using @dnd-kit or similar)
+  - Dark theme (navy/dark blue background)
+
+---
+
+### WHAT TO UPDATE
+
+Please make the following changes to match AutoMaker&apos;s board-view style:
+
+1. **Card Component** (`components/board/card.tsx` or equivalent)
+   - Add an assignee avatar (circular, 24px) in the bottom-right of each card
+   - Add a subtle card border that highlights on hover (`border border-transparent 
+     hover:border-blue-500 transition-colors`)
+   - Show a comment count icon (chat bubble + number) alongside the due date
+   - Add a tag/label strip at the top of the card if tags exist (small colored pills)
+   - Card click should open a slide-over detail panel (not a modal)
+
+2. **Column Component** (`components/board/column.tsx` or equivalent)
+   - Add a colored top-border accent per column status:
+       TO DO → blue, In Progress → yellow, Blocked → red, Done → green
+   - Add a &quot;+ Add card&quot; button at the TOP of the column (below the header), not just 
+     the bottom
+   - Column header should have a subtle drag handle (⠿ icon, only visible on hover)
+   - Show a &quot;collapse column&quot; chevron button in the column header that reduces the 
+     column to icon-only width
+
+3. **Board Header** (`components/board/board-header.tsx` or equivalent)
+   - Add a filter bar below the board title with:
+       • &quot;Assignee&quot; multi-select avatar filter
+       • &quot;Priority&quot; dropdown filter (All / High / Medium / Low)
+       • &quot;Due Date&quot; filter (Overdue / Due Soon / No Date)
+   - Add a &quot;Group by&quot; toggle (Status / Assignee / Priority)
+   - Add a board view switcher (Kanban icon | List icon) that persists to localStorage
+
+4. **Board Layout** (`app/boards/[id]/page.tsx` or equivalent)
+   - Columns should be horizontally scrollable with a fixed min-width of 280px each
+   - Add a keyboard shortcut `N` to open &quot;Add card&quot; in the focused/hovered column
+   - Maintain smooth auto-scroll when dragging a card near the edge of the viewport
+
+5. **Drag and Drop**
+   - Add a ghost/placeholder card that shows the drop position while dragging
+     (semi-transparent, dashed border)
+   - When a card is dragged over a different column, highlight that column&apos;s top-border
+     in a pulsing animation
+
+---
+
+### CONSTRAINTS
+- Do NOT change the data model or API calls — only UI/UX layer
+- Preserve all existing TypeScript types
+- Use Tailwind CSS utility classes only (no new CSS files)
+- Components must remain fully SSR-compatible (no `window` at module scope — use 
+  `useEffect` for any browser APIs)
+- Keep all existing drag-and-drop library calls intact; only add visual enhancements
+
+---
+
+### DELIVERABLES
+1. Updated component files with inline comments explaining each AutoMaker-inspired change
+2. A brief summary of any new dependencies added (if any)
+3. Flag any places where you needed to deviate from AutoMaker&apos;s pattern due to our 
+   data shape differences
+```
+
+---
+
+**A few tips for getting the best results from the agent:**
+
+- If your agent can browse GitHub, point it directly to the raw files: `https://raw.githubusercontent.com/AutoMaker-Org/automaker/main/apps/ui/src/components/views/board-view/card.tsx`
+- If it can&apos;t, paste the relevant AutoMaker source files inline before the prompt above
+- Break it into two passes if needed: **Card + Column** first, **Board Header + Filters** second — the filter bar is the most complex piece and benefits from its own focused pass</description>
+    </feature>
+    <feature>
+      <name>Google Calendar Event Ingestion</name>
+      <description>Connect Google Calendar via OAuth to ingest upcoming and past events into a google_calendar_events table (title, start/end, attendees, description, meet link). Events appear in the Calendar widget and can be correlated with Krisp meetings by timestamp overlap. Supports multiple connected calendars.</description>
+    </feature>
+    <feature>
+      <name>Upcoming Events Widget on Dashboard</name>
+      <description>Add a collapsible sidebar widget on the main dashboard displaying the next 5 calendar events from the calendar_events table. Shows event title, time, and attendees at a glance. Refreshes every 5 minutes via React Query polling.</description>
+    </feature>
+    <feature>
+      <name>Newsletter &amp; Marketing Email Filter</name>
+      <description>Automatically detect newsletter and marketing emails using a combination of header analysis (List-Unsubscribe header presence) and Claude classification. Detected newsletters are moved to a dedicated Newsletter folder and excluded from the main inbox by default. Users can whitelist specific senders.</description>
+    </feature>
+    <feature>
+      <name>AI Daily Briefing Generation</name>
+      <description>Generate a personalized morning briefing using Claude that synthesizes overdue Kanban cards, high-priority emails from the last 24 hours, today&apos;s meetings from the calendar, and open action items. Briefing is accessible on the main dashboard and can be emailed automatically at a configured time.</description>
+    </feature>
+    <feature>
+      <name>Global Command Palette (Cmd+K)</name>
+      <description>Keyboard-triggered command palette (⌘K / Ctrl+K) that provides instant access to navigation, card creation, meeting search, email compose, and Open Brain capture from any page. Uses fuzzy search across boards, meetings, and contacts. Implemented as an overlay modal with keyboard navigation.</description>
+    </feature>
+    <feature>
+      <name>Knowledge Graph Visualization</name>
+      <description>Render captured thoughts as an interactive force-directed graph where nodes are thoughts and edges represent semantic similarity (cosine distance below a threshold). Built with a lightweight D3.js renderer. Clicking a node opens the thought detail drawer. Provides an at-a-glance map of how ideas cluster.</description>
+    </feature>
+    <feature>
+      <name>Personal Productivity Heatmap</name>
+      <description>Display a GitHub-style contribution heatmap on the analytics dashboard showing daily capture activity across all sources (cards completed, thoughts captured, meetings attended, emails processed). Hovering a day shows a breakdown by source. Helps users identify productive streaks and gaps in knowledge capture.</description>
+    </feature>
+    <feature>
+      <name>Card Sub-Task Checklist</name>
+      <description>Add a checklist feature to Kanban cards where each item has a title and a boolean done state, stored as JSONB in the cards table. The card thumbnail shows a completion ratio badge (e.g., 3/5 done). Checklists support drag-to-reorder and can be converted into standalone cards in one click.</description>
+    </feature>
+    <feature>
+      <name>Thought Reminder &amp; Resurfacing Scheduler</name>
+      <description>Let users schedule a future resurfacing reminder on any thought (e.g., &apos;remind me in 3 days&apos;). At the scheduled time, Resend delivers a contextual email with the thought content and a link to open it. Supports one-time and spaced-repetition reminder modes for learning reinforcement.</description>
+    </feature>
+    <feature>
+      <name>Auto-Built Contact Book from Email History</name>
+      <description>Automatically extract and deduplicate sender/recipient addresses from all stored emails to build a contacts table. Displays a searchable contact list with email frequency stats, recent messages, and associated meetings. Enables auto-complete when composing new emails.</description>
+    </feature>
+    <feature>
+      <name>VIP Contact Priority Inbox Filter</name>
+      <description>Allow users to mark specific email addresses or domains as VIP in the contact book. Emails from VIP contacts are automatically surfaced in a filtered VIP view and receive a gold badge in the unified inbox. Users can configure optional push notifications for new VIP emails.</description>
+    </feature>
+    <feature>
+      <name>Cross-Entity Thought Linking</name>
+      <description>Allow Open Brain thoughts to be linked to Kanban cards, meetings, or emails via a relationship table. Displays linked entities inside the thought detail drawer with click-through navigation. Enables tracing a captured idea back to its source context.</description>
+    </feature>
+    <feature>
+      <name>Implement Gmail email ingestion via Pub/Sub</name>
+      <description># Gmail Email Ingestion via Google Pub/Sub &amp; Apps Script
+
+Here&apos;s the full spec rewritten for Gmail, using **Google Pub/Sub push subscriptions** (Gmail&apos;s native webhook mechanism) as the backbone instead of Power Automate.
+
+---
+
+## How Gmail &quot;Webhooks&quot; Actually Work
+
+Gmail doesn&apos;t support direct webhooks, but Google provides an official push notification system:
+
+1. **Gmail Watch API** — tells Gmail to monitor an inbox and publish notifications to a Google Pub/Sub topic when new messages arrive
+2. **Google Pub/Sub** — receives those notifications and immediately pushes them to your HTTPS endpoint
+3. **Your backend** — receives the Pub/Sub push, uses the Gmail API to fetch the actual email content, and ingests it
+
+This is the production-grade approach used by enterprise Gmail integrations. Alternatively, for tenants who prefer a no-code setup, **Google Apps Script** can poll Gmail and POST to your webhook on a time trigger — this is simpler but introduces up to a 1-minute delay.
+
+---
+
+## Webhook Endpoint
+
+**Primary endpoint (Pub/Sub push):**
+```
+POST /webhooks/email/gmail/:tenantId
+```
+
+**Authentication:** Pub/Sub push requests include a Bearer token in the `Authorization` header issued by Google. Verify this token against Google&apos;s token info endpoint (`https://oauth2.googleapis.com/tokeninfo`) to confirm it&apos;s a legitimate Pub/Sub push and that the `email` claim matches your registered service account. Additionally, validate a `?token=&lt;secret&gt;` query parameter appended to the subscription push URL during setup as a secondary layer.
+
+**What Pub/Sub delivers:** The push payload is a Pub/Sub message envelope — not the email itself. The `data` field is base64-encoded and contains only the Gmail `historyId` and the user&apos;s email address. Your backend must then call the Gmail API to retrieve the actual message.
+
+**Ingestion flow:**
+
+```
+Pub/Sub Push → Your endpoint → Decode historyId → Gmail API (history.list) 
+→ Gmail API (messages.get) → Parse &amp; store email
+```
+
+**Parse and extract from Gmail API response:**
+- `from` header → sender address
+- `to`, `cc`, `bcc` headers → recipients
+- `subject` header → subject
+- `body.data` (text/plain part) → plain text body
+- `body.data` (text/html part) → HTML body
+- `internalDate` → received timestamp
+- `id` → Gmail message ID (used for deduplication)
+- `threadId` → conversation thread reference
+- `payload.parts` where `filename` is non-empty → attachment metadata (name, MIME type, size, attachment ID)
+
+**HTTP responses:**
+- `200` — success or duplicate (Pub/Sub will not retry on 200)
+- `400` — payload malformed or tenant resolution failed
+- `401` — auth token invalid
+- `500` — internal error (Pub/Sub **will** retry, so only use this when a retry is appropriate)
+
+&gt; **Critical:** Return `200` for duplicates and known-bad messages you&apos;ve already handled. Returning non-2xx causes Pub/Sub to retry with exponential backoff for up to 7 days.
+
+---
+
+## Database
+
+```sql
+CREATE TABLE emails (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id         UUID NOT NULL REFERENCES tenants(id),
+  gmail_message_id  TEXT NOT NULL,
+  thread_id         TEXT,
+  sender            TEXT NOT NULL,
+  recipients        JSONB NOT NULL DEFAULT &apos;[]&apos;,
+  subject           TEXT,
+  body_plain        TEXT,
+  body_html         TEXT,
+  received_at       TIMESTAMPTZ NOT NULL,
+  attachments       JSONB NOT NULL DEFAULT &apos;[]&apos;,
+  labels            JSONB NOT NULL DEFAULT &apos;[]&apos;,
+  raw_payload       JSONB,
+  ingested_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT uq_tenant_gmail_message UNIQUE (tenant_id, gmail_message_id)
+);
+
+CREATE INDEX idx_emails_tenant_id ON emails (tenant_id);
+CREATE INDEX idx_emails_received_at ON emails (tenant_id, received_at DESC);
+CREATE INDEX idx_emails_sender ON emails (tenant_id, sender);
+```
+
+**Notes:**
+- `body_plain` and `body_html` are `TEXT` (unbounded) — avoid `VARCHAR(n)` for email bodies
+- `recipients`, `attachments`, and `labels` use `JSONB` to accommodate variable-length arrays without separate join tables
+- `raw_payload` stores the full Gmail API `Message` object for debugging; consider stripping body content from this field to avoid double-storing large content
+- All queries must include `WHERE tenant_id = $1` as the first filter condition
+
+---
+
+## Gmail OAuth &amp; Watch Setup (Per Tenant)
+
+Each tenant must complete a one-time OAuth authorization before their inbox can be monitored.
+
+**Required Gmail API scopes:**
+- `https://www.googleapis.com/auth/gmail.readonly` — to fetch message content
+- `https://www.googleapis.com/auth/gmail.modify` — only if you need to mark messages read or apply labels
+
+**Watch registration** (call this after OAuth completes, and refresh every 7 days — Gmail watch subscriptions expire):
+
+```json
+POST https://gmail.googleapis.com/gmail/v1/users/me/watch
+{
+  &quot;topicName&quot;: &quot;projects/YOUR_PROJECT/topics/gmail-inbound&quot;,
+  &quot;labelIds&quot;: [&quot;INBOX&quot;],
+  &quot;labelFilterBehavior&quot;: &quot;INCLUDE&quot;
+}
+```
+
+Store the returned `historyId` as the tenant&apos;s baseline — you&apos;ll use this to call `history.list` incrementally so you don&apos;t re-process old messages.
+
+**Watch renewal:** Store the `expiration` timestamp from the watch response and set up a daily job to renew watches expiring within 24 hours.
+
+---
+
+## Multi-Tenant Support
+
+Tenant resolution uses the `:tenantId` URL path parameter combined with a per-tenant API key stored in your database.
+
+**Tenant record should include:**
+- `gmail_oauth_tokens` (encrypted) — access token, refresh token, expiry
+- `gmail_watch_history_id` — the last processed `historyId` for incremental fetching
+- `gmail_watch_expiration` — when the Pub/Sub watch subscription expires
+- `webhook_api_key` — the secret appended to the Pub/Sub push URL for secondary auth validation
+
+**Isolation guarantees:**
+- All Gmail API calls use the OAuth tokens belonging to the resolved tenant only
+- The `historyId` cursor is stored per-tenant — no shared state
+- All database writes and reads are scoped to `tenant_id`
+- The Pub/Sub topic is shared infrastructure, but tenant identity is resolved from the push URL before any data access occurs
+
+---
+
+## Apps Script Alternative (No-Code Setup)
+
+For tenants who can&apos;t complete OAuth flows or prefer a simpler setup, provide a Google Apps Script template they can deploy themselves:
+
+```javascript
+function checkNewEmails() {
+  const webhookUrl = &quot;https://yourapp.com/webhooks/email/gmail/TENANT_ID&quot;;
+  const apiKey = &quot;TENANT_API_KEY&quot;;
+  const lastRun = PropertiesService.getScriptProperties()
+                    .getProperty(&quot;lastRun&quot;) || &quot;2000/01/01&quot;;
+  
+  const threads = GmailApp.search(`after:${lastRun} in:inbox`);
+  
+  threads.forEach(thread =&gt; {
+    thread.getMessages().forEach(msg =&gt; {
+      const payload = {
+        messageId: msg.getId(),
+        sender: msg.getFrom(),
+        recipients: msg.getTo(),
+        subject: msg.getSubject(),
+        bodyPlain: msg.getPlainBody(),
+        bodyHtml: msg.getBody(),
+        receivedAt: msg.getDate().toISOString()
+      };
+      
+      UrlFetchApp.fetch(webhookUrl, {
+        method: &quot;POST&quot;,
+        headers: { &quot;Content-Type&quot;: &quot;application/json&quot;, &quot;X-API-Key&quot;: apiKey },
+        payload: JSON.stringify(payload),
+        muteHttpExceptions: true
+      });
+    });
+  });
+  
+  PropertiesService.getScriptProperties()
+    .setProperty(&quot;lastRun&quot;, new Date().toLocaleDateString(&quot;en-US&quot;));
+}
+```
+
+Tenants set a time-based trigger (every 1 minute) in Apps Script. This approach doesn&apos;t require Pub/Sub or OAuth on your backend — the payload arrives pre-parsed, so your endpoint can skip the Gmail API fetch step and ingest directly. The tradeoff is up to a 1-minute delay and reliance on the tenant keeping their Apps Script project active.
+
+---
+
+## Admin Integrations Page — `/admin/integrations`
+
+### Microsoft Gmail / Google Workspace Email Section
+
+**Display prominently at the top:**
+
+```
+Your Webhook URL:
+https://yourapp.com/webhooks/email/gmail/[tenant-id]
+
+Your API Key:
+[masked key with copy button]
+```
+
+---
+
+**Setup Option A — Full Integration (Recommended)**
+
+Step-by-step guide in the UI:
+
+1. **Enable the Gmail API** in your Google Cloud project at console.cloud.google.com → APIs &amp; Services → Enable APIs → search &quot;Gmail API&quot;
+2. **Create a Pub/Sub topic** named `gmail-inbound` in the same project
+3. **Create a push subscription** pointing to your webhook URL with `?token=YOUR_API_KEY` appended
+4. **Grant publish rights** to `gmail-api-push@system.gserviceaccount.com` on your Pub/Sub topic (this is the Google-managed service account Gmail uses)
+5. **Click &quot;Connect Gmail Account&quot;** in this UI — you&apos;ll be redirected through Google OAuth to authorize inbox access
+6. **Watch registration happens automatically** after OAuth completes — you&apos;ll see a green &quot;Watching Inbox&quot; status indicator here once active
+
+---
+
+**Setup Option B — Apps Script (Simpler)**
+
+1. Open [script.google.com](https://script.google.com) while signed into the Gmail account you want to monitor
+2. Create a new project and paste the Apps Script template provided below
+3. Replace `TENANT_ID` and `TENANT_API_KEY` with the values shown above
+4. Click **Run** once manually to grant permissions
+5. Go to **Triggers → Add Trigger** → set `checkNewEmails` to run every 1 minute
+
+---
+
+**Field Mapping Reference (Apps Script option):**
+
+| Your Webhook Field | Apps Script / Gmail Value |
+|---|---|
+| `messageId` | `msg.getId()` |
+| `sender` | `msg.getFrom()` |
+| `recipients` | `msg.getTo()` |
+| `subject` | `msg.getSubject()` |
+| `bodyPlain` | `msg.getPlainBody()` |
+| `bodyHtml` | `msg.getBody()` |
+| `receivedAt` | `msg.getDate().toISOString()` |
+
+---
+
+## Edge Cases
+
+**Duplicate delivery:** The `UNIQUE (tenant_id, gmail_message_id)` constraint is the authoritative deduplication guard. Use an `INSERT ... ON CONFLICT DO NOTHING` pattern and return `200` either way so Pub/Sub doesn&apos;t retry.
+
+**Missing fields:** Subject, plain body, and HTML body should all be nullable at the application layer. Emails with no subject (common for automated senders) or no plain text body (HTML-only emails) are valid and should be stored as-is.
+
+**Large bodies:** Gmail messages can theoretically be very large. Impose a configurable size cap (e.g., 5MB) on `body_html` and `body_plain` before storage, truncating with a metadata flag (`body_truncated: true`) so downstream consumers know the content is incomplete rather than silently missing.
+
+**Expired watch subscriptions:** If a tenant&apos;s Gmail watch expires and isn&apos;t renewed, Pub/Sub stops receiving notifications silently — no error is thrown. Show an &quot;Integration Inactive — watch expired&quot; warning in the UI based on the stored expiration timestamp, and send the tenant an email alert 48 hours before expiry.
+
+**OAuth token refresh:** Access tokens expire every 60 minutes. Always attempt a refresh before making Gmail API calls and update the stored tokens. If a refresh token is revoked (tenant disconnects the app from their Google Account), mark the integration as inactive and alert the tenant.
+
+**historyId gaps:** If your server is down when Pub/Sub delivers a notification, you may miss messages. On reconnection, call `history.list` starting from the last stored `historyId` to backfill any gaps. Cap backfill lookback to 7 days, which is Gmail&apos;s history retention window.
+
+**Attachments:** Only store attachment metadata (filename, MIME type, size, Gmail attachment ID) in the database by default. Actual attachment content should be fetched on-demand via the Gmail API using the stored attachment ID, rather than eagerly downloading and storing binary content at ingestion time.</description>
+    </feature>
+    <feature>
+      <name>Create default Kanban board for action items</name>
+      <description>## Parent Task Context (Already Completed)
+
+&gt; **Note:** The following parent task has already been completed. This context is provided to help you understand the background and requirements for this sub-task. Do not re-implement the parent task - focus only on the new sub-task described below.
+
+### Action Item Assignment &amp; Tracking
+
+**Description:** Automatically extract action items from meeting transcripts and assign them to participants. Track completion status with due dates and send reminders via email.
+
+**Rationale:** Action items die in meeting notes. Surfacing them as trackable tasks with ownership closes the loop between discussion and execution.
+
+**Summary:** ## Summary: Automatically extract action items from meeting transcripts
+
+### Changes Implemented
+- **Database schema**: Added `action_items` table with `action_item_status` enum to Drizzle schema, supporting fields for title, description, assignee, status (open/in_progress/completed/cancelled), priority, due date, completion tracking, and reminder tracking. Linked to both `users` and `webhook_key_points` tables.
+- **Action Items CRUD API** (`/api/action-items`): Full REST API for listing (with status/meeting filters), creating, updating, and deleting action items. Auto-sets `completedAt` timestamp when status changes to completed.
+- **AI Extraction API** (`/api/action-items/extract`): Uses Claude (claude-sonnet-4) to analyze meeting transcripts and key points, extracting structured action items with title, description, assignee (from participants), priority, and suggested due dates.
+- **Email Reminders API** (`/api/action-items/remind`): Sends reminder emails via Resend for overdue and due-today action items, with HTML-formatted email listing all items needing attention. Marks items as reminded to avoid duplicate notifications.
+- **Action Items Page** (`/action-items`): Full management UI with status filter tabs (All/Open/In Progress/Completed/Cancelled), inline editing of status/priority/assignee/due date, completion toggle checkboxes, delete functionality, overdue highlighting, and a &quot;Send Reminders&quot; button.
+- **Meeting Detail Drawer**: Added &quot;Extract Action Items&quot; button and a third &quot;Action Items&quot; tab showing extracted items for each meeting with status, priority, assignee, and due date info.
+- **Navigation**: Added &quot;Action Items&quot; link with clipboard-check icon to the sidebar navigation.
+- **Validation schemas**: Added Zod schemas for `createActionItem` and `updateActionItem` with proper field validation.
+- **TypeScript types**: Added `ActionItem` and `ActionItemStatus` types to the shared types file.
+
+### Files Modified
+- `lib/db/schema.ts` - Added `actionItemStatusEnum` and `actionItems` table
+- `types/index.ts` - Added `ActionItem` and `ActionItemStatus` types
+- `lib/validators/schemas.ts` - Added action item validation schemas
+- `app/api/action-items/route.ts` - **NEW** - List/create action items
+- `app/api/action-items/[id]/route.ts` - **NEW** - Get/update/delete single action item
+- `app/api/action-items/extract/route.ts` - **NEW** - AI extraction from meeting transcripts
+- `app/api/action-items/remind/route.ts` - **NEW** - Email reminders for due/overdue items
+- `app/(app)/action-items/page.tsx` - **NEW** - Action items management page
+- `components/meeting/MeetingDetailDrawer.tsx` - Added extract button and action items tab
+- `components/ui/SideNav.tsx` - Added Action Items nav link with icon
+
+### Notes for Developer
+- The `action_items` table has already been pushed to the Neon database via `drizzle-kit push`
+- AI extraction uses `claude-sonnet-4-20250514` (same model as meeting search) and requires the `ANTHROPIC_API_KEY` env var
+- Email reminders require `RESEND_API_KEY` and `RESEND_EMAIL` env vars (same as password reset)
+- The remind endpoint can be called manually via the UI button, or wired to a cron job for automated daily reminders
+- Action items are scoped per-user via the auth session
+- The build compiles cleanly with zero TypeScript errors
+
+### Verification Status
+- Verified with Playwright: 6 tests passing
+  - All 4 API endpoints correctly return 401 for unauthenticated requests
+  - Action items page renders and redirects to login when not authenticated
+  - Login page loads with expected form elements
+- Full Next.js production build completes successfully with all routes registered
+- Test files cleaned up after verification
+
+---
+
+## Task Description
+
+When action items are extracted from a transcript, they should be saved. Right now, when I click on &quot;Extract action items&quot;, the action items are generated, but then if I go to dismiss the dialog and then come back to the dialog, the action items disappear. On the action item tab, we can instead implement this as one of the Kanban boards, so we need a way to specify which board to add action items to. To facilitate this, we should have a default Kanban board.  I think we can get rid of the action-items page, and then I want, in an upcoming feature, to automatically extract the action items and assign them to the Kanban board versus having to click an extract button.</description>
+    </feature>
+    <feature>
+      <name>Implement Zoom Chat integration with multi-tenant support</name>
+      <description>Add Zoom Chat Integration with Multi-Tenant Support
+
+Implement a Zoom Chat integration that captures all direct messages and channel messages in real-time via Zoom Marketplace OAuth app, persisting them to a dedicated database table with full multi-tenant isolation.
+
+Prerequisites:
+- Zoom Marketplace OAuth app created with User-managed type
+- OAuth scopes approved: chat_message:read, chat_channel:read
+- Webhook endpoint publicly accessible (via existing infrastructure)
+- Multi-tenant architecture patterns followed from existing Crisp and Gmail integrations
+
+Database:
+- Create a new zoom_chat_messages table in Neon Postgres with columns for: id, organization_id (tenant), zoom_user_id, message_id, channel_id, channel_type (DM vs channel), sender_id, sender_name, message_content, timestamp, raw_payload, created_at
+- Add appropriate indexes on organization_id, zoom_user_id, and timestamp for query performance
+- Store OAuth credentials (access_token, refresh_token, expiry) per tenant in the existing integrations table or a new zoom_oauth_tokens table
+
+OAuth Flow:
+- Add Zoom as a new integration option on the existing admin integrations setup page
+- Implement OAuth 2.0 authorization flow with redirect URI handling
+- Store and refresh tokens per tenant automatically
+- Handle token expiry and re-authorization gracefully
+
+Webhook Endpoint:
+- Create a POST endpoint to receive chat_message.sent events from Zoom
+- Validate incoming webhook payloads using Zoom&apos;s verification token or request signature
+- Parse and persist DM messages and channel messages, tagging each record with the correct organization_id
+- Return 200 response immediately to prevent Zoom retries, process asynchronously if needed
+
+Message Ingestion:
+- Support both DM (peer-to-peer) and channel message types
+- Capture sender metadata, channel context, and full message content
+- Handle Zoom&apos;s pagination if backfilling historical messages via GET /v2/chat/users/me/messages
+- Deduplicate messages using Zoom&apos;s message_id to prevent double-ingestion on webhook retries
+
+Edge Cases to Handle:
+- Webhook signature verification failures should return 403 and log the attempt
+- Edited or deleted messages should update or soft-delete existing records
+- Token refresh failures should trigger an admin alert and pause ingestion gracefully
+- Rate limits on the Zoom REST API during any backfill operations</description>
+    </feature>
+    <feature>
+      <name>Automate Action Item Extraction and Kanban Integration</name>
+      <description>Add Automatic Action Item Extraction &amp; Kanban Integration for Crisp
+
+Automate the extraction of action items from Crisp conversations and surface them immediately on the Meeting Details page, eliminating the need for manual extraction. Extracted items assigned to the user should be automatically added to a configurable Kanban board.
+
+---
+
+Settings: Default Kanban Board Selection
+
+- Add a &quot;Default Kanban Board&quot; dropdown to the Crisp integration settings page
+- Populate the dropdown with the user&apos;s existing Kanban boards fetched from the database
+- Persist the selected board ID to the user/tenant settings
+- Display a clear label and helper text explaining how this board will be used for auto-assigned action items
+
+---
+
+Automatic Action Item Extraction
+
+- Remove the dependency on the manual &quot;Extract Action Items&quot; button for new Crisp conversations
+- Trigger extraction automatically when a Crisp conversation is ingested or updated via webhook
+- Use AI to parse the conversation transcript and identify discrete action items, including:
+  - The action item description
+  - The assignee (if mentioned or inferable)
+  - A due date or urgency (if mentioned)
+  - The source conversation/meeting reference
+
+---
+
+Action Items Persistence
+
+- Create an action_items table (if one does not already exist) with at minimum the following fields:
+  - id, meeting_id / conversation_id, description, assignee, due_date, status, created_at, updated_at
+- On extraction, upsert action items to this table so re-processing does not create duplicates
+- Ensure action items are scoped correctly to the tenant/user for multi-tenant safety
+- Verify the existing &quot;Extract Action Items&quot; button also writes results to this table (fix the current bug where items are not persisted)
+
+---
+
+Meeting Details Page — Action Items Tab
+
+- On page load, fetch and display persisted action items from the database rather than requiring manual extraction
+- Remove or repurpose the &quot;Extract Action Items&quot; button — consider changing it to a &quot;Re-extract&quot; or &quot;Refresh&quot; secondary action so users can still trigger manual re-processing if needed
+- Show a loading/empty state if no action items have been extracted yet
+- Display each action item with its description, assignee, status, and due date if available
+
+---
+
+Kanban Auto-Assignment
+
+- After extraction, identify action items where the assignee matches the currently authenticated user
+- Automatically create a card for each matched action item on the user&apos;s configured default Kanban board (set in the Crisp integration settings)
+- If no default board has been configured, surface a prompt or notification guiding the user to configure one
+- Prevent duplicate cards if the action item has already been added to the board (idempotency check)
+- Link the Kanban card back to the source meeting/conversation for traceability
+
+---
+
+Edge Cases to Consider
+
+- Crisp conversation contains no identifiable action items — handle gracefully with an appropriate empty state
+- Assignee mentioned in conversation does not match any known user — store the item but do not auto-assign to Kanban
+- Default Kanban board is deleted after being set — detect and prompt the user to reconfigure
+- Webhook fires multiple times for the same conversation — ensure extraction and card creation are idempotent
+- Multi-tenant isolation — action items and Kanban cards must never leak across tenants</description>
+    </feature>
+    <feature>
+      <name>Update Mail inbox with multi-account filter and sort</name>
+      <description>We have added the ability to connect to multiple Outlook accounts, and now we need to update the Mail inbox page to be able to clearly filter and sort by the various different Outlook connections that could exist. We probably want to do the same thing when we add Gmail support, which is coming soon.</description>
+    </feature>
+    <feature>
+      <name>Add Google OAuth Gmail inbox integration</name>
+      <description>https://myopenbrain.com/admin/integrations  I need a simpler way for end users to be able to connect to Gmail such that we can access their inbox. Can we set this up using Google OAuth authentication, which grants permissions, then be able to access users&apos; mailboxes?</description>
+    </feature>
+    <feature>
+      <name>Add calendar sync for Google, Gmail, and Outlook accounts</name>
+      <description>http://localhost:3000/calendar
+
+Ensure that the calendar page syncs both Google and Gmail as well as Outlook accounts. We should also add the ability to toggle between accounts, similar to what we do on the inbox page.</description>
+    </feature>
+    <feature>
+      <name>Classify all visible messages on current page</name>
+      <description>When manually pressing on the classify button on the inbox page, can it classify all of the messages that are in the current page? Currently I&apos;m not sure how many messages are classified, but it looks like it&apos;s only the last 10 or 20. I&apos;d like it to classify all the messages that are currently in view on the current page.  And I&apos;d also like to indicate on messages that they have been checked for classification http://localhost:3000/inbox</description>
+    </feature>
+    <feature>
+      <name>Implement spam detection with one-click unsubscribe</name>
+      <description>In our classification, we want to have a layer that will help detect spam messages. If a message is classified as spam, we also want to make it easy for the user to unsubscribe from that message. That message should contain an unsubscribe link, and we can make that prominent on the inbox to make it easy for them to unsubscribe in a single click.</description>
+    </feature>
+    <feature>
+      <name>Link tasks to original meeting conversations</name>
+      <description>On the Kanban board, if a task was added because of a meeting action, we want to be able to link back to the original meeting. Right now I can see a snippet of the conversation, but I want to be able to go and look at the total conversation.</description>
+    </feature>
+    <feature>
+      <name>Add bulk delete for Kanban cards with selection</name>
+      <description>On the Kanban board, I need a super lightweight way to delete multiple to-do items at once. I want to be able to select cards and then press delete, or the other option is I want to be able to drag and drop cards onto a trash can.</description>
+    </feature>
+    <feature>
+      <name>Personal Productivity Analytics Dashboard</name>
+      <description>A /analytics page showing weekly and monthly stats: cards completed, meetings attended, emails processed, thoughts captured, and action items resolved. Renders sparkline trends and a heatmap calendar of activity. Data is aggregated server-side from all tables scoped to the user.</description>
+    </feature>
+    <feature>
+      <name>Display API key usage statistics in header</name>
+      <description>We are using OpenProvider for our AI API. 
+
+Create a new widget that shows usage stats for the current key in use.   We can show this in the header on desktop.</description>
+    </feature>
+    <feature>
+      <name>Implement SaaS subscription billing with Stripe</name>
+      <description># SaaS Subscription Billing Service — Technical Specification
+
+**Built on Next.js + Stripe SDK**
+
+Version 1.0 · March 2026 · Status: Draft
+
+---
+
+## Table of Contents
+
+1. [Executive Summary](#1-executive-summary)
+2. [System Architecture](#2-system-architecture)
+3. [Stripe Configuration](#3-stripe-configuration)
+4. [Database Schema](#4-database-schema)
+5. [Application Routes and Pages](#5-application-routes-and-pages)
+6. [Customer-Facing Pages](#6-customer-facing-pages)
+7. [Webhook Handler](#7-webhook-handler)
+8. [Admin Dashboard](#8-admin-dashboard)
+9. [Access Control and Entitlements](#9-access-control-and-entitlements)
+10. [Project File Structure](#10-project-file-structure)
+11. [Testing Strategy](#11-testing-strategy)
+12. [Security Considerations](#12-security-considerations)
+13. [Deployment Checklist](#13-deployment-checklist)
+14. [Future Considerations](#14-future-considerations)
+
+---
+
+## 1. Executive Summary
+
+This specification defines a complete subscription billing service for a SaaS application, built on Next.js (App Router) and the Stripe SDK. It covers the full billing lifecycle: plan selection, checkout, recurring payment processing, invoice management, payment method updates, plan upgrades/downgrades, cancellations, and administrative oversight.
+
+The system is designed around three core principles drawn from industry best practices:
+
+- **Stripe as the billing engine, your database as the source of truth.** Stripe handles payment processing, invoicing, dunning, and card management. Your application database stores customer entitlements, subscription status, and access rules.
+
+- **Webhook-driven state management.** Subscription state changes are confirmed via Stripe webhooks, not by trusting checkout success URLs. This ensures reliability across network failures, 3D Secure flows, and async payment methods.
+
+- **Self-service first.** Customers can select plans, update payment methods, view invoices, and cancel subscriptions without contacting support. Administrators have a dedicated dashboard for oversight and intervention.
+
+---
+
+## 2. System Architecture
+
+### 2.1 Technology Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 15+ (App Router, Server Actions) |
+| Language | TypeScript (strict mode) |
+| Payments | Stripe SDK (`stripe`, `@stripe/stripe-js`, `@stripe/react-stripe-js`) |
+| Database | PostgreSQL via Prisma ORM |
+| Authentication | NextAuth.js (Auth.js v5) |
+| Styling | Tailwind CSS + shadcn/ui component library |
+| Deployment | Vercel (recommended) or any Node.js host |
+
+### 2.2 High-Level Data Flow
+
+The system follows this flow for a new subscription:
+
+1. User selects a plan on the Pricing Page.
+2. Next.js Server Action creates a Stripe Checkout Session.
+3. User is redirected to Stripe-hosted Checkout to enter payment details.
+4. Stripe processes payment, creates the Subscription, Invoice, and PaymentIntent objects.
+5. Stripe sends webhook events to the application&apos;s webhook endpoint.
+6. Webhook handler verifies the signature, processes events, and updates the application database.
+7. User is redirected to the success page; access is granted based on database state (not the redirect).
+
+### 2.3 Environment Variables
+
+| Variable | Purpose |
+|----------|---------|
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Client-side Stripe.js initialization |
+| `STRIPE_SECRET_KEY` | Server-side Stripe API calls |
+| `STRIPE_WEBHOOK_SECRET` | Webhook signature verification |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `NEXTAUTH_SECRET` | Auth.js session encryption |
+| `NEXT_PUBLIC_APP_URL` | Base URL for redirects and portal return URLs |
+
+---
+
+## 3. Stripe Configuration
+
+### 3.1 Products and Prices
+
+Create products and recurring prices in the Stripe Dashboard (or via fixtures for automated setup). The recommended tier structure for a SaaS product uses three to four plans, which research shows is the optimal number for decision-making. Each product maps to a plan tier with monthly and annual price variants.
+
+| Product | Monthly | Annual | Stripe Price ID | Features |
+|---------|---------|--------|-----------------|----------|
+| Starter | $19/mo | $190/yr | `price_starter_*` | Core features, 1 user |
+| Professional | $49/mo | $490/yr | `price_pro_*` | All Starter + advanced features |
+| Enterprise | $99/mo | $990/yr | `price_ent_*` | All Pro + priority support |
+
+&gt; **Note:** Store Stripe Price IDs as environment variables or in a configuration file, not hardcoded in components. This allows pricing changes without code deployments.
+
+### 3.2 Customer Portal Configuration
+
+Configure the Stripe Customer Portal in the Dashboard under **Billing &gt; Customer Portal**. Enable the following capabilities:
+
+- Update payment methods (required at minimum)
+- View and download invoices
+- Cancel subscriptions (with optional cancellation survey)
+- Switch between plans (upgrade/downgrade)
+- Toggle between monthly and annual billing
+
+### 3.3 Webhook Endpoint Registration
+
+Register the webhook endpoint in the Stripe Dashboard under **Developers &gt; Webhooks**. The endpoint URL should point to your deployed application&apos;s webhook route. Subscribe to the following events at minimum:
+
+| Event | Purpose |
+|-------|---------|
+| `checkout.session.completed` | New subscription created via Checkout |
+| `invoice.paid` | Successful recurring payment; continue access |
+| `invoice.payment_failed` | Payment failed; notify customer, begin grace period |
+| `customer.subscription.updated` | Plan change, status change, or renewal |
+| `customer.subscription.deleted` | Subscription canceled; revoke access |
+| `invoice.upcoming` | Upcoming renewal notification (optional upsell) |
+
+---
+
+## 4. Database Schema
+
+### 4.1 Prisma Schema
+
+The database stores the application&apos;s view of customer and subscription state. Stripe is the billing engine, but your database defines entitlements and access rules. The following Prisma models capture the essential data.
+
+#### 4.1.1 User Model
+
+```prisma
+model User {
+  id                String         @id @default(cuid())
+  email             String         @unique
+  name              String?
+  stripeCustomerId  String?        @unique
+  role              Role           @default(USER)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  subscription      Subscription?
+}
+```
+
+#### 4.1.2 Subscription Model
+
+```prisma
+model Subscription {
+  id                      String             @id @default(cuid())
+  userId                  String             @unique
+  user                    User               @relation(fields: [userId], references: [id])
+  stripeSubscriptionId    String             @unique
+  stripePriceId           String
+  stripeCurrentPeriodEnd  DateTime
+  status                  SubscriptionStatus
+  cancelAtPeriodEnd       Boolean            @default(false)
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+}
+```
+
+#### 4.1.3 Enums
+
+```prisma
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELED
+  UNPAID
+  INCOMPLETE
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+```
+
+### 4.2 Key Design Decisions
+
+- **Store Stripe IDs.** Always persist `stripeCustomerId` and `stripeSubscriptionId`. Without them, reconciling billing issues becomes extremely difficult.
+- **Single subscription per user.** This spec assumes one active subscription per user. For multi-subscription models, change the relation to one-to-many.
+- **`stripeCurrentPeriodEnd` as the access gate.** When checking access, compare the current time against this timestamp (with a 1–2 day buffer for payment retries).
+
+---
+
+## 5. Application Routes and Pages
+
+### 5.1 Route Structure
+
+| Route | Auth | Purpose |
+|-------|------|---------|
+| `/pricing` | Public | Plan selection and comparison |
+| `/checkout/success` | Authenticated | Post-checkout confirmation |
+| `/checkout/cancel` | Public | Checkout cancellation landing |
+| `/billing` | Authenticated | Subscription overview, invoices, payment method |
+| `/billing/portal` | Authenticated | Redirects to Stripe Customer Portal |
+| `/admin/subscriptions` | Admin | Subscription management dashboard |
+| `/admin/subscriptions/[id]` | Admin | Individual subscription detail view |
+| `/api/webhooks/stripe` | Stripe signature | Webhook endpoint |
+
+---
+
+## 6. Customer-Facing Pages
+
+### 6.1 Pricing Page (`/pricing`)
+
+The pricing page is the most conversion-critical page in the application. Industry research consistently shows that three to four tiers with a highlighted recommended plan produces the highest conversion rates.
+
+#### 6.1.1 Layout and Structure
+
+- Display plans in a horizontal card layout (vertical stack on mobile)
+- Include a monthly/annual toggle switch, with the annual discount prominently shown
+- Visually highlight the recommended plan with a distinct border, badge, or background tint
+- Each plan card shows: plan name, price, billing interval, a concise feature list, and a primary CTA button
+- Add a feature comparison table below the cards for users who want granular detail
+
+#### 6.1.2 Conversion Best Practices
+
+- **Anchoring:** Display the highest-priced plan first (left to right) so mid-tier plans feel like good value.
+- **Social proof:** Include customer counts, testimonials, or trust badges near the pricing cards.
+- **FAQ section:** Address common concerns (refund policy, cancellation, hidden fees) directly on the page.
+- **Transparent pricing:** No hidden fees. Show exactly what users will be charged. This is the single most impactful trust signal.
+- **Free trial option:** If offering a trial, reduce friction by not requiring a credit card upfront (or clearly communicate that it is required).
+
+#### 6.1.3 Technical Implementation
+
+The pricing page is a Server Component that fetches plan data from environment configuration (or from Stripe via the Products API for dynamic pricing). The Subscribe button triggers a Server Action that creates a Stripe Checkout Session:
+
+```typescript
+// app/pricing/actions.ts
+&apos;use server&apos;
+
+import { stripe } from &apos;@/lib/stripe&apos;;
+import { redirect } from &apos;next/navigation&apos;;
+
+export async function createCheckoutSession(priceId: string) {
+  const user = await getCurrentUser();
+
+  // Create or retrieve the Stripe customer
+  let stripeCustomerId = user.stripeCustomerId;
+  if (!stripeCustomerId) {
+    const customer = await stripe.customers.create({
+      email: user.email,
+      metadata: { userId: user.id },
+    });
+    stripeCustomerId = customer.id;
+    await db.user.update({
+      where: { id: user.id },
+      data: { stripeCustomerId },
+    });
+  }
+
+  const session = await stripe.checkout.sessions.create({
+    customer: stripeCustomerId,
+    mode: &apos;subscription&apos;,
+    payment_method_types: [&apos;card&apos;],
+    line_items: [{ price: priceId, quantity: 1 }],
+    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/cancel`,
+    subscription_data: {
+      metadata: { userId: user.id },
+    },
+  });
+
+  redirect(session.url!);
+}
+```
+
+### 6.2 Billing Dashboard (`/billing`)
+
+Authenticated users access a self-service billing dashboard to manage their subscription. This page is a Server Component that fetches subscription data from both the application database and the Stripe API.
+
+#### 6.2.1 Subscription Status Card
+
+- Current plan name and tier
+- Subscription status (Active, Trialing, Past Due, Canceled)
+- Next billing date and amount
+- Visual status indicator (green for active, yellow for past due, red for canceled)
+- &quot;Cancel at period end&quot; notice if applicable
+
+#### 6.2.2 Payment Method Section
+
+- Display the last 4 digits and brand of the card on file
+- Card expiration date
+- &quot;Update Payment Method&quot; button that redirects to the Stripe Customer Portal
+
+#### 6.2.3 Invoice History
+
+- Table of recent invoices fetched from Stripe (`stripe.invoices.list`)
+- Columns: Date, Amount, Status (Paid / Open / Failed), Download PDF link
+- Stripe provides hosted invoice PDF URLs directly
+- Paginate with a &quot;Load More&quot; or cursor-based pagination
+
+#### 6.2.4 Plan Management Actions
+
+- **Upgrade/Downgrade:** Button that opens the Stripe Customer Portal configured for plan switching. Prorations are handled automatically by Stripe.
+- **Cancel Subscription:** Cancel button that either redirects to the portal or triggers a Server Action to set `cancel_at_period_end = true` on the Stripe subscription. Show a confirmation modal with clear messaging about when access ends.
+- **Reactivate:** If canceled but still within the current period, allow reactivation by removing `cancel_at_period_end`.
+
+### 6.3 Stripe Customer Portal Integration
+
+The Stripe Customer Portal provides a pre-built, Stripe-hosted UI for subscription management. Use it as the primary self-service interface for payment method updates and invoice viewing. Create portal sessions via a Server Action:
+
+```typescript
+// app/billing/actions.ts
+&apos;use server&apos;
+
+export async function createPortalSession() {
+  const user = await getCurrentUser();
+
+  const session = await stripe.billingPortal.sessions.create({
+    customer: user.stripeCustomerId!,
+    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing`,
+  });
+
+  redirect(session.url);
+}
+```
+
+&gt; **Note:** The portal has limited customization. If you need a highly branded experience, build custom UI components that call the Stripe API directly instead of using the portal.
+
+---
+
+## 7. Webhook Handler
+
+### 7.1 Endpoint Setup
+
+The webhook endpoint is a Next.js Route Handler at `/api/webhooks/stripe/route.ts`. It must use the raw request body (not parsed JSON) for signature verification. This is critical for security.
+
+```typescript
+// app/api/webhooks/stripe/route.ts
+import { NextResponse } from &apos;next/server&apos;;
+import { stripe } from &apos;@/lib/stripe&apos;;
+import { db } from &apos;@/lib/db&apos;;
+
+export async function POST(req: Request) {
+  const body = await req.text();
+  const sig = req.headers.get(&apos;stripe-signature&apos;)!;
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(
+      body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET!
+    );
+  } catch (err) {
+    console.error(&apos;Webhook signature verification failed:&apos;, err);
+    return NextResponse.json({ error: &apos;Invalid signature&apos; }, { status: 400 });
+  }
+
+  try {
+    switch (event.type) {
+      case &apos;checkout.session.completed&apos;:
+        await handleCheckoutCompleted(event.data.object);
+        break;
+      case &apos;invoice.paid&apos;:
+        await handleInvoicePaid(event.data.object);
+        break;
+      case &apos;invoice.payment_failed&apos;:
+        await handlePaymentFailed(event.data.object);
+        break;
+      case &apos;customer.subscription.updated&apos;:
+        await handleSubscriptionUpdated(event.data.object);
+        break;
+      case &apos;customer.subscription.deleted&apos;:
+        await handleSubscriptionDeleted(event.data.object);
+        break;
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+    }
+  } catch (err) {
+    console.error(`Error processing ${event.type}:`, err);
+    // Still return 200 to prevent Stripe retries for application errors
+    // Log the error for investigation
+  }
+
+  return NextResponse.json({ received: true });
+}
+```
+
+### 7.2 Event Processing Logic
+
+Each webhook event triggers specific database updates. The handler must be idempotent because Stripe retries failed deliveries for up to 3 days with exponential backoff.
+
+#### 7.2.1 `checkout.session.completed`
+
+```typescript
+async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
+  const subscription = await stripe.subscriptions.retrieve(
+    session.subscription as string
+  );
+
+  await db.subscription.upsert({
+    where: { userId: subscription.metadata.userId },
+    create: {
+      userId: subscription.metadata.userId,
+      stripeSubscriptionId: subscription.id,
+      stripePriceId: subscription.items.data[0].price.id,
+      stripeCurrentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      status: &apos;ACTIVE&apos;,
+    },
+    update: {
+      stripeSubscriptionId: subscription.id,
+      stripePriceId: subscription.items.data[0].price.id,
+      stripeCurrentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      status: &apos;ACTIVE&apos;,
+    },
+  });
+}
+```
+
+- Extract the Stripe customer ID and subscription ID from the session object
+- Create or update the Subscription record in the database
+- Link the Stripe customer ID to the User record if not already linked
+- Set subscription status to `ACTIVE` (or `TRIALING` if a trial was configured)
+
+#### 7.2.2 `invoice.paid`
+
+- Look up the subscription by `stripeSubscriptionId`
+- Update `stripeCurrentPeriodEnd` to the new period end date
+- Ensure status is `ACTIVE`
+- This event confirms continued access on each renewal cycle
+
+#### 7.2.3 `invoice.payment_failed`
+
+- Update subscription status to `PAST_DUE`
+- Trigger a notification to the customer (email or in-app) prompting them to update their payment method
+- Stripe will automatically retry the payment based on your configured retry schedule
+
+#### 7.2.4 `customer.subscription.updated`
+
+- Update the local subscription record with the new price ID, status, and period end
+- This handles plan changes (upgrades/downgrades), proration adjustments, and trial-to-active transitions
+
+#### 7.2.5 `customer.subscription.deleted`
+
+- Set subscription status to `CANCELED`
+- Revoke access to premium features
+- Optionally retain the subscription record for historical reference rather than deleting it
+
+### 7.3 Idempotency
+
+Stripe may deliver the same event multiple times. Implement idempotency by storing processed event IDs (the `event.id` field) in a database table or cache. Before processing an event, check if it has already been handled. A simple lookup table keyed by event ID with a TTL of 72 hours is sufficient.
+
+```typescript
+// Check idempotency before processing
+const existing = await db.webhookEvent.findUnique({
+  where: { stripeEventId: event.id },
+});
+if (existing) {
+  return NextResponse.json({ received: true });
+}
+
+// Process event...
+
+// Mark as processed
+await db.webhookEvent.create({
+  data: { stripeEventId: event.id, type: event.type },
+});
+```
+
+### 7.4 Error Handling
+
+- Always return a 200 status code quickly, even if downstream processing fails (queue events for async processing if needed)
+- Log webhook verification failures separately for debugging
+- In live mode, Stripe retries webhooks for up to 3 days if it doesn&apos;t receive a 2xx response
+- Monitor webhook health: track the last received event type and timestamp to detect delivery gaps
+
+---
+
+## 8. Admin Dashboard
+
+### 8.1 Subscription Management (`/admin/subscriptions`)
+
+Admin pages are protected by role-based middleware. Only users with the `ADMIN` role can access `/admin/*` routes. The subscription management dashboard provides full visibility into the billing state of all customers.
+
+#### 8.1.1 Subscription List View
+
+A paginated, searchable, and filterable table of all subscriptions:
+
+| Column | Details |
+|--------|---------|
+| Customer | Name, email, Stripe customer ID (clickable link to Stripe Dashboard) |
+| Plan | Current plan tier and billing interval (Monthly / Annual) |
+| Status | Active, Trialing, Past Due, Canceled, Unpaid — with color-coded badges |
+| MRR | Monthly recurring revenue contribution from this subscription |
+| Period End | Current period end date; highlights if expiring within 7 days |
+| Actions | View details, cancel, change plan |
+
+**Filters:** Status (multi-select), Plan tier, Date range, Search by name/email.
+
+#### 8.1.2 Subscription Detail View
+
+Individual subscription page showing:
+
+- Full customer profile (name, email, account creation date)
+- Complete subscription history (plan changes, status transitions, cancellation reasons)
+- Invoice history pulled from Stripe with payment status for each
+- Payment method details (last 4, brand, expiry)
+- Webhook event log for this subscription (last 20 events with timestamps and types)
+
+#### 8.1.3 Admin Actions
+
+Admins can perform the following actions directly from the dashboard:
+
+- **Cancel subscription:** Immediately or at period end, with a required reason note
+- **Change plan:** Upgrade or downgrade a customer&apos;s plan with or without proration
+- **Extend trial:** Add trial days to an existing subscription
+- **Issue refund:** Refund the last invoice (full or partial) via `stripe.refunds.create`
+- **Apply coupon/discount:** Attach a Stripe coupon to the subscription for the next billing cycle
+
+```typescript
+// app/admin/subscriptions/actions.ts
+&apos;use server&apos;
+
+export async function adminCancelSubscription(
+  subscriptionId: string,
+  immediate: boolean,
+  reason: string
+) {
+  await requireAdmin();
+
+  if (immediate) {
+    await stripe.subscriptions.cancel(subscriptionId);
+  } else {
+    await stripe.subscriptions.update(subscriptionId, {
+      cancel_at_period_end: true,
+      metadata: { cancelReason: reason },
+    });
+  }
+
+  await logAdminAction(&apos;cancel_subscription&apos;, { subscriptionId, immediate, reason });
+}
+
+export async function adminChangePlan(
+  subscriptionId: string,
+  newPriceId: string,
+  prorate: boolean
+) {
+  await requireAdmin();
+
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  await stripe.subscriptions.update(subscriptionId, {
+    items: [{
+      id: subscription.items.data[0].id,
+      price: newPriceId,
+    }],
+    proration_behavior: prorate ? &apos;create_prorations&apos; : &apos;none&apos;,
+  });
+
+  await logAdminAction(&apos;change_plan&apos;, { subscriptionId, newPriceId, prorate });
+}
+
+export async function adminIssueRefund(
+  invoiceId: string,
+  amount?: number // undefined = full refund
+) {
+  await requireAdmin();
+
+  const invoice = await stripe.invoices.retrieve(invoiceId);
+  await stripe.refunds.create({
+    payment_intent: invoice.payment_intent as string,
+    ...(amount ? { amount } : {}),
+  });
+
+  await logAdminAction(&apos;issue_refund&apos;, { invoiceId, amount });
+}
+```
+
+### 8.2 Revenue Overview
+
+A summary dashboard showing key metrics:
+
+- Total MRR (Monthly Recurring Revenue) calculated from active subscriptions
+- Active subscriber count by plan tier
+- Churn rate (cancellations over the last 30 days)
+- Past-due subscription count (requiring attention)
+- Recent webhook events for system health monitoring
+
+---
+
+## 9. Access Control and Entitlements
+
+### 9.1 Middleware-Based Route Protection
+
+Use Next.js middleware to protect routes based on authentication and subscription status. The middleware checks the user&apos;s session and subscription state before rendering protected pages.
+
+```typescript
+// middleware.ts
+import { NextRequest, NextResponse } from &apos;next/server&apos;;
+import { getToken } from &apos;next-auth/jwt&apos;;
+
+export async function middleware(request: NextRequest) {
+  const token = await getToken({ req: request });
+  const { pathname } = request.nextUrl;
+
+  // 1. Unauthenticated users → login
+  if (!token &amp;&amp; pathname.startsWith(&apos;/billing&apos;)) {
+    return NextResponse.redirect(new URL(&apos;/login&apos;, request.url));
+  }
+
+  // 2. Admin routes → verify ADMIN role
+  if (pathname.startsWith(&apos;/admin&apos;) &amp;&amp; token?.role !== &apos;ADMIN&apos;) {
+    return NextResponse.redirect(new URL(&apos;/&apos;, request.url));
+  }
+
+  // 3. Premium routes → verify active subscription
+  if (pathname.startsWith(&apos;/app&apos;) &amp;&amp; !token?.hasActiveSubscription) {
+    return NextResponse.redirect(new URL(&apos;/pricing&apos;, request.url));
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: [&apos;/billing/:path*&apos;, &apos;/admin/:path*&apos;, &apos;/app/:path*&apos;],
+};
+```
+
+### 9.2 Feature Gating
+
+Implement a utility function that checks subscription status and plan tier to gate features:
+
+```typescript
+// lib/access.ts
+import { PLAN_FEATURES } from &apos;./plans&apos;;
+
+export function hasAccess(
+  user: { subscription: Subscription | null },
+  feature: string
+): boolean {
+  if (!user.subscription) return false;
+
+  const { status, stripeCurrentPeriodEnd, stripePriceId } = user.subscription;
+
+  const isActive =
+    [&apos;ACTIVE&apos;, &apos;TRIALING&apos;].includes(status) &amp;&amp;
+    new Date(stripeCurrentPeriodEnd) &gt; new Date();
+
+  if (!isActive) return false;
+
+  return PLAN_FEATURES[stripePriceId]?.includes(feature) ?? false;
+}
+```
+
+```typescript
+// lib/plans.ts
+export const PLAN_FEATURES: Record&lt;string, string[]&gt; = {
+  [process.env.STRIPE_PRICE_STARTER_MONTHLY!]: [
+    &apos;core_dashboard&apos;,
+    &apos;basic_reports&apos;,
+  ],
+  [process.env.STRIPE_PRICE_PRO_MONTHLY!]: [
+    &apos;core_dashboard&apos;,
+    &apos;basic_reports&apos;,
+    &apos;advanced_analytics&apos;,
+    &apos;api_access&apos;,
+  ],
+  [process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY!]: [
+    &apos;core_dashboard&apos;,
+    &apos;basic_reports&apos;,
+    &apos;advanced_analytics&apos;,
+    &apos;api_access&apos;,
+    &apos;priority_support&apos;,
+    &apos;custom_integrations&apos;,
+  ],
+  // Repeat for annual price IDs with the same feature sets
+};
+```
+
+### 9.3 Grace Period
+
+When a payment fails, don&apos;t immediately revoke access. Allow a grace period (typically 3–7 days) aligned with Stripe&apos;s automatic retry schedule. During this period, show a banner prompting the user to update their payment method. Only revoke access after the subscription transitions to `UNPAID` or `CANCELED`.
+
+```typescript
+// lib/access.ts
+const GRACE_PERIOD_DAYS = 3;
+
+export function hasActiveAccess(subscription: Subscription): boolean {
+  if ([&apos;ACTIVE&apos;, &apos;TRIALING&apos;].includes(subscription.status)) {
+    return true;
+  }
+
+  if (subscription.status === &apos;PAST_DUE&apos;) {
+    const gracePeriodEnd = new Date(subscription.stripeCurrentPeriodEnd);
+    gracePeriodEnd.setDate(gracePeriodEnd.getDate() + GRACE_PERIOD_DAYS);
+    return new Date() &lt; gracePeriodEnd;
+  }
+
+  return false;
+}
+```
+
+---
+
+## 10. Project File Structure
+
+```
+app/
+  (auth)/
+    login/page.tsx
+    register/page.tsx
+  (dashboard)/
+    billing/
+      page.tsx                    # Billing dashboard
+      actions.ts                  # Server Actions: portal, cancel, reactivate
+    billing/portal/
+      route.ts                    # Redirect to Stripe Customer Portal
+  (marketing)/
+    pricing/
+      page.tsx                    # Public pricing page
+      actions.ts                  # createCheckoutSession Server Action
+    checkout/
+      success/page.tsx            # Post-checkout success
+      cancel/page.tsx             # Checkout cancellation
+  admin/
+    subscriptions/
+      page.tsx                    # Subscription list
+      [id]/page.tsx               # Subscription detail
+      actions.ts                  # Admin Server Actions
+  api/
+    webhooks/
+      stripe/route.ts             # Webhook handler
+components/
+  billing/
+    PricingCard.tsx               # Individual plan card
+    PricingToggle.tsx             # Monthly/Annual toggle
+    SubscriptionStatusBadge.tsx   # Color-coded status indicator
+    InvoiceTable.tsx              # Invoice history table
+    PaymentMethodCard.tsx         # Card on file display
+  admin/
+    SubscriptionTable.tsx         # Filterable subscription list
+    SubscriptionDetail.tsx        # Detail view panels
+    AdminActionButtons.tsx        # Cancel, refund, change plan
+    RevenueMetrics.tsx            # MRR, churn, active counts
+lib/
+  stripe.ts                       # Stripe client singleton
+  stripe-helpers.ts               # Helper functions for Stripe operations
+  plans.ts                        # Plan configuration and feature maps
+  access.ts                       # Feature gating logic
+  db.ts                           # Prisma client singleton
+prisma/
+  schema.prisma
+middleware.ts                     # Route protection
+```
+
+---
+
+## 11. Testing Strategy
+
+### 11.1 Stripe Test Mode
+
+All development and testing uses Stripe&apos;s test mode. Never use live API keys in non-production environments. Stripe provides test card numbers for simulating various scenarios:
+
+| Card Number | Scenario |
+|-------------|----------|
+| `4242 4242 4242 4242` | Successful payment |
+| `4000 0000 0000 3220` | 3D Secure authentication required |
+| `4000 0000 0000 9995` | Payment declined (insufficient funds) |
+| `4000 0000 0000 0341` | Attach succeeds, but first charge fails |
+
+Use any future expiration date, any 3-digit CVC, and any postal code.
+
+### 11.2 Stripe CLI for Webhook Testing
+
+Use the Stripe CLI to forward webhook events to your local development server:
+
+```bash
+# Install the CLI
+brew install stripe/stripe-cli/stripe
+
+# Login to your Stripe account
+stripe login
+
+# Forward events to your local server
+stripe listen --forward-to localhost:3000/api/webhooks/stripe
+```
+
+The CLI prints a webhook signing secret (`whsec_*`) for local testing. Set this as `STRIPE_WEBHOOK_SECRET` in your `.env.local` file. The development server and webhook forwarding must run concurrently in separate terminals.
+
+### 11.3 Full Lifecycle Test Checklist
+
+Before shipping, validate every stage of the subscription lifecycle:
+
+1. **New subscription:** User selects plan, completes checkout, webhook fires, database updates, access granted.
+2. **Successful renewal:** Subscription renews, `invoice.paid` fires, period end updated, access continues.
+3. **Failed payment:** Use a declining card, verify `invoice.payment_failed` fires, status becomes `PAST_DUE`, user sees payment update banner.
+4. **Plan upgrade:** User upgrades, proration applied, `subscription.updated` fires, new features available.
+5. **Plan downgrade:** User downgrades, change takes effect at period end (or immediately with proration).
+6. **Cancellation (at period end):** User cancels, access continues until period end, then revoked.
+7. **Cancellation (immediate):** Admin cancels immediately, access revoked, `subscription.deleted` fires.
+8. **Reactivation:** User reactivates before period end, `cancel_at_period_end` removed.
+9. **Payment method update:** User updates card via Customer Portal, new payment method appears.
+10. **3D Secure flow:** Use the 3DS test card, verify authentication challenge completes properly.
+
+### 11.4 Automated Tests
+
+```typescript
+// Recommended test structure
+describe(&apos;Webhook Handler&apos;, () =&gt; {
+  it(&apos;creates subscription on checkout.session.completed&apos;, async () =&gt; {
+    const event = createMockEvent(&apos;checkout.session.completed&apos;, { ... });
+    await POST(mockRequest(event));
+    const sub = await db.subscription.findFirst({ where: { userId } });
+    expect(sub?.status).toBe(&apos;ACTIVE&apos;);
+  });
+
+  it(&apos;updates period end on invoice.paid&apos;, async () =&gt; { ... });
+  it(&apos;sets PAST_DUE on invoice.payment_failed&apos;, async () =&gt; { ... });
+  it(&apos;handles duplicate events idempotently&apos;, async () =&gt; { ... });
+});
+```
+
+---
+
+## 12. Security Considerations
+
+- **Never trust the success URL for access granting.** The checkout success page is cosmetic. Always gate access based on webhook-confirmed subscription state in your database.
+
+- **Verify webhook signatures.** Use `stripe.webhooks.constructEvent` with the webhook signing secret. Never process unverified events. Anyone can POST to your webhook URL.
+
+- **Server-side only for Stripe Secret Key.** The `STRIPE_SECRET_KEY` must never be exposed to the client. Only use it in Server Actions, Route Handlers, and server-side code.
+
+- **Idempotent webhook processing.** Store processed event IDs to prevent double-processing. This guards against duplicate charges, false access grants, and corrupted subscription state.
+
+- **HTTPS in production.** Webhook endpoints must use HTTPS. Stripe will not send events to HTTP URLs in live mode.
+
+- **Rate limit admin actions.** Protect admin API endpoints from abuse with rate limiting.
+
+- **Audit logging.** Log all admin actions (cancel, refund, plan change) with the admin user ID, timestamp, and reason.
+
+- **Disable body parsing for webhook route.** Next.js may auto-parse the request body. The webhook handler must receive the raw body string for signature verification to succeed.
+
+```typescript
+// app/api/webhooks/stripe/route.ts
+// Next.js App Router Route Handlers receive the raw Request object,
+// so use req.text() — do NOT use req.json()
+```
+
+---
+
+## 13. Deployment Checklist
+
+1. Set all environment variables in the production environment (Stripe live keys, webhook secret, database URL).
+2. Create products and prices in Stripe live mode (or use `stripe fixtures fixtures/stripe-fixtures.json` for automated setup).
+3. Register the production webhook endpoint URL in the Stripe Dashboard.
+4. Configure the Customer Portal in Stripe live mode with the same settings as test mode.
+5. Run the full lifecycle test checklist (Section 11.3) against the live environment using Stripe&apos;s test mode.
+6. Archive all test-mode products before going live if they conflict with live products.
+7. Monitor webhook delivery in the Stripe Dashboard Webhooks tab for the first 48 hours after launch.
+8. Set up alerting for webhook delivery failures (email notifications from Stripe, or custom monitoring).
+
+---
+
+## 14. Future Considerations
+
+This spec covers the essential subscription billing system. The following features can be added incrementally as the product matures:
+
+- **Usage-based billing:** For metered features (API calls, storage), integrate Stripe&apos;s metering API or implement a pre-paid credit system.
+- **Dunning email customization:** Customize Stripe&apos;s automated payment failure emails or build custom email sequences triggered by webhook events.
+- **Coupon and promotion management:** Create and manage discount codes through an admin interface backed by the Stripe Coupons API.
+- **Multi-currency support:** Add a currency selector to the pricing page and create locale-specific prices in Stripe.
+- **Tax compliance:** Enable Stripe Tax for automatic tax calculation, collection, and reporting across jurisdictions.
+- **Seat-based pricing:** Add a quantity parameter to subscriptions and build UI for managing team seats.
+- **Revenue analytics:** Build detailed dashboards showing MRR trends, churn analysis, LTV calculations, and cohort analysis using Stripe Sigma or custom queries.
+- **Subscription schedules:** Use Stripe&apos;s Subscription Schedule API for advanced scenarios like phased pricing changes, promotional periods, or deferred start dates.
+
+---
+
+*End of Specification.*</description>
+    </feature>
+    <feature>
+      <name>Remove decisions page, consolidate into individual pages</name>
+      <description>http://localhost:3000/decisions  we can remove this page. We have moved the functionality into individual pages versus a standalone dedicated page just for decisions.</description>
+    </feature>
+    <feature>
+      <name>Add Smart Rules to Labels dropdown for topic filtering</name>
+      <description>Smart Rules should be shown in the Labels drop down such that a user could have a Inbox tab dedicated to showing messages about that topic.</description>
+    </feature>
+    <feature>
+      <name>Add AI question prompt to every page</name>
+      <description>We want to add a UI at the top of each page that would allow the user to ask questions about the page. We would use AI then to answer the user&apos;s question. We don&apos;t necessarily want the user to have to switch to the brain tab to be able to ask questions. We need a lightweight way of doing that from anywhere. Maybe that is at the bottom of the page. I&apos;m open to design considerations.</description>
+    </feature>
+    <feature>
+      <name>Add tabbed interface with Knowledge, Decisions, Smart Rules, and Activity tabs</name>
+      <description>I want to change how we think about pages. When a new page is created, I think there should be tabs across the top, and the tabs across the top would be for the notes. I think there would be additional tabs that are specific to the actual AI:
+- Knowledge: these would be all of the key learnings
+- Decisions: which would list out all of the key decisions that are made
+- Smart rules: which tracks all of the smart rules associated with that page
+I think we may want to create an activity page, another tab called Activity, where there&apos;s just a log of everything to make it easier to debug and to have users have more confidence in the system.</description>
+    </feature>
+    <feature>
+      <name>Make page mobile responsive for better viewing</name>
+      <description>Make the page http://localhost:3000/brain more mobile friendly.</description>
+    </feature>
+    <feature>
+      <name>Investigate and fix AI usage widget disappearance from header</name>
+      <description>## Parent Task Context (Already Completed)
+
+&gt; **Note:** The following parent task has already been completed. This context is provided to help you understand the background and requirements for this sub-task. Do not re-implement the parent task - focus only on the new sub-task described below.
+
+### Display API key usage statistics in header
+
+**Description:** We are using OpenProvider for our AI API. 
+
+Create a new widget that shows usage stats for the current key in use.   We can show this in the header on desktop. 
+
+**Summary:** ## Summary: OpenRouter AI Usage Widget
+
+### Changes Implemented
+- Created API route `/api/ai-usage` that proxies OpenRouter&apos;s `/api/v1/key` endpoint using the user&apos;s configured API key (per-user or global fallback)
+- Built `AIUsageWidget` component with compact inline display (usage + progress bar) and expandable dropdown showing daily/weekly/monthly/all-time usage breakdown
+- Added a desktop-only header bar to the AppShell layout containing the AI usage widget, positioned at the top-right of the main content area
+- Widget auto-refreshes usage data every 5 minutes
+- Progress bar color-codes based on usage percentage (blue/amber/red)
+- Gracefully handles errors and missing API keys by hiding the widget
+
+### Files Modified
+- `components/ui/AppShell.tsx` — Added AIUsageWidget import and desktop header bar with the widget
+
+### Files Created
+- `app/api/ai-usage/route.ts` — Server-side API route to fetch OpenRouter key usage stats
+- `components/ai/AIUsageWidget.tsx` — Client-side widget component with inline + expanded views
+
+### Notes for Developer
+- The widget uses the OpenRouter `/api/v1/key` endpoint which works with regular API keys (not just management keys)
+- Per-user API keys are supported via the existing `getUserApiKey()` function from `lib/ai/client.ts`
+- The widget is desktop-only (hidden on mobile via `hidden md:flex`)
+- If no API key is configured or the API call fails, the widget silently hides itself
+
+---
+
+## Task Description
+
+For some reason, the ai usage is no longer being shown in the header. It was there :)</description>
+    </feature>
+    <feature>
+      <name>Add secure local storage support for Pages</name>
+      <description>Add secure local storage support for Pages.  
+
+http://localhost:3000/workspace/f3426eb9-7e45-4109-8d64-fcbada5245b3/a57a3daa-1e71-4616-b3a0-fbdaa82212f8</description>
+    </feature>
+    <feature>
+      <name>Add settings page with sub-menus for organization</name>
+      <description>Let&apos;s create a new settings page and move some of the settings like pages under this new settings page.  Maybe introduce sub-menus.</description>
+    </feature>
+    <feature>
+      <name>Create Chrome extension for web clip HTML storage</name>
+      <description>## Parent Task Context (Already Completed)
+
+&gt; **Note:** The following parent task has already been completed. This context is provided to help you understand the background and requirements for this sub-task. Do not re-implement the parent task - focus only on the new sub-task described below.
+
+### Create Chrome extension for Krisp web content capture
+
+**Description:** Web Clipper Chrome Extension for Open Brain Knowledge Capture
+
+Build a Chrome extension that allows users to clip web page content directly into the Krisp Open Brain knowledge system, transforming any web page into a structured, searchable memory entry — just as Slack captures spoken thoughts, the extension captures discovered knowledge.
+
+---
+
+Architecture Overview
+
+The feature spans three layers:
+
+1. Chrome Extension (frontend capture layer)
+2. Krisp API endpoint (ingestion + storage layer)
+3. Open Brain database + MCP (retrieval layer)
+
+---
+
+Sub-Tasks
+
+1. Chrome Extension — Content Extraction
+
+- Scaffold a Manifest V3 Chrome extension with a popup UI and a content script
+- Content script extracts clean plain text from the active tab using a Readability-style parsing strategy (strip nav, footer, ads, scripts, and boilerplate; retain meaningful body text, headings, and structure)
+- Capture metadata automatically: page title, canonical URL, domain, and timestamp
+- Allow the user to optionally highlight a selection before clipping — if a selection exists, clip only the highlighted passage rather than the full page
+- Display a small popup with: a preview of the extracted text (truncated), an editable title field (pre-filled with the page title), a tags input field (comma-separated), and a Clip to Krisp button
+- Show success or error state inline in the popup after submission
+
+2. Krisp API — Ingestion Endpoint
+
+- Create a new API route: POST /api/brain/clips
+- Accept payload: { title, url, domain, plain_text, tags[], clipped_at }
+- Authenticate the request using the user&apos;s Personal API Key (already exists in the system) passed as a Bearer token in the Authorization header — this allows the extension to work without a browser session
+- Truncate plain_text to a safe maximum (e.g., 12,000 characters) before embedding to stay within token limits; store the full text separately
+- Generate a vector embedding of the plain text using the existing OpenAI Embeddings pipeline (same 1536-dimensional pgvector flow used for emails)
+- Insert a new record into the brain_entries table (or equivalent Open Brain storage table) with source type set to web_clip
+
+3. Database — Schema Extension
+
+- Add a source_type enum value: web_clip (alongside existing values such as slack, manual, etc.)
+- Add a source_url column (text, nullable) to store the origin URL of the clip
+- Add a source_domain column (text, nullable) for domain-level filtering and analytics
+- Ensure the new columns are included in existing MCP retrieval queries and semantic search indexes
+
+4. MCP — Retrieval Awareness
+
+- Update the semantic search tool to surface web_clip entries with their source_url as a citation link in results
+- Update the list recent tool to display web clips with a 🌐 source indicator and the origin domain
+- Update the stats tool to include web_clips as a tracked capture source in pattern analysis
+
+5. Chrome Extension — Authentication Flow
+
+- On first install, display an onboarding screen prompting the user to paste their Krisp Personal API Key (link directly to the key management page in the Krisp app)
+- Store the key securely in chrome.storage.local (never in localStorage or plaintext cookies)
+- Provide a way to update or revoke the stored key from the extension settings panel
+
+6. Krisp UI — Web Clips in the Brain Dashboard
+
+- Display web_clip entries in the Open Brain feed with a distinct clip icon and the source domain shown as a secondary label
+- Make the source URL clickable (opens original page in a new tab)
+- Add web_clip as a filterable source type in any existing brain entry filter controls
+
+---
+
+Edge Cases to Handle
+
+- Pages that block content scripts (e.g., Chrome Web Store, PDF viewer) — show a graceful &quot;This page cannot be clipped&quot; message
+- Very long pages — enforce client-side truncation before sending; inform the user if content was trimmed
+- Duplicate clips — if the same URL has already been clipped (check via source_url on the backend), return a warning but still allow the user to save if they confirm
+- No meaningful text extracted — disable the Clip button and show an &quot;Unable to extract content from this page&quot; message
+- API key missing or invalid — show a clear authentication error with a link to the Krisp key management page
+- Offline or API unreachable — surface a network error and offer a retry button
+
+---
+
+Acceptance Criteria
+
+- A user can install the extension, authenticate with their API key, visit any standard web page, and clip its content to Krisp in under 15 seconds
+- Clipped entries appear immediately in the Open Brain feed and are semantically searchable via both the Krisp UI and any MCP-connected AI client
+- The MCP semantic search tool returns web clip entries with their source URL as a citation
+- The extension gracefully handles all listed edge cases without crashing or silently failing
+- No user session cookie or password is stored in the extension — authentication relies solely on the Personal API Key
+
+**Summary:** ## Summary: Web Clipper Chrome Extension for Open Brain Knowledge Capture
+
+### Changes Implemented
+
+**1. Database Schema Extension**
+- Added `sourceUrl` (text, nullable) and `sourceDomain` (varchar 255, nullable) columns to the `brainThoughts` table in `lib/db/schema.ts`
+- Added index `idx_brain_thoughts_source_url` on (userId, sourceUrl) for efficient duplicate URL lookups
+
+**2. Database Migration**
+- Created `drizzle/migrations/0023_add-web-clip-columns.sql` adding the two new columns and index
+
+**3. API Ingestion Endpoint — `POST /api/brain/clips`**
+- Accepts `{ title, url, domain, plain_text, tags[], clipped_at }` payload
+- Authenticates via Personal API Key (Bearer token) using existing `webhookSecrets` table with timing-safe comparison
+- Truncates text to 12,000 chars for embedding, stores full text
+- Generates 1536-dim vector embedding via OpenAI text-embedding-3-small
+- Extracts AI metadata (topic, sentiment, urgency) via OpenRouter
+- Stores as `brain_thoughts` entry with `source: &quot;web_clip&quot;`, encrypted content
+- Checks for duplicate URLs and informs client (allows re-clip per spec)
+- CORS headers for cross-origin Chrome extension requests
+- Rate limiting (20 requests/minute/user)
+- Full Zod validation
+
+**4. Brain Chat Context Update**
+- Added `brainThoughts` to the imports and parallel data fetch in `handleBrainQuery`
+- Brain thoughts (including web clips) are now included as context for the AI assistant
+- Web clips show source URL as citation in context
+- Updated system prompt to mention brain thoughts and web clips
+- Added `brain_thoughts` source tracking in sourcesUsed
+
+**5. Brain Dashboard UI Update**
+- Added `brain_thoughts` source badge (teal color) and label to Brain Chat page
+
+**6. Chrome Extension (Manifest V3)**
+- `manifest.json` — Extension config with popup, content script, permissions (activeTab, storage, scripting)
+- `content.js` — Content script that extracts clean text from pages using Readability-style approach (strips nav, footer, ads, etc.), supports user text selection
+- `popup.html` — Full popup UI with setup/onboarding screen and clip form
+- `popup.css` — Clean, modern styling for the popup
+- `popup.js` — Popup logic handling auth flow, content extraction with scripting API fallback, clip submission, success/error states
+- `icons/` — Placeholder PNG icons (16, 48, 128px) with README for proper icon generation
+- Authentication flow: onboarding screen for API key + Krisp URL, stored in chrome.storage.local
+- Settings panel to update/revoke stored credentials
+- Edge case handling: restricted pages, no content, offline, auth errors, duplicate URLs
+
+### Files Modified
+- `lib/db/schema.ts` — Added sourceUrl, sourceDomain columns and index to brainThoughts
+- `app/api/brain/chat/route.ts` — Added brainThoughts import, context fetch, decryption, context building, updated system prompt
+- `app/(app)/brain/page.tsx` — Added brain_thoughts source badge color and label
+
+### Files Created
+- `drizzle/migrations/0023_add-web-clip-columns.sql` — Migration for new columns
+- `app/api/brain/clips/route.ts` — New API endpoint for web clip ingestion
+- `extension/manifest.json` — Chrome extension manifest
+- `extension/content.js` — Content extraction script
+- `extension/popup.html` — Extension popup UI
+- `extension/popup.css` — Popup styles
+- `extension/popup.js` — Popup logic
+- `extension/icons/icon16.png` — Placeholder icon
+- `extension/icons/icon48.png` — Placeholder icon
+- `extension/icons/icon128.png` — Placeholder icon
+- `extension/icons/README.md` — Icon generation instructions
+
+### Notes for Developer
+- Run migration `0023_add-web-clip-columns.sql` against the database before deploying
+- Replace placeholder PNG icons in `extension/icons/` with proper Krisp brain logo icons at 16x16, 48x48, and 128x128 pixels
+- The Chrome extension uses the same Personal API Key (Zapier webhook secret) for authentication — users find their key in Admin &gt; Integrations
+- To install the extension: Chrome &gt; `chrome://extensions` &gt; Enable Developer Mode &gt; Load Unpacked &gt; select the `extension/` directory
+- CORS is set to `*` on the clips endpoint because Chrome extension origins (`chrome-extension://`) are dynamic and cannot be predicted
+- The content script uses a Readability-style approach with a fallback to `chrome.scripting.executeScript` for pages where the content script hasn&apos;t loaded yet
+
+---
+
+## Task Description
+
+Update the current web clip extension to support saving and viewing the sites HTML content. 
+
+# Web Clipper MVP — Spec
+
+&gt; **Version:** 0.2 (MVP)
+&gt; **Author:** Michael
+&gt; **Last Updated:** 2026-03-07
+
+---
+
+## 1. What This Is
+
+A Chrome extension that clips the readable content of any web page and a React viewer to read saved clips. Uses Mozilla&apos;s Readability to extract clean article content, DOMPurify to sanitize it, and IndexedDB for local storage.
+
+**MVP scope:** Clip a page → save it → read it later. That&apos;s it.
+
+---
+
+## 2. Architecture
+
+```
+Chrome Extension                          React Viewer (new tab)
+┌──────────────────────┐                 ┌──────────────────────┐
+│  Popup: [Clip] btn   │                 │  Clip List → Reader  │
+│          ↓           │                 │          ↑           │
+│  Content Script      │                 │          │           │
+│  • clone DOM         │   IndexedDB     │          │           │
+│  • Readability parse │──── clips ──────│  reads from same DB  │
+│  • DOMPurify clean   │   store         │                      │
+│  • save to IDB       │                 │  html-react-parser   │
+└──────────────────────┘                 └──────────────────────┘
+```
+
+No backend. No sync. Everything lives in the browser&apos;s IndexedDB.
+
+---
+
+## 3. Data Model
+
+```typescript
+interface Clip {
+  id: string;            // crypto.randomUUID()
+  url: string;           // original page URL
+  title: string;         // Readability title
+  byline?: string;       // author if detected
+  siteName?: string;     // e.g. &quot;The Verge&quot;
+  excerpt: string;       // first ~200 chars, plain text
+  content: string;       // sanitized HTML from Readability
+  textContent: string;   // plain text version (for search)
+  clippedAt: string;     // ISO 8601
+  tags: string[];        // user-assigned
+  readingTimeMin: number; // Math.ceil(wordCount / 238)
+}
+```
+
+**IndexedDB:** Database `web-clipper`, object store `clips` keyed on `id`, indexed on `clippedAt` and `tags` (multiEntry).
+
+---
+
+## 4. Chrome Extension
+
+### 4.1 Manifest v3
+
+```jsonc
+{
+  &quot;manifest_version&quot;: 3,
+  &quot;name&quot;: &quot;Web Clipper&quot;,
+  &quot;version&quot;: &quot;0.1.0&quot;,
+  &quot;permissions&quot;: [&quot;activeTab&quot;, &quot;scripting&quot;],
+  &quot;action&quot;: { &quot;default_popup&quot;: &quot;popup.html&quot; },
+  &quot;background&quot;: { &quot;service_worker&quot;: &quot;background.js&quot;, &quot;type&quot;: &quot;module&quot; }
+}
+```
+
+Only `activeTab` + `scripting` — no broad host permissions needed since we inject on demand.
+
+### 4.2 Clipping Pipeline (Content Script)
+
+Injected via `chrome.scripting.executeScript` when the user clicks Clip.
+
+1. `document.cloneNode(true)` — don&apos;t mutate the live page.
+2. `new Readability(clone).parse()` → `{ title, byline, content, textContent, excerpt, siteName }`.
+3. `DOMPurify.sanitize(content, config)` — strict allowlist (see §6).
+4. Compute `readingTimeMin` from word count.
+5. Build `Clip` object, `chrome.runtime.sendMessage()` to background.
+
+If Readability returns `null`, fall back to `document.title` + truncated `body.innerText`. Flag it in the popup as a partial clip.
+
+### 4.3 Background Service Worker
+
+Receives the clip, writes it to IndexedDB, sends a response back to the popup with success/failure.
+
+### 4.4 Popup UI
+
+Three states:
+
+- **Ready** — Shows a &quot;Clip This Page&quot; button. Optional tag input field (comma-separated).
+- **Saving** — Spinner / &quot;Clipping…&quot; text.
+- **Done** — &quot;Saved!&quot; with a link to open the viewer.
+
+That&apos;s the entire popup. Keep it minimal.
+
+---
+
+## 5. React Viewer
+
+Opens as a new tab (`chrome-extension://&lt;id&gt;/viewer.html`) or can be a standalone local app reading the same IndexedDB.
+
+### 5.1 Tech Stack
+
+- React 18, React Router, Tailwind CSS
+- `idb` for IndexedDB access
+- `html-react-parser` + DOMPurify for rendering clip content
+- `fuse.js` for search
+
+### 5.2 Two Views
+
+**Library** (`/`)
+- List of clip cards: title, site name, excerpt, date, reading time, tags.
+- Search bar (Fuse.js over title + textContent + tags).
+- Sort by date (newest first by default).
+- Click a card → navigate to reader.
+- Swipe or button to delete a clip.
+
+**Reader** (`/clip/:id`)
+- **Header:** title, byline, site name, clipped date, link to original URL.
+- **Content:** sanitized HTML rendered via `html-react-parser`.
+- **Max-width 680px**, centered, `line-height: 1.7`.
+- All `&lt;a&gt;` tags get `target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;` at render time.
+- Images use original remote `src` (no local caching in MVP — images break if the source goes down, and that&apos;s an acceptable v1 tradeoff).
+
+### 5.3 Reader Toolbar (Minimal)
+
+- Light / dark toggle (CSS custom properties swap).
+- Delete clip.
+- Open original URL.
+
+No font-size controls, no serif toggle, no favorites in MVP. Keep the surface area small.
+
+---
+
+## 6. Sanitization
+
+```javascript
+const PURIFY_CONFIG = {
+  ALLOWED_TAGS: [
+    &quot;p&quot;, &quot;h1&quot;, &quot;h2&quot;, &quot;h3&quot;, &quot;h4&quot;, &quot;h5&quot;, &quot;h6&quot;,
+    &quot;ul&quot;, &quot;ol&quot;, &quot;li&quot;, &quot;blockquote&quot;, &quot;pre&quot;, &quot;code&quot;,
+    &quot;a&quot;, &quot;img&quot;, &quot;figure&quot;, &quot;figcaption&quot;,
+    &quot;table&quot;, &quot;thead&quot;, &quot;tbody&quot;, &quot;tr&quot;, &quot;th&quot;, &quot;td&quot;,
+    &quot;em&quot;, &quot;strong&quot;, &quot;br&quot;, &quot;hr&quot;, &quot;sup&quot;, &quot;sub&quot;
+  ],
+  ALLOWED_ATTR: [&quot;href&quot;, &quot;src&quot;, &quot;alt&quot;, &quot;width&quot;, &quot;height&quot;],
+  ALLOW_DATA_ATTR: false,
+};
+```
+
+Strip everything else. No `class`, no `style`, no `data-*`. The viewer&apos;s own CSS handles all styling.
+
+---
+
+## 7. Edge Cases (MVP-Scoped)
+
+| Scenario | Handling |
+|---|---|
+| Readability returns null | Fall back to title + truncated innerText. Show &quot;partial clip&quot; badge. |
+| Duplicate URL clipped | Save it again as a separate clip. No dedup logic in MVP. |
+| Very long page (&gt;500KB HTML) | Truncate content at 500KB, append &quot;[Content truncated]&quot; notice. |
+| SPA with lazy-loaded content | Clip whatever is in the DOM at invocation time. Imperfect, but acceptable for v1. |
+| Images break over time | Expected. Remote `src` stays as-is. Image caching is a post-MVP enhancement. |
+| Page behind auth | Clips whatever the content script can see. May be incomplete. |
+
+---
+
+## 8. What&apos;s Explicitly NOT in MVP
+
+- Image caching / local blob storage
+- Backend API / sync / accounts
+- Annotation or highlighting
+- Export / import
+- Favorites, archive, or status workflows
+- Selection-based clipping (clip a highlighted region)
+- Tag filtering in the library (search covers it for now)
+- Firefox or Safari support
+
+All of these are good v2+ candidates but add scope without validating the core loop.
+
+---
+
+## 9. Build Plan
+
+### Phase 1 — Extension Core (get clipping working)
+- [ ] Scaffold Chrome extension (manifest, popup, background worker)
+- [ ] Bundle Readability + DOMPurify into the content script
+- [ ] Implement clipping pipeline (clone → parse → sanitize → save)
+- [ ] IndexedDB storage with `idb`
+- [ ] Popup UI (clip button, status, tag input)
+
+### Phase 2 — Viewer (get reading working)
+- [ ] React app scaffolding (Vite + React + Tailwind + React Router)
+- [ ] Library view reading from IndexedDB
+- [ ] Reader view rendering sanitized HTML
+- [ ] Search with Fuse.js
+- [ ] Light/dark theme
+
+### Phase 3 — Polish &amp; Ship
+- [ ] Error states for all failure modes
+- [ ] Delete flow
+- [ ] Keyboard accessibility basics (focus management, tab order)
+- [ ] Test on 20+ real-world sites (news, blogs, docs, forums, wikis)
+- [ ] Package for Chrome Web Store or local install
+
+---
+
+## 10. Dependencies
+
+| Package | Purpose |
+|---|---|
+| `@mozilla/readability` | Article extraction |
+| `dompurify` | HTML sanitization |
+| `idb` | IndexedDB wrapper |
+| `html-react-parser` | Render HTML in React |
+| `fuse.js` | Client-side search |
+| `react` / `react-dom` / `react-router-dom` | UI |
+| `tailwindcss` | Styling |
+
+Seven dependencies total. Small surface area.</description>
+    </feature>
+    <feature>
+      <name>Combine Detect and Spam into Classify All</name>
+      <description>http://localhost:3000/inbox
+
+Combine Detect and Spam into Classify All.  We can do all of the needed detection in a single AI LLM call.</description>
+    </feature>
+    <feature>
+      <name>Remove Brain Knowledge and Graph features</name>
+      <description>Remove the Brain Knowledge (to be replaced by Pages.)
+Remove the Graph, This is not very helpful.</description>
+    </feature>
+    <feature>
+      <name>Send emails to pages with selective copying</name>
+      <description>Inbox-to-Knowledge Forwarding: Send &amp; Copy Content to Pages
+
+Add frictionless mechanisms within the Inbox that allow users to forward email content — either in full or selectively — directly to relevant pages , eliminating the need to manually copy-paste between contexts.
+
+Requirements:
+
+Core &quot;Send to Page&quot; Action
+- Add a &quot;Send to Page&quot; contextual action on each email item (accessible via hover action bar, right-click context menu, and keyboard shortcut)
+- Open a command-palette-style modal that lets the user search and select a destination page: an Page or new page.  http://localhost:3000/workspace
+- Support sending the full email (subject, body, sender, timestamp) as structured content to the target page
+- Append rather than overwrite when the target page already contains content 
+
+Selective &quot;Copy to Page&quot; via Text Selection
+- When a user selects text within an email body, surface a floating mini-toolbar with a &quot;Copy to Page&quot; option
+- Allow the selected excerpt to be sent to a destination page with the source email referenced as a citation (sender, date, subject)
+- Support quick-send to a recently used or pinned destination without reopening the full search modal
+
+Destination Page Types &amp; Behavior
+
+- Kanban Card: append content to the card&apos;s description or post it as a new comment in the activity feed; optionally pre-fill a new card title from the email subject
+
+- New Page (quick-create): allow users to create a new Kanban card or Open Brain entry inline from the modal without leaving the Inbox
+
+UX &amp; Interaction Details
+- Show a non-intrusive confirmation toast after a successful send, with an inline link to the destination page
+- Preserve the original email&apos;s read/unread state after forwarding (do not auto-mark as read)
+- Support bulk selection of multiple emails with a single &quot;Send all to Page&quot; operation
+- Remember the last-used destination per session to reduce repetitive searching
+
+Technical Considerations
+- Reuse the existing Kanban card comment and description update APIs; no new write endpoints required for card destinations
+- Sanitize HTML email bodies before storing to prevent XSS in downstream page renderers
+- Ensure forwarded content respects row-level user ownership — users can only send to pages they own
+
+Edge Cases
+- Email body is empty or contains only attachments: prompt user to add a note before sending, or send attachment metadata as a reference
+- Destination card or record has been deleted: surface a clear error and offer to create a new destination instead
+- Very long email threads: offer a &quot;Send summary only&quot; option that truncates to the first N characters or uses AI summarization before forwarding</description>
+    </feature>
+    <feature>
+      <name>Combine inbox tabs with pinnable accounts and labels</name>
+      <description>http://localhost:3000/inbox
+
+Combine the tabs switcher and the account and lables. 
+Allow the user to pin accounts and labels. When pinned, the item appears as a tab
+For the last two tabs, show a drop down for account and a drop down for labels which allows the user to select accounts and lables that are not pinned.</description>
+    </feature>
+    <feature>
+      <name>Create mobile-optimized inbox layout with responsive design</name>
+      <description>Create a dedicated mobile view for the inbox page. Right now, the account and labels and all the menus at the top take up most of the space. It also looks like the list of messages doesn&apos;t fill the width of the column.</description>
+    </feature>
+    <feature>
+      <name>Optimize mobile UI with bottom navigation and responsive AI chat</name>
+      <description>Add optimization for mobile devices and add focus on the left rail side navigation and switching between pages. We want to move some of the core functionality to buttons at the bottom, like our traditional mobile app: the brain, the inbox, and the meetings and calendar tab you.  Optimize the brain AI chat interface to work well on mobile devices.</description>
+    </feature>
+    <feature>
+      <name>Unify dashboard and workspace analytics views</name>
+      <description>Merge the concepts of dashboard and workspace analytics.</description>
+    </feature>
+    <feature>
+      <name>I&apos;ll help you investigate why the heatmap isn&apos;t appearing. Let me explore the dashboard and menu system to understand the current state.</name>
+      <description>## Parent Task Context (Already Completed)
+
+&gt; **Note:** The following parent task has already been completed. This context is provided to help you understand the background and requirements for this sub-task. Do not re-implement the parent task - focus only on the new sub-task described below.
+
+### Personal Productivity Heatmap
+
+**Description:** Display a GitHub-style contribution heatmap on the analytics dashboard showing daily capture activity across all sources (cards completed, thoughts captured, meetings attended, emails processed). Hovering a day shows a breakdown by source. Helps users identify productive streaks and gaps in knowledge capture.
+
+**Summary:** ## Summary: Display a GitHub-style contribution heatmap on the analytics dashboard
+
+### Changes Implemented
+- Created a new API endpoint (`/api/dashboard/heatmap`) that aggregates daily activity counts across 4 sources: cards created, meetings attended, emails processed, and thoughts captured over the past 365 days
+- Built a pure SVG heatmap component (`ActivityHeatmap`) with GitHub-style green color gradient, responsive to light/dark themes, with hover tooltips showing per-source breakdown
+- Integrated the heatmap as a new full-width widget at the top of the dashboard, compatible with the existing drag-and-drop widget system
+- Added `activityHeatmap` to the widget system (WidgetId type, DEFAULT_LAYOUT, WIDGET_META, renderWidget)
+- Added `fullWidth` prop to `SortableWidget` to support `col-span-full` layout for the heatmap
+
+### Files Modified
+- `app/(app)/dashboard/page.tsx` - Added activityHeatmap widget to WidgetId type, DEFAULT_LAYOUT, WIDGET_META, renderWidget; updated SortableWidget to support fullWidth prop; imported ActivityHeatmap component
+
+### Files Created
+- `app/api/dashboard/heatmap/route.ts` - GET endpoint that queries cards, webhookKeyPoints, emails, and brainThoughts tables in parallel, groups by date, and returns 365 days of activity data
+- `components/dashboard/ActivityHeatmap.tsx` - Client-side SVG heatmap component with: 52-week grid, month/day labels, 5-level intensity coloring, dark/light theme support, hover tooltips with source breakdown, loading skeleton, and accessibility attributes
+
+### Notes for Developer
+- No new dependencies added - the heatmap is pure SVG rendered with React
+- The API uses the same auth pattern as `app/api/dashboard/route.ts` (auth() + userId check)
+- Activity sources tracked: cards (createdAt), meetings (meetingStartDate), emails (receivedAt), thoughts (createdAt)
+- Color scheme supports CSS variable overrides via `--heatmap-0` through `--heatmap-4`
+- The heatmap widget spans full width (`col-span-full`) at the top of the dashboard grid
+- TypeScript compilation passes cleanly
+
+### Verification Status
+- TypeScript compilation: passes with zero errors
+- Playwright API tests: 2/2 passed - verified the heatmap API endpoint exists and behaves consistently with the existing dashboard API for authentication
+- UI verification was limited because the dev server has a pre-existing 500 error on all pages (caused by an unrelated `KanbanIcon` missing import in `brain/page.tsx`), not related to heatmap changes
+
+---
+
+## Task Description
+
+How do users access their new personal productivity heatmap? I don&apos;t see any entries on the dashboard or any of the menu items.</description>
+    </feature>
+    <feature>
+      <name>Optimize inbox performance with secure local storage caching</name>
+      <description>For the inbox, can we leverage local storage securely so we can improve performance of how the inbox performs?</description>
+    </feature>
+    <feature>
+      <name>Forward message via email with draft generation</name>
+      <description>Add the ability to forward a message to an external user via email address and provide an option to automatically generate a draft of the message to include when forwarding.</description>
+    </feature>
+    <feature>
+      <name>Implement password reset flow with Resend email delivery</name>
+      <description>Add Password Reset Flow with Resend Email Delivery
+
+Implement a complete password reset flow that allows users to securely recover access to their accounts, using Resend as the transactional email provider.
+
+Requirements:
+
+Authentication Flow:
+- Add a &quot;Forgot Password&quot; link on the login page
+- Create a password reset request form that accepts the user&apos;s email address
+- Generate a secure, time-limited reset token (e.g., expires in 1 hour) and store it
+- Send a password reset email via Resend containing a unique reset link
+- Create a reset password form accessible via the token link that accepts and confirms a new password
+- Invalidate the token after successful use or expiry
+- Redirect user to login with a success confirmation after password is updated
+
+Email Integration:
+- Integrate the Resend SDK for transactional email delivery
+- Read the sender address from the new RESEND_EMAIL environment variable
+- Design a clear, branded password reset email template with the reset link and expiry notice
+- Handle Resend API errors gracefully and surface actionable feedback if delivery fails
+
+Security Considerations:
+- Ensure reset tokens are cryptographically random and single-use
+- Do not reveal whether an email address exists in the system (return a generic confirmation message regardless)
+- Enforce minimum password strength requirements on the new password
+- Rate-limit reset requests per email address to prevent abuse
+
+Environment &amp; Configuration:
+- Add RESEND_EMAIL to environment variable documentation and any .env.example files
+- Validate that RESEND_EMAIL is present at startup and fail with a descriptive error if missing</description>
+    </feature>
+    <feature>
+      <name>Add email account switcher to inbox view</name>
+      <description>In the inbox view, I need a way to be able to switch between email accounts, switching between my Gmail account and my Outlook account. There could be multiple Gmail and multiple Outlook accounts.</description>
+    </feature>
   </implemented_features>
 
   <additional_requirements>

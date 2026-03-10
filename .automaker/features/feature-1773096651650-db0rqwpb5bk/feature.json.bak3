@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "When a new page is created, show a modal dialog that asks the user what this page is about. The goal is to have them describe the page such that you can automatically set up the smart rules. The smart rules determine how various email and meeting transcripts are extracted and then placed onto the page. The smart rules accomplish this.\n\nWhen the user creates that page, if they provide us some context about the page, we can assist them in creating the smart rule. We may want to use some AI on the fly. After they tell us about the purpose of the page, we could then use it to clarify what they've told us. That clarified text would be the actual rule.",
+  "title": "Add page context modal with AI-powered smart rule setup",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-09T22:50:51.649Z",
+  "id": "feature-1773096651650-db0rqwpb5bk",
+  "descriptionHistory": [
+    {
+      "description": "When a new page is created, show a modal dialog that asks the user what this page is about. The goal is to have them describe the page such that you can automatically set up the smart rules. The smart rules determine how various email and meeting transcripts are extracted and then placed onto the page. The smart rules accomplish this.\n\nWhen the user creates that page, if they provide us some context about the page, we can assist them in creating the smart rule. We may want to use some AI on the fly. After they tell us about the purpose of the page, we could then use it to clarify what they've told us. That clarified text would be the actual rule.",
+      "timestamp": "2026-03-09T22:50:52.279Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-09T22:58:46.879Z",
+  "justFinishedAt": "2026-03-09T22:58:46.879Z"
+}

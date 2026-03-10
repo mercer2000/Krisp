@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "Add the new smart label categorizations to the inbox filters.",
+  "title": "Add smart label categorizations to inbox filters",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-07T15:29:23.351Z",
+  "id": "feature-1772897363351-ogxewu0n1j",
+  "descriptionHistory": [
+    {
+      "description": "Add the new smart label categorizations to the inbox filters.",
+      "timestamp": "2026-03-07T15:29:23.939Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-07T15:34:00.628Z",
+  "justFinishedAt": "2026-03-07T15:34:00.609Z",
+  "summary": "## Summary: Add smart label categorizations to inbox filters\n\n### Changes Implemented\n- Fixed filter bar visibility: The label filter bar now renders when smart labels exist, even if there are no traditional email labels (changed condition from `allLabels.length > 0` to `allLabels.length > 0 || allSmartLabels.length > 0`)\n- Added clear section labels: Traditional labels are prefixed with \"Labels:\" and smart labels are prefixed with \"Smart:\" for better visual distinction\n- The `|` separator between traditional and smart labels only renders when both types are present\n- Fixed `clearFilters` function to also reset `filterSmartLabel` to `null`, ensuring the \"Clear all\" button properly clears smart label filters\n- Added `data-testid` attributes to smart label filter buttons for testability (`smart-label-filter-${name}`)\n\n### Files Modified\n- `app/(app)/inbox/page.tsx` — Filter bar visibility, section labels, clearFilters fix\n\n### Notes for Developer\n- Smart label filters continue to work client-side by filtering against `smartLabelMap` (which is fetched via `/api/smart-labels/items`)\n- The smart labels are fetched from `/api/smart-labels` on mount alongside traditional labels\n- If you want to add more item types for smart label classification, update the `item_type` field in `smart_label_items` schema"
+}

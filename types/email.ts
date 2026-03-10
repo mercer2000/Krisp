@@ -38,6 +38,7 @@ export interface EmailRow {
   attachments_metadata: EmailAttachmentMetadata[];
   web_link: string | null;
   raw_payload: EmailWebhookPayload;
+  is_read: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -83,6 +84,7 @@ export interface EmailListItem {
   is_newsletter?: boolean;
   is_spam?: boolean;
   is_vip?: boolean;
+  is_read?: boolean;
   unsubscribe_link?: string | null;
 }
 

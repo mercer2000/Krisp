@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "Remove the Brain Knowledge (to be replaced by Pages.)\nRemove the Graph, This is not very helpful. ",
+  "title": "Remove Brain Knowledge and Graph features",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-08T04:36:15.528Z",
+  "id": "feature-1772943593430-yy0u8ml8g6c",
+  "descriptionHistory": [
+    {
+      "description": "Remove the Brain Knowledge (to be replaced by Pages.)\nRemove the Graph, This is not very helpful. ",
+      "timestamp": "2026-03-08T04:19:54.034Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-08T04:41:22.547Z",
+  "justFinishedAt": "2026-03-08T04:41:22.517Z",
+  "summary": "The previous agent removed the entire Brain feature, but the user only wanted the Knowledge and Graph features removed — the Chat functionality should remain."
+}

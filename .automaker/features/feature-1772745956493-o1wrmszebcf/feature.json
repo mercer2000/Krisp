@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "Help me setup Neon database RLS",
+  "title": "Setup Neon database Row Level Security",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "verified",
+  "startedAt": "2026-03-05T21:53:12.992Z",
+  "id": "feature-1772745956493-o1wrmszebcf",
+  "descriptionHistory": [
+    {
+      "description": "Help me setup Neon database RLS",
+      "timestamp": "2026-03-05T21:25:57.020Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-05T22:12:40.223Z",
+  "justFinishedAt": "2026-03-05T22:12:40.224Z"
+}

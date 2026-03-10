@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "Create a dedicated mobile view for the inbox page. Right now, the account and labels and all the menus at the top take up most of the space. It also looks like the list of messages doesn't fill the width of the column.",
+  "title": "Create mobile-optimized inbox layout with responsive design",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-08T04:00:24.041Z",
+  "id": "feature-1772937421113-766zwn77p3h",
+  "descriptionHistory": [
+    {
+      "description": "Create a dedicated mobile view for the inbox page. Right now, the account and labels and all the menus at the top take up most of the space. It also looks like the list of messages doesn't fill the width of the column.",
+      "timestamp": "2026-03-08T02:37:01.540Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-08T04:06:20.906Z",
+  "summary": "## Summary: Create a dedicated mobile view for the inbox page\n\n### Changes Implemented\n\n**Inbox list page (`app/(app)/inbox/page.tsx`):**\n- **Header**: Reduced padding (`px-3 py-3` on mobile, `px-6 py-4` on desktop), smaller title (`text-lg` vs `text-2xl`)\n- **Toolbar**: Desktop toolbar hidden on mobile (`hidden md:flex`); replaced with compact icon-only mobile toolbar (`flex md:hidden`) showing just Sync and Filters buttons\n- **Mobile search bar**: Added a full-width search bar below the header on mobile that fills the available width (`flex-1 min-w-0`)\n- **Folder tabs**: Reduced padding and gap on mobile, added `overflow-x-auto` for horizontal scrolling, smaller text (`text-xs md:text-sm`)\n- **Account/Label filter chips**: Reduced horizontal padding (`px-3 md:px-6`) and gaps on mobile\n- **Advanced filter panel**: Tighter padding on mobile\n- **Email list items**: Reduced row padding (`px-3 py-3` vs `px-6 py-4`), smaller gap between elements; status icons hidden on mobile; created a mobile-specific stacked layout (sender + time on top row, subject on second row, labels on third row, preview on fourth row) while preserving the desktop single-row layout\n- **Action buttons**: Hidden on mobile (users tap into detail page for actions); unsubscribe button also hidden on mobile\n- **Loading skeletons, error/embedding banners**: Reduced padding on mobile\n- **Draft preview strips**: Reduced margin on mobile\n- **Pagination**: Compact on mobile — shorter button text (\"Prev\"/\"Next\"), page number buttons hidden on mobile (just shows \"1/5\" text), reduced padding\n\n**Email detail page (`app/(app)/inbox/[id]/page.tsx`):**\n- **Header bar**: Reduced padding on mobile; \"Back to Inbox\" shortened to \"Back\" on mobile; action buttons (Open in Outlook, Forward, Delete) become icon-only on mobile (`p-2` padding, text labels hidden with `hidden md:inline`)\n- **Content area**: Reduced padding on mobile (`px-3 py-4` vs `px-6 py-6`)\n- **Subject heading**: Smaller on mobile (`text-lg md:text-2xl`)\n\n**Email action sidebar (`components/email/EmailActionSidebar.tsx`):**\n- Sidebar hidden on mobile (`hidden md:flex`) to give full width to email content instead of squeezing it with a 320px sidebar\n\n### Files Modified\n- `app/(app)/inbox/page.tsx` — Main inbox list page (header, toolbar, search, tabs, filters, email rows, pagination)\n- `app/(app)/inbox/[id]/page.tsx` — Email detail page (header, content padding, heading size)\n- `components/email/EmailActionSidebar.tsx` — Action sidebar (hidden on mobile)\n\n### Notes for Developer\n- The mobile toolbar only shows Sync and Filters icons — other actions (Classify, Detect, Spam, Labels) are still accessible via the desktop toolbar at `md:` breakpoint (768px+)\n- Email row action buttons (VIP, smart label, forward, open externally, delete) are hidden on mobile since they rely on hover. Users access these from the email detail page instead\n- The EmailActionSidebar is completely hidden on mobile — consider adding a floating action button or bottom sheet in a future iteration if mobile scanning is needed\n- All changes use the existing `md:` (768px) breakpoint consistent with the app's responsive design pattern",
+  "justFinishedAt": "2026-03-08T04:06:20.906Z"
+}

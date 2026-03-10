@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772831273943-895d4bea",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-06T21:07:53.943Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "email-newsletter-filter",
+  "featureName": "Newsletter & Marketing Email Filter",
+  "passes": true
+}

@@ -1,0 +1,10 @@
+{
+  "id": "evt-1773113374098-dea85cf0",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-10T03:29:34.098Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772943228465-g0zeghzrfp6",
+  "featureName": "Combine inbox tabs with pinnable accounts and labels",
+  "passes": true
+}

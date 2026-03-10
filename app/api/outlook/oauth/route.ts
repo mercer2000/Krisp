@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
       tokenExpiry: token.token_expiry,
       isExpired: new Date(token.token_expiry) < new Date(),
       lastSyncAt: token.last_sync_at,
+      emailActionBoardId: token.email_action_board_id ?? null,
       createdAt: token.created_at,
       updatedAt: token.updated_at,
     }));

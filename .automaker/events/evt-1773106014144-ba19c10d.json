@@ -1,0 +1,10 @@
+{
+  "id": "evt-1773106014144-ba19c10d",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-10T01:26:54.144Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1773104867786-52sulsg5ywr",
+  "featureName": "Add Smart Rules to Labels dropdown for topic filtering",
+  "passes": true
+}

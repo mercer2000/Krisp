@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772944806060-dcd9a5b3",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-08T04:40:06.060Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772944176392-tmtkgado9jr",
+  "featureName": "Combine Detect and Spam into Classify All",
+  "passes": true
+}

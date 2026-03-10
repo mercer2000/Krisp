@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "For the inbox, can we leverage local storage securely so we can improve performance of how the inbox performs?",
+  "title": "Optimize inbox performance with secure local storage caching",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "verified",
+  "startedAt": "2026-03-07T16:16:47.607Z",
+  "id": "feature-1772900207608-4swge4196rg",
+  "descriptionHistory": [
+    {
+      "description": "For the inbox, can we leverage local storage securely so we can improve performance of how the inbox performs?",
+      "timestamp": "2026-03-07T16:16:47.981Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-07T16:24:44.556Z",
+  "justFinishedAt": "2026-03-07T16:24:44.535Z",
+  "summary": "## Summary: Inbox localStorage Cache for Performance\n\n### Changes Implemented\n- Created a secure localStorage caching layer for inbox data using a **stale-while-revalidate** pattern\n- **Cache utility** (`lib/cache/inboxCache.ts`): TTL-based (5 min) cache with version keys, automatic eviction of oldest entries (max 20), and graceful handling of localStorage errors/corruption\n- **React hook** (`lib/hooks/useInboxCache.ts`): Provides `getCachedEmails`, `getCachedSearch`, `cacheListResponse`, `cacheSearchResponse`, and caching for labels/accounts/smart labels — all with stable references via `useMemo`/`useCallback`\n- **Inbox page integration**: On page load, cached data renders immediately (no loading spinner flash), then fresh data is fetched in background and replaces it. Applies to:\n  - Email list (paginated)\n  - Semantic search results\n  - Labels, accounts, and smart labels (loaded on mount)\n- **Cache invalidation**: All inbox cache is cleared after mutations that change data:\n  - Email sync (Outlook + Gmail)\n  - Email delete (optimistic UI + cache clear)\n  - AI classification\n  - Newsletter detection\n  - Spam detection\n- **Security considerations**: Only list-level data is cached (sender, subject, preview) — no body/HTML content. Cache is keyed per filter combination so different views don't interfere. TTL ensures stale data expires within 5 minutes. Cache is namespaced with version prefix for easy busting on schema changes.\n\n### Files Modified\n- `app/(app)/inbox/page.tsx` — Added `useInboxCache` hook, stale-while-revalidate in `fetchEmails`, cached mount data for labels/accounts/smart labels, cache invalidation on all mutation handlers\n\n### Files Created\n- `lib/cache/inboxCache.ts` — Core localStorage cache utility with TTL, versioning, eviction, and error handling\n- `lib/hooks/useInboxCache.ts` — React hook wrapping cache operations for inbox data\n\n### Notes for Developer\n- The cache TTL is 5 minutes (`DEFAULT_TTL_MS`). Adjust in `lib/cache/inboxCache.ts` if needed.\n- Max 20 cache entries are stored. Older entries are evicted automatically.\n- Bump `CACHE_VERSION` in `lib/cache/inboxCache.ts` to invalidate all existing caches after schema changes.\n- Background polling (every 15s on page 1) still works and updates the cache silently.\n- The pre-existing type error in `app/api/emails/[id]/forward/route.ts:86` is unrelated to these changes."
+}

@@ -1,0 +1,12 @@
+{
+  "id": "global-command-palette",
+  "category": "UI",
+  "title": "Global Command Palette (Cmd+K)",
+  "description": "Keyboard-triggered command palette (⌘K / Ctrl+K) that provides instant access to navigation, card creation, meeting search, email compose, and Open Brain capture from any page. Uses fuzzy search across boards, meetings, and contacts. Implemented as an overlay modal with keyboard navigation.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.554Z",
+  "updatedAt": "2026-03-02T18:35:40.554Z"
+}

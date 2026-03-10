@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772831474392-0163f232",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-06T21:11:14.392Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "global-command-palette",
+  "featureName": "Global Command Palette (Cmd+K)",
+  "passes": true
+}

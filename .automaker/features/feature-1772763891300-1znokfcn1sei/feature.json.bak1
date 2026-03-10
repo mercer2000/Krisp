@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "Add the ability to connect to multiple outlook.com accounts.",
+  "title": "Add support for multiple Outlook.com accounts",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-06T02:24:51.299Z",
+  "id": "feature-1772763891300-1znokfcn1sei",
+  "descriptionHistory": [
+    {
+      "description": "Add the ability to connect to multiple outlook.com accounts.",
+      "timestamp": "2026-03-06T02:24:51.853Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-06T02:35:18.367Z",
+  "justFinishedAt": "2026-03-06T02:35:18.349Z",
+  "summary": "## Summary: Add the ability to connect to multiple outlook.com accounts\n\n### Changes Implemented\n- **Database schema**: Changed unique constraint on `outlook_oauth_tokens` from `(tenant_id)` to `(tenant_id, outlook_email)`, allowing multiple Outlook accounts per user. Added index on `tenant_id` for efficient lookups.\n- **Migration**: Created `0026_multi-outlook-accounts.sql` to drop the old unique index and create the new composite one.\n- **OAuth functions** (`lib/outlook/oauth.ts`): \n  - Added `getOutlookTokensForTenant()` to return all active accounts for a tenant\n  - Added `getOutlookTokenById()` to get a specific account by its UUID\n  - Changed `upsertOutlookTokens()` ON CONFLICT to use `(tenant_id, outlook_email)` so connecting a new email creates a new row\n  - Changed `deactivateOutlookToken()` to accept `(accountId, tenantId)` for per-account disconnect\n  - Changed `getValidOutlookAccessToken()` to accept `(accountId, tenantId)` for per-account token refresh\n  - Changed `updateOutlookLastSync()` to accept `accountId` instead of `tenantId`\n  - Added `deactivateAllOutlookTokens()` utility\n  - Kept backwards-compatible `getOutlookTokenForTenant()` (deprecated)\n- **OAuth API route** (`app/api/outlook/oauth/route.ts`): GET now returns `{ connected, accounts: [...] }` with all account details. DELETE requires `?accountId=` parameter.\n- **Calendar API route** (`app/api/outlook/calendar/route.ts`): POST accepts optional `accountId` — syncs all accounts if omitted, or specific account if provided. GET returns all accounts' status.\n- **Email sync route** (`app/api/outlook/sync/route.ts`): POST accepts optional `accountId` — syncs all accounts if omitted. Returns per-account results.\n- **Calendar sync logic** (`lib/outlook/calendar.ts`): `syncOutlookCalendarEvents()` now takes `accountId` parameter to update the correct token's `last_sync_at`.\n- **React hooks** (`lib/hooks/useCalendar.ts`): Updated `useOutlookCalendarStatus` return type to include `accounts` array. Updated `useOutlookCalendarSync` mutation to accept optional `accountId`.\n- **Integrations UI** (`IntegrationsClient.tsx`): Completely reworked `OutlookIntegrationManager` to show a list of connected accounts, each with individual Sync Emails/Sync Calendar/Disconnect buttons. \"Add Another Account\" button appears when accounts already exist.\n- **Calendar page** (`calendar/page.tsx`): Updated to handle multi-account status display.\n\n### Files Modified\n- `lib/db/schema.ts` — Changed unique index on `outlook_oauth_tokens`\n- `drizzle/migrations/0026_multi-outlook-accounts.sql` — New migration\n- `drizzle/migrations/meta/_journal.json` — Added migration entry\n- `lib/outlook/oauth.ts` — All token management functions updated for multi-account\n- `lib/outlook/calendar.ts` — `syncOutlookCalendarEvents` takes `accountId`\n- `app/api/outlook/oauth/route.ts` — Returns accounts array, per-account disconnect\n- `app/api/outlook/oauth/callback/route.ts` — No changes needed (upsert handles new constraint)\n- `app/api/outlook/calendar/route.ts` — Multi-account sync support\n- `app/api/outlook/sync/route.ts` — Multi-account email sync support\n- `lib/hooks/useCalendar.ts` — Updated types and mutation signatures\n- `app/(app)/admin/integrations/IntegrationsClient.tsx` — Multi-account UI\n- `app/(app)/calendar/page.tsx` — Multi-account status display\n\n### Notes for Developer\n- Run the migration `0026_multi-outlook-accounts.sql` against your database before deploying\n- Existing single-account tokens will continue to work — the new `(tenant_id, outlook_email)` unique constraint is backwards compatible since each existing row already has a unique email\n- The \"Connect Outlook Account\" / \"Add Another Account\" button uses the same OAuth flow — Microsoft's consent screen naturally lets users pick which account to sign in with\n- When syncing without specifying an `accountId`, all connected accounts are synced in sequence\n- TypeScript compilation passes with no errors"
+}

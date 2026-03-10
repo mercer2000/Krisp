@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "Smart Rules should be shown in the Labels drop down such that a user could have a Inbox tab dedicated to showing messages about that topic.",
+  "title": "Add Smart Rules to Labels dropdown for topic filtering",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-10T01:07:47.786Z",
+  "id": "feature-1773104867786-52sulsg5ywr",
+  "descriptionHistory": [
+    {
+      "description": "Smart Rules should be shown in the Labels drop down such that a user could have a Inbox tab dedicated to showing messages about that topic.",
+      "timestamp": "2026-03-10T01:07:48.498Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-10T01:26:54.121Z",
+  "justFinishedAt": "2026-03-10T01:26:54.121Z"
+}

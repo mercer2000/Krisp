@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772907284231-7913f67d",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-07T18:14:44.231Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772821945537-zxji2k8ea3",
+  "featureName": "Update Mail inbox with multi-account filter and sort",
+  "passes": true
+}

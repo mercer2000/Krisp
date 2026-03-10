@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "http://localhost:3000/decisions  we can remove this page. We have moved the functionality into individual pages versus a standalone dedicated page just for decisions. \n",
+  "title": "Remove decisions page, consolidate into individual pages",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "verified",
+  "startedAt": "2026-03-10T03:07:14.605Z",
+  "id": "feature-1773112034605-ea0rcqryiln",
+  "descriptionHistory": [
+    {
+      "description": "http://localhost:3000/decisions  we can remove this page. We have moved the functionality into individual pages versus a standalone dedicated page just for decisions. \n",
+      "timestamp": "2026-03-10T03:07:15.276Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-10T03:11:13.449Z",
+  "justFinishedAt": "2026-03-10T03:11:13.430Z",
+  "summary": "## Summary: Remove standalone /decisions page\n\n### Changes Implemented\n- Deleted the standalone decisions page at `app/(app)/decisions/page.tsx`\n- Removed \"Decisions\" nav item from the sidebar navigation (SideNav)\n- Removed \"Decisions\" item from the mobile bottom navigation \"More\" drawer (MobileBottomNav)\n- Removed \"Go to Decisions\" command from the command palette (CommandPalette)\n- Removed the now-unused `DecisionsIcon` component from SideNav\n- Removed the now-unused `DecisionsMoreIcon` component from MobileBottomNav\n- Removed the `/decisions` path check from `isActive()` in both SideNav and MobileBottomNav\n\n### Files Modified\n- `app/(app)/decisions/page.tsx` (deleted)\n- `components/ui/SideNav.tsx` (removed decisions nav item, icon, and isActive check)\n- `components/ui/MobileBottomNav.tsx` (removed decisions more item, icon, and isActive check)\n- `components/ui/CommandPalette.tsx` (removed decisions navigation command)\n\n### Notes for Developer\n- The `/api/decisions/` API routes were kept intact as they provide CRUD operations for the `decisions` database table which is still used throughout the app\n- The `extractDecisions` functions and Decision types remain — they're used by the pages feature (`DecisionsTab`), brain chat, weekly reviews, Telegram bot, and other features\n- Decision functionality is now available through individual Pages with the \"decisions\" page type and `DecisionsTab` component"
+}

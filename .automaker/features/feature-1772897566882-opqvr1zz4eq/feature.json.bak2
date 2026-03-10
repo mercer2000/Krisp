@@ -1,0 +1,27 @@
+{
+  "category": "Uncategorized",
+  "description": "Add a button on each of the inbox messages that would make it easy to create a new smart label. When you click on this button, it would let you specify the name of the smart label, and then, using AI, it would have an input box that would suggest text for the smart label.\nSome of the key scenarios I'm looking for are:\n- I want to categorize some of the newsletters that I subscribe to.\n- I also want to categorize some of the mail as important, or I know if someone sends me mail, it's always a follow-up action.",
+  "title": "Add smart label creation button to inbox messages",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "in_progress",
+  "startedAt": "2026-03-07T15:32:46.882Z",
+  "id": "feature-1772897566882-opqvr1zz4eq",
+  "descriptionHistory": [
+    {
+      "description": "Add a button on each of the inbox messages that would make it easy to create a new smart label. When you click on this button, it would let you specify the name of the smart label, and then, using AI, it would have an input box that would suggest text for the smart label.\nSome of the key scenarios I'm looking for are:\n- I want to categorize some of the newsletters that I subscribe to.\n- I also want to categorize some of the mail as important, or I know if someone sends me mail, it's always a follow-up action.",
+      "timestamp": "2026-03-07T15:32:47.382Z",
+      "source": "initial"
+    }
+  ]
+}

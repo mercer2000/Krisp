@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "I want to change how we think about pages. When a new page is created, I think there should be tabs across the top, and the tabs across the top would be for the notes. I think there would be additional tabs that are specific to the actual AI:\n- Knowledge: these would be all of the key learnings\n- Decisions: which would list out all of the key decisions that are made\n- Smart rules: which tracks all of the smart rules associated with that page\nI think we may want to create an activity page, another tab called Activity, where there's just a log of everything to make it easier to debug and to have users have more confidence in the system.",
+  "title": "Add tabbed interface with Knowledge, Decisions, Smart Rules, and Activity tabs",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "verified",
+  "startedAt": "2026-03-09T14:04:38.312Z",
+  "id": "feature-1773065078312-tlwb51ee8hc",
+  "descriptionHistory": [
+    {
+      "description": "I want to change how we think about pages. When a new page is created, I think there should be tabs across the top, and the tabs across the top would be for the notes. I think there would be additional tabs that are specific to the actual AI:\n- Knowledge: these would be all of the key learnings\n- Decisions: which would list out all of the key decisions that are made\n- Smart rules: which tracks all of the smart rules associated with that page\nI think we may want to create an activity page, another tab called Activity, where there's just a log of everything to make it easier to debug and to have users have more confidence in the system.",
+      "timestamp": "2026-03-09T14:04:38.955Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-09T14:16:17.503Z",
+  "justFinishedAt": "2026-03-09T14:16:17.480Z",
+  "summary": "## Summary: Tab-Based Page Redesign\n\n### Changes Implemented\n- **Tab navigation system**: Added a `PageTabs` component that renders 5 tabs across the top of every page: Notes, Knowledge, Decisions, Smart Rules, and Activity\n- **Notes tab**: Shows the existing BlockEditor (Notion-style content blocks) — this is the default tab\n- **Knowledge tab**: Dedicated view for knowledge entries and email summaries, with filtering, add/delete functionality, and AI confidence indicators\n- **Decisions tab**: Dedicated view for decision entries, with recording, expansion/collapse, and source tracking\n- **Smart Rules tab**: Moved smart rule configuration (natural-language rule, auto-classify toggle, Outlook folder sync) from the header into its own dedicated tab for cleaner UX\n- **Activity tab**: Timeline-style log of all activity events scoped to the page (page.created, page.updated, email.classified, etc.), with relative timestamps and event-type badges\n- **Page activity API**: New `GET /api/pages/[pageId]/activity` endpoint that returns paginated activity events filtered to the specific page entity\n- **Simplified PageHeader**: Removed the smart config panel from the header (now in Smart Rules tab), keeping just icon/color/title editing and status badge indicators\n- **Entry count badges**: Knowledge and Decisions tabs show entry counts as badges in the tab bar\n- **Database pages excluded**: Database-mode pages retain their existing layout without tabs\n\n### Files Modified\n- `app/(app)/workspace/[workspaceId]/[pageId]/page.tsx` — Rewired to use tab layout with state management\n- `components/pages/PageHeader.tsx` — Simplified by removing smart config panel (moved to Smart Rules tab)\n\n### Files Created\n- `components/pages/PageTabs.tsx` — Tab navigation bar component\n- `components/pages/tabs/KnowledgeTab.tsx` — Knowledge entries tab\n- `components/pages/tabs/DecisionsTab.tsx` — Decisions entries tab\n- `components/pages/tabs/SmartRulesTab.tsx` — Smart rule configuration tab\n- `components/pages/tabs/ActivityTab.tsx` — Activity log tab\n- `app/api/pages/[pageId]/activity/route.ts` — Page-scoped activity events API\n\n### Notes for Developer\n- The `PageEntriesView` component is no longer imported in the page view but is kept as-is for backward compatibility (other parts of the app may reference it)\n- All 11 TypeScript errors in the build are pre-existing stale `.next` cache issues (unrelated to this change) — run `rm -rf .next` to clear\n- Activity tab queries `activity_events` table filtered by `entityId = pageId` — ensure activity events are being logged with correct `entityId` for page-related operations\n- Tab state is local (useState) and resets on page navigation — could be upgraded to URL params if persistence is desired"
+}

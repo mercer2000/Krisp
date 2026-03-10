@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "http://localhost:3000/inbox\n\nCombine Detect and Spam into Classify All.  We can do all of the needed detection in a single AI LLM call. ",
+  "title": "Combine Detect and Spam into Classify All",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "verified",
+  "startedAt": "2026-03-08T04:29:36.392Z",
+  "id": "feature-1772944176392-tmtkgado9jr",
+  "descriptionHistory": [
+    {
+      "description": "http://localhost:3000/inbox\n\nCombine Detect and Spam into Classify All.  We can do all of the needed detection in a single AI LLM call. ",
+      "timestamp": "2026-03-08T04:29:37.003Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-08T04:40:06.062Z",
+  "justFinishedAt": "2026-03-08T04:40:06.035Z",
+  "summary": "## Summary: Combine Detect and Spam into Classify All\n\n### Changes Implemented\n- Combined newsletter detection and spam detection into the existing \"Classify All\" button, eliminating the need for 3 separate clicks\n- The unified flow now runs in order: (1) AI label classification, (2) smart label classification, (3) newsletter detection using heuristics + AI labels, (4) spam detection using heuristics + AI labels\n- Updated the SQL query in the classify route to fetch additional columns (`body_html`, `raw_payload`) needed by the detection functions\n- Added encryption-aware decryption of email fields before passing to detection functions (matching the pattern used by the standalone detection routes)\n- Updated toast notification to show combined results (e.g., \"50 emails processed: 12 labeled, 3 newsletters, 2 spam\")\n- Removed the separate \"Detect\" and \"Spam\" buttons from the inbox UI\n- Removed the `detecting` and `detectingSpam` state variables and their handler functions from the inbox page\n- The standalone API routes (`/api/emails/newsletter/detect` and `/api/emails/spam/detect`) remain available for potential future use (e.g., cron jobs)\n\n### Files Modified\n- `app/api/emails/classify/route.ts` — Added newsletter and spam detection as Step 2 after AI classification; added imports for detection functions, labels, and encryption utilities; expanded SQL query to include `body_html` and `raw_payload` columns; added `newslettersMarked` and `spamMarked` to response\n- `app/(app)/inbox/page.tsx` — Removed `detecting`/`detectingSpam` state variables; removed `handleDetectNewsletters`/`handleDetectSpam` handler functions; removed the \"Detect\" and \"Spam\" buttons from the toolbar; updated classify toast to show combined newsletter/spam results; updated button title text\n\n### Notes for Developer\n- The \"Classify All\" button now performs all classification in a single click: AI labels + smart labels + newsletter detection + spam detection\n- Newsletter/spam detection benefits from running after AI classification because the AI may have already assigned \"Newsletter\" or \"Spam\" labels, which the heuristic detection functions use as additional signals\n- The standalone detection API routes were intentionally preserved in case they're needed for background/cron processing"
+}

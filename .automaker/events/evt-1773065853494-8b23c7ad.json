@@ -1,0 +1,10 @@
+{
+  "id": "evt-1773065853494-8b23c7ad",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-09T14:17:33.495Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1773064809162-ctfvjsoyr77",
+  "featureName": "Create activity feed to track user actions",
+  "passes": true
+}

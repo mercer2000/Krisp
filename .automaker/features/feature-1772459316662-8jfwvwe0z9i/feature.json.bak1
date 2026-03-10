@@ -24,6 +24,7 @@
       "source": "initial"
     }
   ],
-  "updatedAt": "2026-03-02T13:56:58.984Z",
-  "justFinishedAt": "2026-03-02T13:56:58.984Z"
+  "updatedAt": "2026-03-02T13:56:59.006Z",
+  "justFinishedAt": "2026-03-02T13:56:58.984Z",
+  "summary": "## Summary: Remember Last Viewed Kanban Board\n\n### Changes Implemented\n- When a user views a board, its ID is saved to `localStorage` as `last-board-id`\n- Clicking \"Kanban\" in the SideNav now navigates directly to the last viewed board (instead of the board list)\n- The `/boards` list page auto-redirects to the last viewed board if one exists and is still valid\n- The \"Back to Boards\" arrow in BoardHeader links to `/boards?list=1` to bypass the auto-redirect, allowing users to switch boards\n- Deleting a board clears the `last-board-id` if it matches the deleted board\n- The SideNav keeps the `lastBoardId` in sync as the user navigates between boards\n\n### Files Modified\n- `app/(app)/boards/[boardId]/page.tsx` - Added `useEffect` to save `boardId` to localStorage on view\n- `app/(app)/boards/page.tsx` - Added auto-redirect logic that checks localStorage for a last-board-id and redirects if the board still exists (skipped when `?list=1` query param is present)\n- `components/ui/SideNav.tsx` - Made the Kanban nav link dynamic, resolving to `/boards/{lastBoardId}` when a last board is stored\n- `components/board/BoardHeader.tsx` - Changed \"Back to Boards\" link from `/boards` to `/boards?list=1` to bypass auto-redirect\n\n### Notes for Developer\n- The feature uses `localStorage` (key: `last-board-id`) so it persists per browser/device\n- If the saved board no longer exists (deleted, etc.), the redirect is skipped and the full board list is shown\n- Users can always access the full board list by clicking the back arrow in the BoardHeader (uses `?list=1` to bypass redirect)\n- No Suspense boundary needed - used `window.location.search` instead of `useSearchParams` to avoid SSR issues"
 }

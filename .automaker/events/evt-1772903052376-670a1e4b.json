@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772903052376-670a1e4b",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-07T17:04:12.376Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "open-brain-graph-view",
+  "featureName": "Knowledge Graph Visualization",
+  "passes": true
+}

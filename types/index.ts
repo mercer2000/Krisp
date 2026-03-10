@@ -208,8 +208,12 @@ export interface Page {
   color: string | null;
   smartRule: string | null;
   smartActive: boolean;
+  smartRuleAccountId: string | null;
+  smartRuleFolderId: string | null;
+  smartRuleFolderName: string | null;
   createdAt: string;
   updatedAt: string;
+  entryCount?: number;
 }
 
 export interface PageWithBlocks extends Page {

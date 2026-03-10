@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772907300304-9c615b8b",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-07T18:15:00.304Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772896861958-z5l84rgbe",
+  "featureName": "Classify all visible messages on current page",
+  "passes": true
+}

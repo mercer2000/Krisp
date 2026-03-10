@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "Merge the concepts of dashboard and workspace analytics.",
+  "title": "Unify dashboard and workspace analytics views",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "verified",
+  "startedAt": "2026-03-07T20:19:15.822Z",
+  "id": "feature-1772914755822-71q47ibjvvt",
+  "descriptionHistory": [
+    {
+      "description": "Merge the concepts of dashboard and workspace analytics.",
+      "timestamp": "2026-03-07T20:19:16.227Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-07T20:29:12.755Z",
+  "justFinishedAt": "2026-03-07T20:29:12.736Z",
+  "summary": "## Summary: Merge Dashboard and Workspace Analytics\n\n### Changes Implemented\n- **Merged workspace analytics data into the dashboard API** (`app/api/dashboard/route.ts`): Added 11 new parallel database queries for analytics summary counts (cards completed, meetings, emails, thoughts captured, action items resolved — each for week and month periods) and 5 sparkline queries (daily breakdowns for the last 30 days). The API response now includes a new `analytics` field with `summary` and `sparklines` data alongside the existing `widgets` data.\n- **Added Analytics Overview widget to the dashboard page** (`app/(app)/dashboard/page.tsx`): Created a new `analyticsOverview` widget type that displays 5 stat cards with sparkline graphs (Cards Completed, Meetings, Emails, Thoughts, Actions Resolved) and a week/month period toggle. This widget spans the full width of the dashboard grid and is the first widget in the default layout. Added Sparkline SVG component, 5 analytics icon components, AnalyticsStatCard, and AnalyticsOverviewWidget components.\n- **Removed workspace-analytics from navigation** (`components/ui/SideNav.tsx`): Removed the \"Workspace\" nav item pointing to `/workspace-analytics`, its `isActive` route check, and the unused `WorkspaceAnalyticsIcon` component.\n- **Deleted workspace-analytics page and API route**: Removed `app/(app)/workspace-analytics/page.tsx` and `app/api/workspace-analytics/route.ts` along with their directories.\n- **Cleared stale `.next` cache** that had references to the deleted workspace-analytics routes.\n\n### Files Modified\n- `app/api/dashboard/route.ts` — Added brainThoughts import, sevenDaysAgo date, 11 analytics queries, buildSeries helper, and analytics data in response\n- `app/(app)/dashboard/page.tsx` — Added analyticsOverview widget type, analytics types, Sparkline/StatCard/AnalyticsOverview components, updated renderWidget to accept full data object\n- `components/ui/SideNav.tsx` — Removed workspace-analytics nav item, isActive check, and WorkspaceAnalyticsIcon\n\n### Files Deleted\n- `app/(app)/workspace-analytics/page.tsx`\n- `app/api/workspace-analytics/route.ts`\n\n### Notes for Developer\n- The dashboard heatmap widget (`/api/dashboard/heatmap`) was already providing the same yearly activity data that workspace analytics had, so no changes were needed for heatmap functionality\n- The `analyticsOverview` widget is draggable like all other dashboard widgets and supports collapsing\n- Users with previously saved dashboard configs will automatically see the new analytics widget appear (it's merged from DEFAULT_LAYOUT when not found in saved config)\n- TypeScript compiles cleanly with no errors after the changes"
+}

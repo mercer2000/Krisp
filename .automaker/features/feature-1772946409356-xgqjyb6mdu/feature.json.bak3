@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "Let's create a new settings page and move some of the settings like pages under this new settings page.  Maybe introduce sub-menus. ",
+  "title": "Add settings page with sub-menus for organization",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-08T05:06:49.356Z",
+  "id": "feature-1772946409356-xgqjyb6mdu",
+  "descriptionHistory": [
+    {
+      "description": "Let's create a new settings page and move some of the settings like pages under this new settings page.  Maybe introduce sub-menus. ",
+      "timestamp": "2026-03-08T05:06:49.871Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-08T05:16:11.953Z",
+  "justFinishedAt": "2026-03-08T05:16:11.933Z",
+  "summary": "## Summary: Settings Page with Sub-menus\n\n### Changes Implemented\n- Created a new `/settings` route with a shared layout featuring a categorized sidebar navigation\n- Settings sidebar organizes items into 4 sections: General (Account, Billing, Subscriptions), AI & Automation (AI Prompts, Smart Labels), Connections (Integrations, Extensions), and Content (Pages)\n- Created 8 settings sub-pages that reuse existing client components from their original admin/billing locations\n- Settings index page (`/settings`) auto-redirects to `/settings/account`\n- Consolidated 7 individual SideNav items (Integrations, AI Prompts, Smart Labels, Extensions, Billing, Subscriptions, Account) into a single \"Settings\" entry with a gear icon\n- Added SettingsIcon SVG component to SideNav\n- Updated route active-state detection for the new `/settings` path\n- Cleaned stale `.next` cache to resolve type generation issues\n\n### Files Modified\n- `components/ui/SideNav.tsx` — replaced 7 nav items with single Settings link, added SettingsIcon, updated isActive()\n\n### Files Created\n- `app/(app)/settings/layout.tsx` — settings layout with categorized sidebar navigation\n- `app/(app)/settings/page.tsx` — redirects to /settings/account\n- `app/(app)/settings/account/page.tsx` — reuses DeleteAccountDataClient\n- `app/(app)/settings/billing/page.tsx` — reuses BillingClient\n- `app/(app)/settings/subscriptions/page.tsx` — reuses SubscriptionsClient\n- `app/(app)/settings/prompts/page.tsx` — reuses PromptsClient\n- `app/(app)/settings/smart-labels/page.tsx` — reuses SmartLabelsClient\n- `app/(app)/settings/integrations/page.tsx` — reuses IntegrationsClient\n- `app/(app)/settings/extensions/page.tsx` — reuses ExtensionsClient\n- `app/(app)/settings/pages/page.tsx` — workspace management overview\n\n### Notes for Developer\n- Old admin routes (`/admin/*`, `/billing`) still work and are not deleted — they can be removed later once you're satisfied with the new settings pages\n- The settings sub-pages import client components from their original locations, so any updates to those components will automatically reflect in settings\n- The BillingClient's relative `./actions` import works because it's bundled from its source location\n- After first dev server start, Next.js will regenerate route types automatically"
+}

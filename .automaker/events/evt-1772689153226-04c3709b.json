@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772689153226-04c3709b",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-05T05:39:13.226Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772430206239-lpeevpxscc8",
+  "featureName": "Implement semantic email search with OpenAI embeddings",
+  "passes": true
+}

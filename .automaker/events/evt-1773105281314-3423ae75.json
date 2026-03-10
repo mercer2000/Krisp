@@ -1,0 +1,10 @@
+{
+  "id": "evt-1773105281314-3423ae75",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-10T01:14:41.314Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1773104748096-wkk4mgmuhxj",
+  "featureName": "Add page reordering capability",
+  "passes": true
+}

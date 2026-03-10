@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "http://localhost:3000/calendar\n\nEnsure that the calendar page syncs both Google and Gmail as well as Outlook accounts. We should also add the ability to toggle between accounts, similar to what we do on the inbox page. ",
+  "title": "Add calendar sync for Google, Gmail, and Outlook accounts",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-06T20:52:53.901Z",
+  "id": "feature-1772830373902-qsigveg9au",
+  "descriptionHistory": [
+    {
+      "description": "http://localhost:3000/calendar\n\nEnsure that the calendar page syncs both Google and Gmail as well as Outlook accounts. We should also add the ability to toggle between accounts, similar to what we do on the inbox page. ",
+      "timestamp": "2026-03-06T20:52:54.798Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-06T21:00:51.892Z",
+  "justFinishedAt": "2026-03-06T21:00:51.873Z",
+  "summary": "## Summary: Calendar Multi-Account Sync with Account Toggle\n\n### Changes Implemented\n- Added account toggle/filter chips on the calendar page, similar to the inbox page pattern\n- Built unified calendar account list from Google Calendar, Outlook OAuth, and Graph API sources\n- Implemented client-side event filtering by provider (Google events identified via `gcal_` prefix on `graphEventId`, Outlook OAuth via null `credentialId`, Graph via non-null `credentialId`)\n- Added per-account sync: when a specific account is selected, \"Sync Now\" only syncs that account\n- Added provider badges (Google/Outlook) on event cards when viewing all accounts\n- Added provider icons (GoogleIcon, OutlookIcon, ProviderIcon) for the account filter chips\n- Added filter state management (`filterAccountId`, `filterProvider`) with toggle behavior\n- Shows selected account email below the \"Calendar\" heading when filtered\n- Empty state message adapts based on whether an account filter is active\n\n### Files Modified\n- `app/(app)/calendar/page.tsx` - Complete rewrite of the CalendarPage component with account toggle functionality\n\n### Notes for Developer\n- Account filtering is done client-side using the `graphEventId` prefix convention: Google events use `gcal_` prefix, Outlook/Graph events don't\n- The existing API endpoints already support `accountId` parameter for per-account sync (both `/api/google/calendar` and `/api/outlook/calendar`)\n- No API or schema changes were needed - all infrastructure was already in place\n- TypeScript compiles cleanly with zero errors"
+}

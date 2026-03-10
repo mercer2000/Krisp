@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "Remove the Brain Knowledge (to be replaced by Pages.)\nRemove the Graph, This is not very helpful. ",
+  "title": "Remove Brain Knowledge and Graph features",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-08T04:36:15.528Z",
+  "id": "feature-1772943593430-yy0u8ml8g6c",
+  "descriptionHistory": [
+    {
+      "description": "Remove the Brain Knowledge (to be replaced by Pages.)\nRemove the Graph, This is not very helpful. ",
+      "timestamp": "2026-03-08T04:19:54.034Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-08T04:41:22.517Z",
+  "justFinishedAt": "2026-03-08T04:41:22.517Z",
+  "summary": "## Summary: Remove the Brain Knowledge (to be replaced by Pages.)\n\n### Changes Implemented\n- Deleted the Brain page with all three tabs (Chat, Knowledge, Graph)\n- Deleted the ThoughtGraph D3.js visualization component\n- Deleted all 12 Brain API routes (chat, sessions, thoughts, graph, reminders, clips, links)\n- Removed Brain from the desktop sidebar navigation (SideNav)\n- Removed Brain from the mobile bottom navigation tabs (MobileBottomNav)\n- Removed Ctrl+B keyboard shortcut for Brain (AppShell)\n- Removed \"Open Brain\" and \"Capture to Brain\" commands from the Command Palette\n- Cleaned up unused BrainIcon, BrainTabIcon, BrainCaptureIcon functions\n- Cleaned up unused useRouter import in AppShell\n- Preserved Microsoft Graph API routes (app/api/graph/) which are unrelated\n\n### Files Modified\n- `components/ui/SideNav.tsx` — Removed brain nav item, icon, and isActive check\n- `components/ui/MobileBottomNav.tsx` — Removed brain tab, icon, and isActive check\n- `components/ui/AppShell.tsx` — Removed Ctrl+B shortcut, removed unused useRouter\n- `components/ui/CommandPalette.tsx` — Removed brain navigation and action commands, removed BrainCaptureIcon\n\n### Files Deleted\n- `app/(app)/brain/page.tsx`\n- `components/brain/ThoughtGraph.tsx`\n- `app/api/brain/chat/route.ts`\n- `app/api/brain/sessions/route.ts`\n- `app/api/brain/sessions/[sessionId]/route.ts`\n- `app/api/brain/thoughts/route.ts`\n- `app/api/brain/thoughts/graph/route.ts`\n- `app/api/brain/thoughts/[thoughtId]/route.ts`\n- `app/api/brain/thoughts/[thoughtId]/reminders/route.ts`\n- `app/api/brain/thoughts/[thoughtId]/links/route.ts`\n- `app/api/brain/thoughts/[thoughtId]/links/[linkId]/route.ts`\n- `app/api/brain/thoughts/[thoughtId]/link-search/route.ts`\n- `app/api/brain/reminders/route.ts`\n- `app/api/brain/clips/route.ts`\n\n### Notes for Developer\n- Database tables (brainThoughts, brainChatSessions, brainChatMessages, brainThoughtLinks, brainThoughtReminders) still exist in the schema — these can be removed in a future migration if desired\n- The Brain chat endpoint referenced meetings, emails, decisions, and action items for context — the Pages feature should eventually provide similar AI context capabilities\n- Microsoft Graph API routes (app/api/graph/) were preserved as they handle email integration, not the knowledge graph"
+}

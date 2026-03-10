@@ -21,6 +21,12 @@ interface SmartLabelDef {
   color: string;
 }
 
+interface SmartRulePageDef {
+  id: string;
+  name: string;
+  color: string;
+}
+
 function ProviderIcon({ provider, size = 16 }: { provider: "outlook" | "gmail" | "zoom"; size?: number }) {
   if (provider === "gmail") {
     return (
@@ -59,6 +65,9 @@ interface InboxFilterDrawerProps {
   allSmartLabels: SmartLabelDef[];
   filterSmartLabel: string | null;
   setFilterSmartLabel: (v: string | null) => void;
+  allSmartRulePages: SmartRulePageDef[];
+  filterSmartRulePage: string | null;
+  setFilterSmartRulePage: (v: string | null) => void;
   afterDate: string;
   setAfterDate: (v: string) => void;
   beforeDate: string;
@@ -82,6 +91,9 @@ export function InboxFilterDrawer({
   allSmartLabels,
   filterSmartLabel,
   setFilterSmartLabel,
+  allSmartRulePages,
+  filterSmartRulePage,
+  setFilterSmartRulePage,
   afterDate,
   setAfterDate,
   beforeDate,
@@ -95,6 +107,7 @@ export function InboxFilterDrawer({
     filterAccount,
     filterLabel,
     filterSmartLabel,
+    filterSmartRulePage,
     afterDate,
     beforeDate,
   ].filter(Boolean).length;
@@ -222,6 +235,34 @@ export function InboxFilterDrawer({
                   }}
                 >
                   {sl.name}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Smart Rules section */}
+        {allSmartRulePages.length > 0 && (
+          <section>
+            <h3 className="text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wider mb-3">
+              Smart Rules
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {allSmartRulePages.map((srp) => (
+                <button
+                  key={srp.id}
+                  onClick={() => setFilterSmartRulePage(filterSmartRulePage === srp.id ? null : srp.id)}
+                  className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
+                    filterSmartRulePage === srp.id
+                      ? "border-current font-medium"
+                      : "border-transparent hover:border-current"
+                  }`}
+                  style={{
+                    backgroundColor: filterSmartRulePage === srp.id ? srp.color + "22" : srp.color + "11",
+                    color: srp.color,
+                  }}
+                >
+                  {srp.name}
                 </button>
               ))}
             </div>

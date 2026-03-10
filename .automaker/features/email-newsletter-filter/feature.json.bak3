@@ -1,0 +1,12 @@
+{
+  "id": "email-newsletter-filter",
+  "category": "Email",
+  "title": "Newsletter & Marketing Email Filter",
+  "description": "Automatically detect newsletter and marketing emails using a combination of header analysis (List-Unsubscribe header presence) and Claude classification. Detected newsletters are moved to a dedicated Newsletter folder and excluded from the main inbox by default. Users can whitelist specific senders.",
+  "status": "backlog",
+  "priority": 2,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.421Z",
+  "updatedAt": "2026-03-02T19:21:47.421Z"
+}

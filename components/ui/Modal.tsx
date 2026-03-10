@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -22,44 +22,45 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
-  // ---- Escape key --------------------------------------------------------
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        onClose();
-      }
-
-      // Basic focus trap
-      if (e.key === "Tab" && contentRef.current) {
-        const focusable = contentRef.current.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusable.length === 0) return;
-
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-
-        if (e.shiftKey) {
-          if (document.activeElement === first) {
-            e.preventDefault();
-            last.focus();
-          }
-        } else {
-          if (document.activeElement === last) {
-            e.preventDefault();
-            first.focus();
-          }
-        }
-      }
-    },
-    [onClose]
-  );
+  // Use a ref for onClose so the keydown handler never goes stale
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   // ---- Side effects -------------------------------------------------------
   useEffect(() => {
     if (open) {
       previouslyFocused.current = document.activeElement as HTMLElement;
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          onCloseRef.current();
+        }
+
+        // Basic focus trap
+        if (e.key === "Tab" && contentRef.current) {
+          const focusable = contentRef.current.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+          );
+          if (focusable.length === 0) return;
+
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+
+          if (e.shiftKey) {
+            if (document.activeElement === first) {
+              e.preventDefault();
+              last.focus();
+            }
+          } else {
+            if (document.activeElement === last) {
+              e.preventDefault();
+              first.focus();
+            }
+          }
+        }
+      };
+
       document.addEventListener("keydown", handleKeyDown);
       // Move focus into the modal after a tick so the animation has started
       requestAnimationFrame(() => {
@@ -70,17 +71,16 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
       });
       // Prevent body scroll
       document.body.style.overflow = "hidden";
+
+      return () => {
+        document.removeEventListener("keydown", handleKeyDown);
+        document.body.style.overflow = "";
+      };
     } else {
-      document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "";
       previouslyFocused.current?.focus();
     }
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "";
-    };
-  }, [open, handleKeyDown]);
+  }, [open]);
 
   if (!open) return null;
 

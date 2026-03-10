@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "Add the ability to reorder pages.",
+  "title": "Add page reordering capability",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-10T03:06:36.110Z",
+  "id": "feature-1773104748096-wkk4mgmuhxj",
+  "descriptionHistory": [
+    {
+      "description": "Add the ability to reorder pages.",
+      "timestamp": "2026-03-10T01:05:48.647Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-10T03:08:42.533Z",
+  "justFinishedAt": "2026-03-10T03:08:42.533Z",
+  "summary": "## Summary: Add the ability to reorder pages\n\n### Changes Implemented\n- Created a batch reorder API endpoint (`POST /api/pages/reorder`) that accepts an array of page IDs with new sort orders, validates workspace ownership, and updates all pages in a single database transaction — following the exact same pattern as the existing `blocks/reorder` endpoint\n- Added a `useReorderPages` React Query mutation hook that calls the new API endpoint and invalidates the pages cache on success\n- Added drag-and-drop reordering to the `PagesSidebar` using `@dnd-kit/core` and `@dnd-kit/sortable` (already installed in the project), including:\n  - A grip/drag handle icon that appears on hover for each page item\n  - `DndContext` with `PointerSensor` (5px activation constraint) and `KeyboardSensor`\n  - `SortableContext` with `verticalListSortingStrategy` for root-level pages\n  - `DragOverlay` showing the dragged page with elevated styling\n  - Visual feedback: dragged item becomes transparent, overlay shows card-like styling with shadow\n  - On drag end, computes new sort orders via `arrayMove` and calls `useReorderPages` mutation\n- Children pages within expanded parents retain their existing sort order (non-draggable nested items maintain the existing behavior)\n\n### Files Modified\n- `app/api/pages/reorder/route.ts` — **NEW** batch reorder API endpoint\n- `lib/hooks/usePages.ts` — Added `useReorderPages` mutation hook\n- `components/pages/PagesSidebar.tsx` — Added dnd-kit drag-and-drop with grip handles, drag overlay, and sortable page items\n\n### Notes for Developer\n- The `sortOrder` column and index (`idx_pages_workspace_parent_sort`) already existed in the schema — no migration needed\n- The reorder API supports an optional `parent_id` field per page, allowing future reparenting via drag (not exposed in UI yet but the API supports it)\n- Only root-level pages are drag-sortable in the current UI; child pages keep their existing sort behavior\n- The `@dnd-kit/core`, `@dnd-kit/sortable`, and `@dnd-kit/utilities` packages were already project dependencies\n- TypeScript type checking passes (`tsc --noEmit` exits cleanly)"
+}

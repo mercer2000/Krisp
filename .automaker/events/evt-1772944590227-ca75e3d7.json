@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772944590227-ca75e3d7",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-08T04:36:30.227Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772943696379-lq568gi6jh",
+  "featureName": "Display API key usage statistics in header",
+  "passes": true
+}

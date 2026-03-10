@@ -1,0 +1,10 @@
+{
+  "id": "evt-1773113329040-7141beca",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-10T03:28:49.040Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772947744445-jp2ifn0b8t",
+  "featureName": "Add secure local storage support for Pages",
+  "passes": true
+}

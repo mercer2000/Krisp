@@ -10,6 +10,7 @@ import {
   CARD_ENCRYPTED_FIELDS,
 } from "@/lib/db/encryption-helpers";
 import { dispatchWebhooks } from "@/lib/webhooks/dispatch";
+import { logActivity } from "@/lib/activity/log";
 
 export async function POST(
   request: NextRequest,
@@ -60,6 +61,16 @@ export async function POST(
       .returning();
 
     const decrypted = decryptFields(card as Record<string, unknown>, CARD_ENCRYPTED_FIELDS);
+
+    logActivity({
+      userId: user.id,
+      eventType: "card.created",
+      title: `Created card "${decrypted.title}"`,
+      description: decrypted.description as string | undefined,
+      entityType: "card",
+      entityId: card.id,
+      metadata: { priority: decrypted.priority, columnId: id },
+    });
 
     // Fire outbound webhooks (non-blocking)
     dispatchWebhooks(user.id, "card.created", card.id, {

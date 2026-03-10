@@ -1707,6 +1707,7 @@ interface OutlookAccountInfo {
   tokenExpiry: string;
   isExpired: boolean;
   lastSyncAt: string | null;
+  emailActionBoardId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1731,15 +1732,24 @@ function OutlookIntegrationManager() {
     synced: number;
     errors: number;
   }>>({});
+  const [boards, setBoards] = useState<{ id: string; title: string }[]>([]);
+  const [savingBoard, setSavingBoard] = useState<Record<string, boolean>>({});
 
   const fetchStatus = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch("/api/outlook/oauth");
+      const [res, boardsRes] = await Promise.all([
+        fetch("/api/outlook/oauth"),
+        fetch("/api/v1/boards"),
+      ]);
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
       setStatus(data);
+      if (boardsRes.ok) {
+        const boardsData = await boardsRes.json();
+        setBoards(boardsData.map((b: { id: string; title: string }) => ({ id: b.id, title: b.title })));
+      }
     } catch {
       setError("Failed to load Outlook connection status");
     } finally {
@@ -1866,6 +1876,33 @@ function OutlookIntegrationManager() {
     }
   };
 
+  const handleBoardChange = async (accountId: string, boardId: string | null) => {
+    setSavingBoard((prev) => ({ ...prev, [accountId]: true }));
+    try {
+      const res = await fetch(`/api/outlook/accounts/${accountId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailActionBoardId: boardId }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setStatus((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          accounts: prev.accounts.map((a) =>
+            a.id === accountId ? { ...a, emailActionBoardId: boardId } : a
+          ),
+        };
+      });
+      setSuccess("Auto-ticket board updated");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch {
+      setError("Failed to update board setting");
+    } finally {
+      setSavingBoard((prev) => ({ ...prev, [accountId]: false }));
+    }
+  };
+
   const accounts = status?.accounts || [];
 
   return (
@@ -1948,6 +1985,31 @@ function OutlookIntegrationManager() {
                   </div>
                 )}
 
+                {/* Per-account Kanban board selector */}
+                <div className="mb-3">
+                  <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                    Auto-Create Kanban Tickets
+                  </label>
+                  <div className="mt-1 flex items-center gap-2">
+                    <select
+                      value={account.emailActionBoardId ?? ""}
+                      onChange={(e) => handleBoardChange(account.id, e.target.value || null)}
+                      disabled={savingBoard[account.id]}
+                      className="flex-1 px-2 py-1.5 text-xs rounded-md border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] disabled:opacity-50"
+                    >
+                      <option value="">-- Disabled --</option>
+                      {boards.map((board) => (
+                        <option key={board.id} value={board.id}>
+                          {board.title}
+                        </option>
+                      ))}
+                    </select>
+                    {savingBoard[account.id] && (
+                      <span className="text-xs text-[var(--muted-foreground)]">Saving...</span>
+                    )}
+                  </div>
+                </div>
+
                 <div className="flex gap-2 flex-wrap">
                   <button
                     onClick={() => handleSync(account.id)}
@@ -1998,151 +2060,6 @@ function OutlookIntegrationManager() {
         </div>
       )}
     </div>
-  );
-}
-
-interface BoardOption {
-  id: string;
-  title: string;
-}
-
-function EmailActionBoardSelector() {
-  const [boards, setBoards] = useState<BoardOption[]>([]);
-  const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [boardsRes, settingRes] = await Promise.all([
-        fetch("/api/v1/boards"),
-        fetch("/api/settings/email-action-board"),
-      ]);
-      if (boardsRes.ok) {
-        const boardsData = await boardsRes.json();
-        setBoards(boardsData.map((b: { id: string; title: string }) => ({ id: b.id, title: b.title })));
-      }
-      if (settingRes.ok) {
-        const settingData = await settingRes.json();
-        setSelectedBoardId(settingData.emailActionBoardId);
-      }
-    } catch {
-      setError("Failed to load board settings");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const handleSave = async (boardId: string | null) => {
-    setSaving(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      const res = await fetch("/api/settings/email-action-board", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ boardId }),
-      });
-      if (!res.ok) throw new Error("Failed to save");
-      setSelectedBoardId(boardId);
-      setSuccess(boardId ? "Auto-ticket board saved" : "Auto-ticket board cleared");
-      setTimeout(() => setSuccess(null), 3000);
-    } catch {
-      setError("Failed to save board setting");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="p-4 rounded-lg bg-[var(--secondary)] border border-[var(--border)] text-sm text-[var(--muted-foreground)]">
-        Loading board settings...
-      </div>
-    );
-  }
-
-  return (
-    <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
-      <div className="px-6 py-5 border-b border-[var(--border)]">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="7" height="7" />
-              <rect x="14" y="3" width="7" height="7" />
-              <rect x="3" y="14" width="7" height="7" />
-              <path d="M17.5 14v7M14 17.5h7" />
-            </svg>
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">
-              Auto-Create Kanban Tickets
-            </h2>
-            <p className="text-sm text-[var(--muted-foreground)]">
-              Automatically extract action items from incoming emails and create Kanban cards
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-6 space-y-4">
-        <p className="text-sm text-[var(--muted-foreground)]">
-          When a new email arrives via any connected integration, AI will scan the email for
-          action items assigned to you and automatically create Kanban cards in the selected board.
-          If no board is selected, auto-ticket creation is disabled.
-        </p>
-
-        {error && (
-          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-600">
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-sm text-green-600">
-            {success}
-          </div>
-        )}
-
-        <div>
-          <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-            Target Kanban Board
-          </label>
-          <div className="mt-1 flex items-center gap-2">
-            <select
-              value={selectedBoardId ?? ""}
-              onChange={(e) => handleSave(e.target.value || null)}
-              disabled={saving}
-              className="flex-1 px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] disabled:opacity-50"
-            >
-              <option value="">-- Disabled (no auto-tickets) --</option>
-              {boards.map((board) => (
-                <option key={board.id} value={board.id}>
-                  {board.title}
-                </option>
-              ))}
-            </select>
-            {saving && (
-              <span className="text-xs text-[var(--muted-foreground)]">Saving...</span>
-            )}
-          </div>
-        </div>
-
-        {selectedBoardId && (
-          <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-sm text-[var(--foreground)]">
-            Auto-ticket creation is <span className="font-semibold text-emerald-600">enabled</span>.
-            New emails will be scanned for action items and cards will be created in the first column
-            of the selected board with an &quot;Email&quot; tag.
-          </div>
-        )}
-      </div>
-    </section>
   );
 }
 
@@ -2216,9 +2133,6 @@ export function IntegrationsClient({ tenantId }: { tenantId: string }) {
 
       <main className="flex-1 overflow-auto px-6 py-8">
         <div className="max-w-4xl mx-auto space-y-8">
-          {/* Email Action Board Selector */}
-          <EmailActionBoardSelector />
-
           {/* Microsoft 365 Section */}
           {activeTab === "microsoft365" && <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
             <div className="px-6 py-5 border-b border-[var(--border)]">

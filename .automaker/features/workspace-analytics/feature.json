@@ -3,10 +3,13 @@
   "category": "Analytics",
   "title": "Personal Productivity Analytics Dashboard",
   "description": "A /analytics page showing weekly and monthly stats: cards completed, meetings attended, emails processed, thoughts captured, and action items resolved. Renders sparkline trends and a heatmap calendar of activity. Data is aggregated server-side from all tables scoped to the user.",
-  "status": "backlog",
+  "status": "verified",
   "priority": 2,
   "complexity": "moderate",
   "dependencies": [],
   "createdAt": "2026-03-02T19:00:34.444Z",
-  "updatedAt": "2026-03-02T19:00:34.444Z"
+  "updatedAt": "2026-03-07T18:36:04.680Z",
+  "startedAt": "2026-03-07T18:25:48.299Z",
+  "descriptionHistory": [],
+  "summary": "## Summary: Workspace Analytics Page\n\n### Changes Implemented\n- Created a new `/workspace-analytics` page showing weekly and monthly stats for: cards completed, meetings attended, emails processed, thoughts captured, and action items resolved\n- Built server-side API route that aggregates data from all relevant tables (cards, webhookKeyPoints, emails, brainThoughts, actionItems) scoped to the authenticated user\n- Implemented SVG sparkline trend charts showing 30-day activity trends for each metric\n- Implemented a full-year GitHub-style heatmap calendar of activity with tooltip breakdowns\n- Added a week/month period toggle to switch between weekly and monthly stat views\n- Added \"Workspace\" navigation link in the SideNav sidebar with a custom icon\n\n### Files Modified\n- `components/ui/SideNav.tsx` — Added \"Workspace\" nav item with WorkspaceAnalyticsIcon and route matching\n\n### Files Created\n- `app/api/workspace-analytics/route.ts` — Server-side API route that runs parallel DB queries to aggregate weekly/monthly counts, 30-day daily sparkline data, and 365-day heatmap data across cards, meetings, emails, thoughts, and action items\n- `app/(app)/workspace-analytics/page.tsx` — Client-side page with StatCard components (sparkline + counts), HeatmapCalendar component, period toggle, loading skeleton, and error states\n\n### Notes for Developer\n- The existing `/analytics` page remains unchanged (meeting-focused sentiment/engagement analytics)\n- The new page is at `/workspace-analytics` with a separate \"Workspace\" nav entry\n- \"Cards completed\" uses `cards.archived = true` with `updatedAt` as the completion timestamp\n- \"Action items resolved\" filters by `status = 'completed'` and uses `completedAt` as the timestamp\n- All queries are scoped by `userId` following the existing auth pattern\n- No new database tables or migrations required — uses existing schema tables\n- The heatmap follows the same pattern as the existing `ActivityHeatmap` dashboard widget\n\n### Verification Status\n- Build compiles successfully with TypeScript (no errors)\n- Playwright tests passed: page route accessible (redirects to login without auth as expected), API route returns 401 for unauthenticated requests (correct behavior)\n- Temporary test file deleted after verification"
 }

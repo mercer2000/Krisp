@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "We have added the ability to connect to multiple Outlook accounts, and now we need to update the Mail inbox page to be able to clearly filter and sort by the various different Outlook connections that could exist. We probably want to do the same thing when we add Gmail support, which is coming soon.",
+  "title": "Update Mail inbox with multi-account filter and sort",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "verified",
+  "startedAt": "2026-03-06T18:32:25.536Z",
+  "id": "feature-1772821945537-zxji2k8ea3",
+  "descriptionHistory": [
+    {
+      "description": "We have added the ability to connect to multiple Outlook accounts, and now we need to update the Mail inbox page to be able to clearly filter and sort by the various different Outlook connections that could exist. We probably want to do the same thing when we add Gmail support, which is coming soon.",
+      "timestamp": "2026-03-06T18:32:26.043Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-06T18:45:31.170Z",
+  "justFinishedAt": "2026-03-06T18:45:31.151Z",
+  "summary": "## Summary: Multi-Account Inbox Filtering & Sorting\n\n### Changes Implemented\n- Added `outlook_account_id` column (nullable UUID FK) to the `emails` database table to track which connected Outlook account each email came from\n- Created database migration `0027_add-email-outlook-account-id.sql` with the new column and index\n- Updated `insertEmail()` function to accept an optional `outlookAccountId` parameter\n- Updated the Outlook sync route (`POST /api/outlook/sync`) to pass the account ID when inserting synced emails\n- Added `accountId` filter parameter to the `emailListQuerySchema` validator (UUID, optional)\n- Updated `listEmails()` to accept and apply `accountId` filter server-side via SQL\n- Updated `GET /api/emails` route to pass `accountId` through and include `outlook_account_id` in response\n- Updated `EmailListItem` type to include `outlook_account_id` field\n- Added account filter chip bar to inbox page (visible when 2+ accounts connected) with \"All accounts\" and per-account buttons\n- Added account dropdown in the Filters panel for an alternative filtering UX\n- Added account badge on each email in the list showing which Outlook account it belongs to (only when multiple accounts exist)\n- Updated header subtitle to show which account is being filtered\n- Integrated account filter with polling, search, and clear-all-filters functionality\n\n### Files Modified\n- `lib/db/schema.ts` — Added `outlookAccountId` column to `emails` table with FK reference and index\n- `drizzle/migrations/0027_add-email-outlook-account-id.sql` — New migration file\n- `drizzle/migrations/meta/_journal.json` — Added migration entry\n- `lib/email/emails.ts` — Updated `insertEmail()` signature and `listEmails()` to support account filtering\n- `app/api/outlook/sync/route.ts` — Pass account ID when inserting emails during sync\n- `app/api/emails/route.ts` — Accept and pass `accountId` filter, include `outlook_account_id` in response\n- `app/api/emails/search/route.ts` — Include `outlook_account_id` in search results\n- `types/email.ts` — Added `outlook_account_id` to `EmailListItem` interface\n- `lib/validators/schemas.ts` — Added `accountId` UUID parameter to `emailListQuerySchema`\n- `app/(app)/inbox/page.tsx` — Account filter UI (chips, dropdown, badge), state management, and API integration\n\n### Notes for Developer\n- Run the migration `0027_add-email-outlook-account-id.sql` against your database to add the new column\n- Existing emails will have `outlook_account_id = NULL` since they were inserted before this tracking was added\n- Future emails synced via `POST /api/outlook/sync` will automatically have the account ID populated\n- Emails ingested via webhooks (`/api/webhooks/email/...`) will have `NULL` account ID since they don't originate from a specific connected Outlook account\n- The account filter chips only appear when 2+ Outlook accounts are connected, keeping the UI clean for single-account users\n- This pattern is designed to be extensible for Gmail support — when Gmail accounts are added, a similar `gmail_account_id` column or a generic `source_account_type`/`source_account_id` pattern can be used"
+}

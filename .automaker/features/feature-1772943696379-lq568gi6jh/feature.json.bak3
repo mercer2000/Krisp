@@ -1,0 +1,27 @@
+{
+  "category": "Uncategorized",
+  "description": "We are using OpenProvider for our AI API. \n\nCreate a new widget that shows usage stats for the current key in use.   We can show this in the header on desktop. ",
+  "title": "Display API key usage statistics in header",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "in_progress",
+  "startedAt": "2026-03-08T04:21:36.379Z",
+  "id": "feature-1772943696379-lq568gi6jh",
+  "descriptionHistory": [
+    {
+      "description": "We are using OpenProvider for our AI API. \n\nCreate a new widget that shows usage stats for the current key in use.   We can show this in the header on desktop. ",
+      "timestamp": "2026-03-08T04:21:36.870Z",
+      "source": "initial"
+    }
+  ]
+}

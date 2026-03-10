@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772901826215-b5a92de0",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-07T16:43:46.215Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772900654430-fc4ty5g7km",
+  "featureName": "Add bulk delete for Kanban cards with selection",
+  "passes": true
+}

@@ -4,6 +4,7 @@ import { getRequiredUser } from "@/lib/auth/getRequiredUser";
 import { createBoardSchema } from "@/lib/validators/schemas";
 import { eq, desc } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { logActivity } from "@/lib/activity/log";
 
 export async function GET() {
   try {
@@ -46,6 +47,14 @@ export async function POST(request: Request) {
         userId: user.id,
       })
       .returning();
+
+    logActivity({
+      userId: user.id,
+      eventType: "board.created",
+      title: `Created board "${board.title}"`,
+      entityType: "board",
+      entityId: board.id,
+    });
 
     return NextResponse.json(board, { status: 201 });
   } catch (error) {

@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "http://localhost:3000/contacts  \nhttp://localhost:3000/inbox\n\nAdd the ability to track which messages have been read and unread. ",
+  "title": "Add read/unread message tracking",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-10T03:08:30.898Z",
+  "id": "feature-1773112110898-x3ulgbp0ov",
+  "descriptionHistory": [
+    {
+      "description": "http://localhost:3000/contacts  \nhttp://localhost:3000/inbox\n\nAdd the ability to track which messages have been read and unread. ",
+      "timestamp": "2026-03-10T03:08:31.416Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-10T03:25:36.438Z",
+  "justFinishedAt": "2026-03-10T03:25:36.438Z"
+}

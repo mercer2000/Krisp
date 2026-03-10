@@ -1,0 +1,27 @@
+{
+  "category": "Uncategorized",
+  "description": "On the Kanban board, if a task was added because of a meeting action, we want to be able to link back to the original meeting. Right now I can see a snippet of the conversation, but I want to be able to go and look at the total conversation.",
+  "title": "Link tasks to original meeting conversations",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "in_progress",
+  "startedAt": "2026-03-07T16:23:31.512Z",
+  "id": "feature-1772900611512-vc6sdj1hbz",
+  "descriptionHistory": [
+    {
+      "description": "On the Kanban board, if a task was added because of a meeting action, we want to be able to link back to the original meeting. Right now I can see a snippet of the conversation, but I want to be able to go and look at the total conversation.",
+      "timestamp": "2026-03-07T16:23:32.121Z",
+      "source": "initial"
+    }
+  ]
+}

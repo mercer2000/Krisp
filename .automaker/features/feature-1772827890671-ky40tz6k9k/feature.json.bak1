@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "In the inbox view, I need a way to be able to switch between email accounts, switching between my Gmail account and my Outlook account. There could be multiple Gmail and multiple Outlook accounts.",
+  "title": "Add email account switcher to inbox view",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-06T20:11:30.671Z",
+  "id": "feature-1772827890671-ky40tz6k9k",
+  "descriptionHistory": [
+    {
+      "description": "In the inbox view, I need a way to be able to switch between email accounts, switching between my Gmail account and my Outlook account. There could be multiple Gmail and multiple Outlook accounts.",
+      "timestamp": "2026-03-06T20:11:31.408Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-06T20:23:24.170Z",
+  "justFinishedAt": "2026-03-06T20:23:24.153Z",
+  "summary": "## Summary: Email Account Switching in Inbox View\n\n### Changes Implemented\n- Created a unified `/api/emails/accounts` endpoint that returns all connected email accounts (both Outlook and Gmail) with a `provider` field\n- Added `getActiveWatches()` function to Gmail watch module to list all active Gmail subscriptions for a tenant\n- Added `listGmailEmails()` function to Gmail emails module for inbox-compatible email listing with pagination, search, and date filters\n- Updated the `/api/emails` route to merge Outlook and Gmail emails into a single sorted, paginated response, with `provider` and `accountId` query params for filtering\n- Updated `EmailListItem` type to include `account_id`, `provider`, and `id` as `number | string` (since Gmail uses UUID, Outlook uses serial int)\n- Updated the inbox page to fetch accounts from the unified endpoint instead of Outlook-only\n- Added provider-specific icons (Outlook envelope, Gmail envelope) displayed next to each account in filter chips and email row badges\n- Updated filter panel dropdown to show provider prefix ([Gmail] / [Outlook]) next to each account\n- Added `filterProvider` state to track the selected account's provider for API requests\n- Updated the search endpoint to include the new `account_id` and `provider` fields\n- Updated the email list query validator to accept an optional `provider` parameter\n- Fixed Gmail email decryption to use `isEncrypted()` check for robustness\n\n### Files Modified\n- `app/(app)/inbox/page.tsx` — Replaced `OutlookAccount` with `EmailAccount`, added provider icons, updated account fetching/filtering\n- `app/api/emails/route.ts` — Merged Outlook + Gmail email sources with sorting and pagination\n- `app/api/emails/accounts/route.ts` — **New file** — Unified accounts endpoint\n- `app/api/emails/search/route.ts` — Added `account_id` and `provider` fields to search results\n- `lib/gmail/watch.ts` — Added `getActiveWatches()` function\n- `lib/gmail/emails.ts` — Added `listGmailEmails()` function, fixed decrypt with `isEncrypted` check\n- `lib/validators/schemas.ts` — Added `provider` field to `emailListQuerySchema`\n- `types/email.ts` — Added `account_id`, `provider` fields; changed `id` type to `number | string`\n\n### Notes for Developer\n- Gmail emails are stored in a separate `gmail_emails` table — the API route queries both tables and merges results by `received_at` descending\n- The `outlook_account_id` field is kept on `EmailListItem` for backward compatibility alongside the new unified `account_id`\n- Semantic search currently only works on Outlook emails (embeddings table); Gmail email search would require separate embedding infrastructure\n- The Gmail `gmail_emails` table doesn't have an account-level FK — when multiple Gmail accounts per user are fully supported in the schema, the `listGmailEmails` function should add filtering by account\n- TypeScript compilation passes cleanly with all changes"
+}

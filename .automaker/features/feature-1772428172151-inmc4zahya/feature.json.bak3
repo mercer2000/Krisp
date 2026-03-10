@@ -14,7 +14,7 @@
   "planningMode": "spec",
   "requirePlanApproval": false,
   "dependencies": [],
-  "status": "in_progress",
+  "status": "waiting_approval",
   "startedAt": "2026-03-02T05:28:11.612Z",
   "id": "feature-1772428172151-inmc4zahya",
   "descriptionHistory": [
@@ -24,7 +24,7 @@
       "source": "initial"
     }
   ],
-  "updatedAt": "2026-03-02T05:24:30.527Z",
-  "justFinishedAt": "2026-03-02T05:24:30.486Z",
+  "updatedAt": "2026-03-02T05:29:01.564Z",
+  "justFinishedAt": "2026-03-02T05:29:01.564Z",
   "summary": "## Summary: Lightweight Email Viewer\n\n### Changes Implemented\n- Added `isomorphic-dompurify` dependency for secure HTML email body rendering\n- Extended `types/email.ts` with `EmailListItem`, `EmailListResponse`, and `EmailDetail` interfaces for inbox viewer\n- Added `listEmails()` and `getEmailDetail()` query functions to `lib/email/emails.ts` with pagination, search (sender/subject ILIKE), and date range filtering\n- Added `emailListQuerySchema` Zod validation schema to `lib/validators/schemas.ts` for query param validation (page, limit, q, after, before)\n- Created `GET /api/emails` API route with authenticated, paginated, filterable email listing\n- Created `GET /api/emails/[id]` API route with tenant-scoped email detail (excludes `raw_payload`)\n- Built inbox list page at `/inbox` with search bar, date range filters, paginated email rows with attachment indicator, relative timestamps with absolute tooltip, and empty states\n- Built message detail page at `/inbox/[id]` with full email headers (From, To, CC, BCC, Date), attachment badges with MIME type icons and file sizes, DOMPurify-sanitized HTML body rendering (or plain text fallback), and back navigation\n- Added \"Inbox\" navigation item with inbox icon to SideNav (positioned first in nav order)\n\n### Files Modified\n- `package.json` / `package-lock.json` — added `isomorphic-dompurify` dependency\n- `types/email.ts` — added `EmailListItem`, `EmailListResponse`, `EmailDetail` types\n- `lib/email/emails.ts` — added `EmailAttachmentMetadata` import, `listEmails()`, `getEmailDetail()` functions\n- `lib/validators/schemas.ts` — added `emailListQuerySchema` and `EmailListQueryInput` type\n- `components/ui/SideNav.tsx` — added `InboxIcon` component, \"Inbox\" nav item, inbox route active state\n\n### Files Created\n- `app/api/emails/route.ts` — GET handler for paginated email list\n- `app/api/emails/[id]/route.ts` — GET handler for single email detail\n- `app/(app)/inbox/page.tsx` — inbox list page with search, filters, pagination\n- `app/(app)/inbox/[id]/page.tsx` — email detail page with sanitized HTML rendering\n\n### Notes for Developer\n- HTML email bodies are sanitized server-side via `isomorphic-dompurify` with `<script>`, `<style>`, and `on*` event attributes stripped\n- All queries enforce `tenant_id` scoping (user's session ID) to prevent cross-tenant access\n- The inbox list query leverages the existing `idx_emails_tenant_received` composite index for performance\n- No compose/reply/delete functionality per v1 spec — read-only browsing only\n- Attachment badges are informational only (no download in v1)\n- The `raw_payload` field is excluded from all API responses for security\n- Build compiles successfully with TypeScript and Next.js"
 }

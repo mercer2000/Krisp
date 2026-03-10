@@ -14,7 +14,7 @@
   "planningMode": "skip",
   "requirePlanApproval": false,
   "dependencies": [],
-  "status": "in_progress",
+  "status": "waiting_approval",
   "startedAt": "2026-03-02T05:43:26.239Z",
   "id": "feature-1772430206239-lpeevpxscc8",
   "descriptionHistory": [
@@ -23,5 +23,7 @@
       "timestamp": "2026-03-02T05:43:26.654Z",
       "source": "initial"
     }
-  ]
+  ],
+  "updatedAt": "2026-03-02T06:05:32.299Z",
+  "justFinishedAt": "2026-03-02T06:05:32.299Z"
 }

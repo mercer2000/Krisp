@@ -13,6 +13,9 @@ interface SmartLabel {
   active: boolean;
   auto_draft_enabled: boolean;
   context_window_max: number;
+  graph_folder_id: string | null;
+  folder_sync_status: "none" | "pending" | "synced" | "failed" | "unlinked";
+  outlook_account_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -111,6 +114,25 @@ function BrainIcon() {
       <path d="M19.938 10.5a4 4 0 0 1 .585.396" />
       <path d="M6 18a4 4 0 0 1-1.967-.516" />
       <path d="M19.967 17.484A4 4 0 0 1 18 18" />
+    </svg>
+  );
+}
+
+function FolderIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
+    </svg>
+  );
+}
+
+function RefreshIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
+      <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+      <path d="M16 16h5v5" />
     </svg>
   );
 }
@@ -253,6 +275,7 @@ function LabelCard({
   onToggle,
   onToggleDraft,
   onUpdateContextMax,
+  onSyncFolder,
 }: {
   label: SmartLabel;
   onSave: (id: string, updates: { name?: string; prompt?: string; color?: string }) => Promise<void>;
@@ -260,6 +283,7 @@ function LabelCard({
   onToggle: (id: string, active: boolean) => Promise<void>;
   onToggleDraft: (id: string, enabled: boolean) => Promise<void>;
   onUpdateContextMax: (id: string, max: number) => Promise<void>;
+  onSyncFolder: (id: string) => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [editName, setEditName] = useState(label.name);
@@ -268,6 +292,7 @@ function LabelCard({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showMemory, setShowMemory] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const hasChanges =
     editName !== label.name ||
@@ -315,6 +340,23 @@ function LabelCard({
             style={{ backgroundColor: "#3B82F622", color: "#3B82F6" }}
           >
             Auto-Draft
+          </span>
+        )}
+        {label.folder_sync_status === "synced" && (
+          <span
+            className="text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1"
+            style={{ backgroundColor: "#0EA5E922", color: "#0EA5E9" }}
+          >
+            <FolderIcon />
+            Outlook
+          </span>
+        )}
+        {label.folder_sync_status === "failed" && (
+          <span
+            className="text-[10px] px-2 py-0.5 rounded-full"
+            style={{ backgroundColor: "#EF444422", color: "#EF4444" }}
+          >
+            Sync Failed
           </span>
         )}
         <span
@@ -424,6 +466,59 @@ function LabelCard({
                 }}
               />
             </button>
+          </div>
+
+          {/* Outlook Folder Sync */}
+          <div
+            className="flex items-center gap-3 p-3 rounded-md border"
+            style={{ borderColor: "var(--border)", backgroundColor: "var(--background)" }}
+          >
+            <div className="flex-1">
+              <p className="text-xs font-medium" style={{ color: "var(--foreground)" }}>
+                Sync to Outlook Folder
+              </p>
+              <p className="text-[11px] mt-0.5" style={{ color: "var(--muted-foreground)" }}>
+                {label.folder_sync_status === "synced"
+                  ? "Matching emails are moved into a dedicated Outlook folder."
+                  : label.folder_sync_status === "failed"
+                  ? "Folder sync failed. Click retry to try again."
+                  : label.folder_sync_status === "pending"
+                  ? "Setting up Outlook folder..."
+                  : "Create a matching Outlook mail folder and move classified emails into it."}
+              </p>
+            </div>
+            {label.folder_sync_status === "synced" ? (
+              <span
+                className="text-[10px] px-2 py-1 rounded-md font-medium"
+                style={{ backgroundColor: "#0EA5E922", color: "#0EA5E9" }}
+              >
+                Synced
+              </span>
+            ) : (
+              <button
+                onClick={async () => {
+                  setSyncing(true);
+                  try {
+                    await onSyncFolder(label.id);
+                  } finally {
+                    setSyncing(false);
+                  }
+                }}
+                disabled={syncing || label.folder_sync_status === "pending"}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors disabled:opacity-50"
+                style={{
+                  backgroundColor: label.folder_sync_status === "failed" ? "#EF444422" : "#0EA5E922",
+                  color: label.folder_sync_status === "failed" ? "#EF4444" : "#0EA5E9",
+                }}
+              >
+                <RefreshIcon />
+                {syncing
+                  ? "Syncing..."
+                  : label.folder_sync_status === "failed"
+                  ? "Retry"
+                  : "Enable"}
+              </button>
+            )}
           </div>
 
           {/* Context Window Size */}
@@ -662,7 +757,11 @@ export function SmartLabelsClient({ userId }: { userId: string }) {
       return;
     }
     setLabels((prev) => [...prev, data.data]);
-    toast({ title: `Created "${name}"`, variant: "success" });
+    toast({
+      title: `Created "${name}"`,
+      description: "Outlook folder will be synced automatically if connected.",
+      variant: "success",
+    });
   };
 
   const handleSave = async (id: string, updates: { name?: string; prompt?: string; color?: string }) => {
@@ -677,17 +776,32 @@ export function SmartLabelsClient({ userId }: { userId: string }) {
       return;
     }
     setLabels((prev) => prev.map((l) => (l.id === id ? data.data : l)));
-    toast({ title: "Saved", variant: "success" });
+    const currentLabel = labels.find((l) => l.id === id);
+    const nameChanged = updates.name && currentLabel && currentLabel.name !== updates.name;
+    toast({
+      title: "Saved",
+      description: nameChanged && currentLabel.graph_folder_id
+        ? "Outlook folder will be renamed to match."
+        : undefined,
+      variant: "success",
+    });
   };
 
   const handleDelete = async (id: string) => {
+    const deletingLabel = labels.find((l) => l.id === id);
     const res = await fetch(`/api/smart-labels/${id}`, { method: "DELETE" });
     if (!res.ok) {
       toast({ title: "Failed to delete", variant: "destructive" });
       return;
     }
     setLabels((prev) => prev.filter((l) => l.id !== id));
-    toast({ title: "Deleted", variant: "success" });
+    toast({
+      title: "Deleted",
+      description: deletingLabel?.graph_folder_id
+        ? "Outlook folder was kept intact."
+        : undefined,
+      variant: "success",
+    });
   };
 
   const handleToggle = async (id: string, active: boolean) => {
@@ -701,8 +815,15 @@ export function SmartLabelsClient({ userId }: { userId: string }) {
       toast({ title: data.error || "Failed to update", variant: "destructive" });
       return;
     }
+    const toggledLabel = labels.find((l) => l.id === id);
     setLabels((prev) => prev.map((l) => (l.id === id ? data.data : l)));
-    toast({ title: active ? "Activated" : "Paused", variant: "success" });
+    toast({
+      title: active ? "Activated" : "Paused",
+      description: !active && toggledLabel?.folder_sync_status === "synced"
+        ? "New emails will no longer be moved to the Outlook folder."
+        : undefined,
+      variant: "success",
+    });
   };
 
   const handleToggleDraft = async (id: string, enabled: boolean) => {
@@ -733,6 +854,29 @@ export function SmartLabelsClient({ userId }: { userId: string }) {
     }
     setLabels((prev) => prev.map((l) => (l.id === id ? data.data : l)));
     toast({ title: `Memory window set to ${max}`, variant: "success" });
+  };
+
+  const handleSyncFolder = async (id: string) => {
+    const res = await fetch(`/api/smart-labels/${id}/sync-folder`, {
+      method: "POST",
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      toast({
+        title: data.error || "Failed to sync Outlook folder",
+        variant: "destructive",
+      });
+      // Refetch to get updated status
+      fetchLabels();
+      return;
+    }
+    toast({
+      title: "Outlook folder synced",
+      description: "Matching emails will now be moved to this folder.",
+      variant: "success",
+    });
+    // Refetch labels to get the updated folder_sync_status
+    fetchLabels();
   };
 
   const handleClassify = async () => {
@@ -831,6 +975,7 @@ export function SmartLabelsClient({ userId }: { userId: string }) {
               onToggle={handleToggle}
               onToggleDraft={handleToggleDraft}
               onUpdateContextMax={handleUpdateContextMax}
+              onSyncFolder={handleSyncFolder}
             />
           ))}
           {labels.length === 0 && (

@@ -1,0 +1,27 @@
+{
+  "category": "Uncategorized",
+  "description": "http://localhost:3000/calendar\n\nEnsure that the calendar page syncs both Google and Gmail as well as Outlook accounts. We should also add the ability to toggle between accounts, similar to what we do on the inbox page. ",
+  "title": "Add calendar sync for Google, Gmail, and Outlook accounts",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "in_progress",
+  "startedAt": "2026-03-06T20:52:53.901Z",
+  "id": "feature-1772830373902-qsigveg9au",
+  "descriptionHistory": [
+    {
+      "description": "http://localhost:3000/calendar\n\nEnsure that the calendar page syncs both Google and Gmail as well as Outlook accounts. We should also add the ability to toggle between accounts, similar to what we do on the inbox page. ",
+      "timestamp": "2026-03-06T20:52:54.798Z",
+      "source": "initial"
+    }
+  ]
+}

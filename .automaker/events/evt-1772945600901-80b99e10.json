@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772945600901-80b99e10",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-08T04:53:20.901Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772944992478-2zbpmr48ar",
+  "featureName": "Implement selective account data deletion with confirmation gate",
+  "passes": true
+}

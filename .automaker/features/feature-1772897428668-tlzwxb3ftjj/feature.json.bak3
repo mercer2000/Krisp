@@ -1,0 +1,27 @@
+{
+  "category": "Uncategorized",
+  "description": "In our classification, we want to have a layer that will help detect spam messages. If a message is classified as spam, we also want to make it easy for the user to unsubscribe from that message. That message should contain an unsubscribe link, and we can make that prominent on the inbox to make it easy for them to unsubscribe in a single click.",
+  "title": "",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "in_progress",
+  "startedAt": "2026-03-07T15:30:28.668Z",
+  "id": "feature-1772897428668-tlzwxb3ftjj",
+  "descriptionHistory": [
+    {
+      "description": "In our classification, we want to have a layer that will help detect spam messages. If a message is classified as spam, we also want to make it easy for the user to unsubscribe from that message. That message should contain an unsubscribe link, and we can make that prominent on the inbox to make it easy for them to unsubscribe in a single click.",
+      "timestamp": "2026-03-07T15:30:29.422Z",
+      "source": "initial"
+    }
+  ]
+}

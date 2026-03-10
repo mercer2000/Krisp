@@ -128,6 +128,23 @@ export async function getGmailEmailById(
 }
 
 /**
+ * Mark a Gmail email as read or unread.
+ */
+export async function markGmailEmailRead(
+  id: string,
+  tenantId: string,
+  isRead: boolean
+): Promise<boolean> {
+  const rows = await sql`
+    UPDATE gmail_emails
+    SET is_read = ${isRead}, updated_at = NOW()
+    WHERE id = ${id} AND tenant_id = ${tenantId}
+    RETURNING id
+  `;
+  return rows.length > 0;
+}
+
+/**
  * List Gmail emails for the unified inbox view with pagination, search, and date filters.
  * Returns the same shape as the Outlook listEmails function for easy merging.
  */
@@ -146,6 +163,7 @@ export async function listGmailEmails(
   gmail_account_id: string | null;
   is_newsletter: boolean;
   is_spam: boolean;
+  is_read: boolean;
   unsubscribe_link: string | null;
 }>> {
   const after = opts.after || null;
@@ -157,7 +175,7 @@ export async function listGmailEmails(
     SELECT
       id, sender, subject, received_at,
       recipients, attachments, body_plain,
-      tenant_id, is_newsletter, is_spam, unsubscribe_link
+      tenant_id, is_newsletter, is_spam, is_read, unsubscribe_link
     FROM gmail_emails
     WHERE tenant_id = ${tenantId}
       AND (${after}::timestamptz IS NULL OR received_at >= ${after}::timestamptz)
@@ -185,6 +203,7 @@ export async function listGmailEmails(
       gmail_account_id: opts.gmailAccountId ?? null,
       is_newsletter: dr.is_newsletter as boolean,
       is_spam: dr.is_spam as boolean,
+      is_read: dr.is_read as boolean,
       unsubscribe_link: dr.unsubscribe_link as string | null,
     };
   });

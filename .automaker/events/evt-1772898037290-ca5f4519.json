@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772898037290-ca5f4519",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-07T15:40:37.290Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772897566882-opqvr1zz4eq",
+  "featureName": "Add smart label creation button to inbox messages",
+  "passes": true
+}

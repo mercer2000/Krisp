@@ -9,6 +9,7 @@ import {
   decryptFields,
   ACTION_ITEM_ENCRYPTED_FIELDS,
 } from "@/lib/db/encryption-helpers";
+import { logActivity } from "@/lib/activity/log";
 
 export async function GET(request: NextRequest) {
   try {
@@ -114,6 +115,16 @@ export async function POST(request: NextRequest) {
       .returning();
 
     const decrypted = decryptFields(item as Record<string, unknown>, ACTION_ITEM_ENCRYPTED_FIELDS);
+
+    logActivity({
+      userId,
+      eventType: "action_item.created",
+      title: `Created action item: "${title}"`,
+      entityType: "action_item",
+      entityId: item.id,
+      metadata: { priority: priority ?? "medium", assignee: assignee ?? null },
+    });
+
     return NextResponse.json({ actionItem: decrypted }, { status: 201 });
   } catch (error) {
     console.error("Error creating action item:", error);

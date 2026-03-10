@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772824722447-d40c780f",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-06T19:18:42.447Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772822043063-v5hr8zfnft7",
+  "featureName": "Add Google OAuth Gmail inbox integration",
+  "passes": true
+}

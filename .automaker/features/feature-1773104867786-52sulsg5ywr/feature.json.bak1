@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "Smart Rules should be shown in the Labels drop down such that a user could have a Inbox tab dedicated to showing messages about that topic.",
+  "title": "Add Smart Rules to Labels dropdown for topic filtering",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-10T01:07:47.786Z",
+  "id": "feature-1773104867786-52sulsg5ywr",
+  "descriptionHistory": [
+    {
+      "description": "Smart Rules should be shown in the Labels drop down such that a user could have a Inbox tab dedicated to showing messages about that topic.",
+      "timestamp": "2026-03-10T01:07:48.498Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-10T01:26:54.145Z",
+  "justFinishedAt": "2026-03-10T01:26:54.121Z",
+  "summary": "## Summary: Smart Rules shown in Labels dropdown\n\n### Changes Implemented\n- Added \"Smart Rules\" section to the Labels dropdown in the Inbox page, showing pages that have active smart rules as filterable items\n- Added \"Smart Rules\" section to the mobile InboxFilterDrawer for consistent mobile/desktop experience\n- Created API endpoint `GET /api/pages/smart-rules` that returns all active smart rule pages for the current user\n- Created API endpoint `POST /api/pages/smart-rules/items` that returns which smart rule pages each email has been routed to (via page_entries)\n- Added client-side filtering: when a smart rule page is selected, the inbox shows only emails that have been classified and routed to that page\n- Smart rule pages can be pinned as tabs in the inbox tab bar (same as labels/smart labels)\n- All existing filter logic (clear filters, active filter count, folder tab switching, account switching) properly handles the new smart rule page filter\n- The new filter is mutually exclusive with label/smart label filters (selecting one clears the others)\n\n### Files Modified\n- `app/(app)/inbox/page.tsx` — Added smart rule pages state (`allSmartRulePages`, `filterSmartRulePage`, `smartRulePageMap`), fetch logic on mount and per-email batch, client-side filtering, Labels dropdown \"Smart Rules\" section with pin support, and integration with all existing filter clearing/counting logic\n- `components/email/InboxFilterDrawer.tsx` — Added `SmartRulePageDef` interface, new props (`allSmartRulePages`, `filterSmartRulePage`, `setFilterSmartRulePage`), \"Smart Rules\" filter section in the mobile drawer, and updated active filter count\n\n### Files Created\n- `app/api/pages/smart-rules/route.ts` — GET endpoint listing pages with active smart rules\n- `app/api/pages/smart-rules/items/route.ts` — POST endpoint returning smart rule page assignments for given email IDs\n\n### Notes for Developer\n- The smart rule page filter works client-side, similar to smart label filtering — it matches emails against the `page_entries` table via the `/api/pages/smart-rules/items` endpoint\n- When filtering by a smart rule page, only emails that have been successfully classified and routed to that page (via the page rules classifier) will appear\n- Smart rule pages appear in the dropdown with their configured color (defaulting to `#8B5CF6` purple if no color is set)\n- The feature reuses the existing \"pinned labels\" infrastructure for pinning smart rule pages as tabs"
+}

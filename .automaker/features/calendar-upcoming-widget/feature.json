@@ -3,12 +3,15 @@
   "category": "UI",
   "title": "Upcoming Events Widget on Dashboard",
   "description": "Add a collapsible sidebar widget on the main dashboard displaying the next 5 calendar events from the calendar_events table. Shows event title, time, and attendees at a glance. Refreshes every 5 minutes via React Query polling.",
-  "status": "backlog",
+  "status": "verified",
   "priority": 2,
   "complexity": "simple",
   "dependencies": [
     "calendar-integration-ms365"
   ],
   "createdAt": "2026-03-02T19:00:34.383Z",
-  "updatedAt": "2026-03-02T19:00:34.383Z"
+  "updatedAt": "2026-03-06T21:02:10.616Z",
+  "startedAt": "2026-03-06T20:53:43.998Z",
+  "descriptionHistory": [],
+  "summary": "## Summary: Add collapsible sidebar widget on dashboard for upcoming calendar events\n\n### Changes Implemented\n- **5-minute polling**: Added `refetchInterval: 5 * 60 * 1000` to the `useUpcomingEvents` React Query hook so the upcoming events data auto-refreshes every 5 minutes\n- **Attendees in dashboard API**: Extended the dashboard API's upcoming events query to also select the `attendees` JSONB column from `calendar_events`\n- **Attendees display**: Updated the `UpcomingEventsWidget` on the dashboard to show attendee names/emails below each event (shows first 2 names plus \"+N\" overflow count)\n- **Collapsible widget**: Made the `WidgetCard` component support an optional `collapsible` prop with expand/collapse toggle via chevron icon and `aria-expanded` attribute. The Upcoming Events widget on the dashboard uses this collapsible behavior\n- **New icons**: Added `PersonIcon` (for attendee display) and `ChevronIcon` (for collapse toggle) inline SVG components\n\n### Files Modified\n- `lib/hooks/useCalendar.ts` — Added `refetchInterval: 5 * 60 * 1000` to `useUpcomingEvents` hook\n- `app/api/dashboard/route.ts` — Added `attendees: calendarEvents.attendees` to the upcoming events SELECT query\n- `app/(app)/dashboard/page.tsx` — Updated `DashboardData` type to include attendees, enhanced `UpcomingEventsWidget` with attendee display, added `collapsible` prop to `WidgetCard`, added `PersonIcon` and `ChevronIcon` components, marked `upcomingEvents` widget as collapsible in `renderWidget`\n\n### Notes for Developer\n- The collapsible state is local (not persisted) — reopening the dashboard starts expanded\n- The existing `UpcomingEvents` component in the SideNav (`components/calendar/UpcomingEvents.tsx`) is unchanged and also benefits from the 5-minute polling since it uses the same `useUpcomingEvents` hook\n- Attendee data comes from the `attendees` JSONB column already populated by Google/Outlook calendar sync\n\n### Verification Status\n- TypeScript compilation passed cleanly (`npx tsc --noEmit`)\n- Playwright verification tests (2 tests) passed successfully in 6.3s, confirming:\n  - Dashboard page loads correctly\n  - API endpoints return expected responses (401 for unauthenticated)\n  - Collapsible toggle data attributes are properly configured\n- Temporary Playwright config and test files were deleted after verification"
 }

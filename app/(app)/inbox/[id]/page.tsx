@@ -182,6 +182,13 @@ export default function EmailDetailPage() {
         if (!res.ok) throw new Error("Failed to fetch email");
         const data: EmailDetail = await res.json();
         setEmail(data);
+
+        // Auto-mark as read when opening
+        fetch(`/api/emails/${params.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ is_read: true }),
+        }).catch(() => {});
       } catch {
         setError("Failed to load email. Please try again.");
       } finally {

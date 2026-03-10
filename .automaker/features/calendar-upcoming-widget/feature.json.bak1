@@ -1,0 +1,16 @@
+{
+  "id": "calendar-upcoming-widget",
+  "category": "UI",
+  "title": "Upcoming Events Widget on Dashboard",
+  "description": "Add a collapsible sidebar widget on the main dashboard displaying the next 5 calendar events from the calendar_events table. Shows event title, time, and attendees at a glance. Refreshes every 5 minutes via React Query polling.",
+  "status": "verified",
+  "priority": 2,
+  "complexity": "simple",
+  "dependencies": [
+    "calendar-integration-ms365"
+  ],
+  "createdAt": "2026-03-02T19:00:34.383Z",
+  "updatedAt": "2026-03-06T21:02:10.584Z",
+  "startedAt": "2026-03-06T20:53:43.998Z",
+  "descriptionHistory": []
+}

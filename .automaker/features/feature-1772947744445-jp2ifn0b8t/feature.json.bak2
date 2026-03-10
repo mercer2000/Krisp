@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "Add secure local storage support for Pages.  \n\nhttp://localhost:3000/workspace/f3426eb9-7e45-4109-8d64-fcbada5245b3/a57a3daa-1e71-4616-b3a0-fbdaa82212f8",
+  "title": "Add secure local storage support for Pages",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-08T05:29:04.445Z",
+  "id": "feature-1772947744445-jp2ifn0b8t",
+  "descriptionHistory": [
+    {
+      "description": "Add secure local storage support for Pages.  \n\nhttp://localhost:3000/workspace/f3426eb9-7e45-4109-8d64-fcbada5245b3/a57a3daa-1e71-4616-b3a0-fbdaa82212f8",
+      "timestamp": "2026-03-08T05:29:05.258Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-08T05:35:37.901Z",
+  "justFinishedAt": "2026-03-08T05:35:37.901Z"
+}

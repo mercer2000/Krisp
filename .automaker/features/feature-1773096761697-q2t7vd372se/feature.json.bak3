@@ -1,0 +1,27 @@
+{
+  "category": "Uncategorized",
+  "description": "We want to add a UI at the top of each page that would allow the user to ask questions about the page. We would use AI then to answer the user's question. We don't necessarily want the user to have to switch to the brain tab to be able to ask questions. We need a lightweight way of doing that from anywhere. Maybe that is at the bottom of the page. I'm open to design considerations.",
+  "title": "Add AI question prompt to every page",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "in_progress",
+  "startedAt": "2026-03-09T22:52:41.697Z",
+  "id": "feature-1773096761697-q2t7vd372se",
+  "descriptionHistory": [
+    {
+      "description": "We want to add a UI at the top of each page that would allow the user to ask questions about the page. We would use AI then to answer the user's question. We don't necessarily want the user to have to switch to the brain tab to be able to ask questions. We need a lightweight way of doing that from anywhere. Maybe that is at the bottom of the page. I'm open to design considerations.",
+      "timestamp": "2026-03-09T22:52:42.387Z",
+      "source": "initial"
+    }
+  ]
+}

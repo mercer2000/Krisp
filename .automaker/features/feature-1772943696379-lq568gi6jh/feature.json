@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "We are using OpenProvider for our AI API. \n\nCreate a new widget that shows usage stats for the current key in use.   We can show this in the header on desktop. ",
+  "title": "Display API key usage statistics in header",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "verified",
+  "startedAt": "2026-03-08T04:21:36.379Z",
+  "id": "feature-1772943696379-lq568gi6jh",
+  "descriptionHistory": [
+    {
+      "description": "We are using OpenProvider for our AI API. \n\nCreate a new widget that shows usage stats for the current key in use.   We can show this in the header on desktop. ",
+      "timestamp": "2026-03-08T04:21:36.870Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-08T04:26:45.321Z",
+  "justFinishedAt": "2026-03-08T04:26:45.302Z",
+  "summary": "## Summary: OpenRouter AI Usage Widget\n\n### Changes Implemented\n- Created API route `/api/ai-usage` that proxies OpenRouter's `/api/v1/key` endpoint using the user's configured API key (per-user or global fallback)\n- Built `AIUsageWidget` component with compact inline display (usage + progress bar) and expandable dropdown showing daily/weekly/monthly/all-time usage breakdown\n- Added a desktop-only header bar to the AppShell layout containing the AI usage widget, positioned at the top-right of the main content area\n- Widget auto-refreshes usage data every 5 minutes\n- Progress bar color-codes based on usage percentage (blue/amber/red)\n- Gracefully handles errors and missing API keys by hiding the widget\n\n### Files Modified\n- `components/ui/AppShell.tsx` — Added AIUsageWidget import and desktop header bar with the widget\n\n### Files Created\n- `app/api/ai-usage/route.ts` — Server-side API route to fetch OpenRouter key usage stats\n- `components/ai/AIUsageWidget.tsx` — Client-side widget component with inline + expanded views\n\n### Notes for Developer\n- The widget uses the OpenRouter `/api/v1/key` endpoint which works with regular API keys (not just management keys)\n- Per-user API keys are supported via the existing `getUserApiKey()` function from `lib/ai/client.ts`\n- The widget is desktop-only (hidden on mobile via `hidden md:flex`)\n- If no API key is configured or the API call fails, the widget silently hides itself"
+}

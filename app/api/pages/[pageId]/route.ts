@@ -107,6 +107,9 @@ export async function PATCH(
       color,
       smart_rule,
       smart_active,
+      smart_rule_account_id,
+      smart_rule_folder_id,
+      smart_rule_folder_name,
     } = body as {
       title?: string;
       icon?: string | null;
@@ -119,6 +122,9 @@ export async function PATCH(
       color?: string | null;
       smart_rule?: string | null;
       smart_active?: boolean;
+      smart_rule_account_id?: string | null;
+      smart_rule_folder_id?: string | null;
+      smart_rule_folder_name?: string | null;
     };
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -133,6 +139,9 @@ export async function PATCH(
     if (color !== undefined) updates.color = color;
     if (smart_rule !== undefined) updates.smartRule = smart_rule;
     if (smart_active !== undefined) updates.smartActive = smart_active;
+    if (smart_rule_account_id !== undefined) updates.smartRuleAccountId = smart_rule_account_id;
+    if (smart_rule_folder_id !== undefined) updates.smartRuleFolderId = smart_rule_folder_id;
+    if (smart_rule_folder_name !== undefined) updates.smartRuleFolderName = smart_rule_folder_name;
 
     const [updated] = await db
       .update(pages)

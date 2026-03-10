@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "Add a button on each of the inbox messages that would make it easy to create a new smart label. When you click on this button, it would let you specify the name of the smart label, and then, using AI, it would have an input box that would suggest text for the smart label.\nSome of the key scenarios I'm looking for are:\n- I want to categorize some of the newsletters that I subscribe to.\n- I also want to categorize some of the mail as important, or I know if someone sends me mail, it's always a follow-up action.",
+  "title": "Add smart label creation button to inbox messages",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-07T15:32:46.882Z",
+  "id": "feature-1772897566882-opqvr1zz4eq",
+  "descriptionHistory": [
+    {
+      "description": "Add a button on each of the inbox messages that would make it easy to create a new smart label. When you click on this button, it would let you specify the name of the smart label, and then, using AI, it would have an input box that would suggest text for the smart label.\nSome of the key scenarios I'm looking for are:\n- I want to categorize some of the newsletters that I subscribe to.\n- I also want to categorize some of the mail as important, or I know if someone sends me mail, it's always a follow-up action.",
+      "timestamp": "2026-03-07T15:32:47.382Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-07T15:40:37.291Z",
+  "justFinishedAt": "2026-03-07T15:40:37.257Z",
+  "summary": "## Summary: Add Smart Label Creation from Inbox Messages\n\n### Changes Implemented\n- Added a \"Create Smart Label\" button on each inbox email message row (tag icon with plus, visible on hover)\n- Built a modal dialog for creating smart labels with email context preview, name input, AI-powered matching rule suggestion, and color picker\n- Created a new API endpoint `/api/smart-labels/suggest` that uses OpenRouter AI to generate smart label names and matching prompts based on email context\n- The AI suggestion considers sender, subject, and preview text, plus an optional user-provided label name to refine suggestions\n- After creating a smart label, it's immediately added to the smart label filter chips in the inbox header\n\n### Files Modified\n- `app/(app)/inbox/page.tsx` — Added smart label creation button on email rows, creation modal with AI suggest functionality, and handler functions\n- `app/api/smart-labels/suggest/route.ts` — New API endpoint for AI-powered smart label name and prompt suggestions\n\n### Notes for Developer\n- The \"Create Smart Label\" button appears on hover over each email row, alongside the existing \"Open in provider\" and \"Delete\" buttons\n- The AI Suggest button works in two modes: if no label name is entered, it suggests both a name and prompt; if a name is provided, it tailors the prompt to the given name\n- After creating a smart label, you still need to run \"Classify All\" or trigger classification to apply the new label to emails\n- The color picker offers 8 preset colors matching the same palette used in the admin smart labels page"
+}

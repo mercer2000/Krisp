@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "We have added the ability to connect to multiple Outlook accounts, and now we need to update the Mail inbox page to be able to clearly filter and sort by the various different Outlook connections that could exist. We probably want to do the same thing when we add Gmail support, which is coming soon.",
+  "title": "Update Mail inbox with multi-account filter and sort",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-06T18:32:25.536Z",
+  "id": "feature-1772821945537-zxji2k8ea3",
+  "descriptionHistory": [
+    {
+      "description": "We have added the ability to connect to multiple Outlook accounts, and now we need to update the Mail inbox page to be able to clearly filter and sort by the various different Outlook connections that could exist. We probably want to do the same thing when we add Gmail support, which is coming soon.",
+      "timestamp": "2026-03-06T18:32:26.043Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-06T18:45:31.151Z",
+  "justFinishedAt": "2026-03-06T18:45:31.151Z"
+}

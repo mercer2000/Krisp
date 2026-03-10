@@ -176,6 +176,7 @@ export async function listEmails(
   outlook_account_id: string | null;
   is_newsletter: boolean;
   is_spam: boolean;
+  is_read: boolean;
   unsubscribe_link: string | null;
 }>; total: number }> {
   const after = opts.after || null;
@@ -196,6 +197,7 @@ export async function listEmails(
       outlook_account_id,
       is_newsletter,
       is_spam,
+      is_read,
       unsubscribe_link
     FROM emails
     WHERE tenant_id = ${tenantId}
@@ -225,6 +227,7 @@ export async function listEmails(
       outlook_account_id: dr.outlook_account_id as string | null,
       is_newsletter: dr.is_newsletter as boolean,
       is_spam: dr.is_spam as boolean,
+      is_read: dr.is_read as boolean,
       unsubscribe_link: dr.unsubscribe_link as string | null,
     };
   });
@@ -289,6 +292,23 @@ export async function restoreEmail(
     UPDATE emails
     SET deleted_at = NULL, updated_at = NOW()
     WHERE id = ${id} AND tenant_id = ${tenantId} AND deleted_at IS NOT NULL
+    RETURNING id
+  `;
+  return rows.length > 0;
+}
+
+/**
+ * Mark an email as read or unread.
+ */
+export async function markEmailRead(
+  id: number,
+  tenantId: string,
+  isRead: boolean
+): Promise<boolean> {
+  const rows = await sql`
+    UPDATE emails
+    SET is_read = ${isRead}, updated_at = NOW()
+    WHERE id = ${id} AND tenant_id = ${tenantId} AND deleted_at IS NULL
     RETURNING id
   `;
   return rows.length > 0;

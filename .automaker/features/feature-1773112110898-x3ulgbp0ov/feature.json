@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "http://localhost:3000/contacts  \nhttp://localhost:3000/inbox\n\nAdd the ability to track which messages have been read and unread. ",
+  "title": "Add read/unread message tracking",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-10T03:08:30.898Z",
+  "id": "feature-1773112110898-x3ulgbp0ov",
+  "descriptionHistory": [
+    {
+      "description": "http://localhost:3000/contacts  \nhttp://localhost:3000/inbox\n\nAdd the ability to track which messages have been read and unread. ",
+      "timestamp": "2026-03-10T03:08:31.416Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-10T03:25:36.463Z",
+  "justFinishedAt": "2026-03-10T03:25:36.438Z",
+  "summary": "## Summary: Email Read/Unread Tracking\n\n### Changes Implemented\n- Added `is_read` boolean column (default `false`) to both `emails` and `gmail_emails` database tables\n- Created database migration `0046_email-read-status.sql` to add the columns\n- Updated `EmailListItem`, `EmailRow`, and `GmailEmailRow` types to include `is_read`\n- Added `is_read` to SQL SELECT queries and response mappings in both Outlook and Gmail list functions\n- Created `markEmailRead()` function in `lib/email/emails.ts` and `markGmailEmailRead()` in `lib/gmail/emails.ts`\n- Added PATCH endpoint to `app/api/emails/[id]/route.ts` for toggling read/unread status (supports both Outlook and Gmail IDs)\n- Auto-marks emails as read when opening the detail page (`/inbox/[id]`)\n- Inbox UI shows unread emails with: blue dot indicator, bold sender/subject text, and subtle background tint\n- Added per-email \"Mark read/unread\" toggle button in hover actions (envelope icon)\n- Added bulk \"Mark read\" and \"Mark unread\" buttons in the bulk selection action bar\n- Added unread count badge on the Inbox folder tab\n- Set Zoom messages to `is_read: true` by default (Zoom doesn't support read tracking)\n- All read/unread toggles use optimistic UI updates with rollback on failure\n\n### Files Modified\n- `lib/db/schema.ts` — Added `isRead` column to `emails` and `gmail_emails` tables\n- `drizzle/migrations/0046_email-read-status.sql` — New migration file\n- `types/email.ts` — Added `is_read` to `EmailRow` and `EmailListItem` interfaces\n- `types/gmail.ts` — Added `is_read` to `GmailEmailRow` interface\n- `lib/email/emails.ts` — Added `is_read` to list query, mapping, and new `markEmailRead()` function\n- `lib/gmail/emails.ts` — Added `is_read` to list query, mapping, and new `markGmailEmailRead()` function\n- `lib/zoom/messages.ts` — Set `is_read: true` for Zoom messages\n- `app/api/emails/route.ts` — Added `is_read` to Outlook and Gmail response mappings\n- `app/api/emails/[id]/route.ts` — Added PATCH handler for read/unread toggle\n- `app/(app)/inbox/page.tsx` — Unread visual styling, toggle button, bulk actions, unread count badge\n- `app/(app)/inbox/[id]/page.tsx` — Auto-mark as read on open\n\n### Notes for Developer\n- Run migration `0046_email-read-status.sql` against your database before deploying\n- All existing emails will default to `is_read = false` (unread) after migration — you may want to run `UPDATE emails SET is_read = true` and `UPDATE gmail_emails SET is_read = true` if you want existing emails to start as read\n- The PATCH endpoint at `/api/emails/[id]` accepts `{ is_read: boolean }` in the request body\n- Search results don't include read status (search is a separate flow with embedding-based results)"
+}

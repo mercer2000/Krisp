@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772907803217-5cd08391",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-07T18:23:23.217Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772907610983-0bf47r4zb78",
+  "featureName": "I'll help you investigate why the heatmap isn't appearing. Let me explore the dashboard and menu system to understand the current state.",
+  "passes": true
+}

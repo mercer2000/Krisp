@@ -1,0 +1,12 @@
+{
+  "id": "meeting-vector-embeddings",
+  "category": "AI",
+  "title": "Meeting Transcript Vector Embeddings for Semantic Search",
+  "description": "Generate OpenAI embeddings for meeting transcripts and key points and store them in a pgvector column on the webhook_key_points table. Replace the current full-text Claude search with a hybrid approach: vector similarity pre-filter followed by Claude synthesis, reducing token usage and improving relevance.",
+  "status": "backlog",
+  "priority": 1,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T18:35:40.451Z",
+  "updatedAt": "2026-03-02T18:35:40.451Z"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "evt-1773113253013-1bfbb6e3",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-10T03:27:33.013Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1773096761697-q2t7vd372se",
+  "featureName": "Add AI question prompt to every page",
+  "passes": true
+}

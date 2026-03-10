@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { auth } from "@/lib/auth/server";
 import {
   getSmartLabelById,
@@ -6,6 +6,10 @@ import {
   deleteSmartLabel,
 } from "@/lib/smartLabels/labels";
 import { updateSmartLabelSchema } from "@/lib/validators/schemas";
+import {
+  renameFolderForLabel,
+  unlinkFolderForLabel,
+} from "@/lib/smartLabels/folderSync";
 
 /**
  * GET /api/smart-labels/:id
@@ -39,7 +43,8 @@ export async function GET(
 
 /**
  * PATCH /api/smart-labels/:id
- * Update a smart label.
+ * Update a smart label. If the name changes and the label has a synced
+ * Outlook folder, renames the folder in the background.
  */
 export async function PATCH(
   request: NextRequest,
@@ -62,10 +67,35 @@ export async function PATCH(
       );
     }
 
+    // Fetch current label to detect name change
+    const currentLabel = parsed.data.name !== undefined
+      ? await getSmartLabelById(id, userId)
+      : null;
+
     const label = await updateSmartLabel(id, userId, parsed.data);
     if (!label) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+
+    // Rename Outlook folder in background if label name changed
+    if (
+      currentLabel &&
+      parsed.data.name &&
+      currentLabel.name !== parsed.data.name &&
+      currentLabel.graph_folder_id
+    ) {
+      after(async () => {
+        try {
+          await renameFolderForLabel(currentLabel, parsed.data.name!);
+        } catch (err) {
+          console.error(
+            `[SmartLabels] Failed to rename Outlook folder for label "${currentLabel.name}":`,
+            err
+          );
+        }
+      });
+    }
+
     return NextResponse.json({ data: label });
   } catch (error: unknown) {
     if (
@@ -90,6 +120,7 @@ export async function PATCH(
 /**
  * DELETE /api/smart-labels/:id
  * Delete a smart label and all its associations.
+ * Unlinks the Outlook folder but does NOT delete it.
  */
 export async function DELETE(
   _request: NextRequest,
@@ -103,6 +134,10 @@ export async function DELETE(
     }
 
     const { id } = await params;
+
+    // Unlink the Outlook folder before deleting (leaves folder intact)
+    await unlinkFolderForLabel(id, userId);
+
     const deleted = await deleteSmartLabel(id, userId);
     if (!deleted) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });

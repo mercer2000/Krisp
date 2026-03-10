@@ -7,9 +7,11 @@ import {
   isItemSmartClassified,
 } from "./labels";
 import { triggerDraftGeneration } from "./draftGeneration";
+import { moveEmailAfterClassification } from "./folderSync";
 import sql from "./db";
 import { decryptNullable, isEncrypted } from "@/lib/encryption";
 import type { SmartLabel } from "@/types/smartLabel";
+import { logActivity } from "@/lib/activity/log";
 
 /** Max body characters sent to the AI to control token usage. */
 const MAX_BODY_CHARS = 3000;
@@ -53,7 +55,7 @@ export function buildEmailContent(data: {
 /**
  * Fetch item content from the database based on type and ID.
  */
-async function fetchItemContent(
+export async function fetchItemContent(
   itemType: string,
   itemId: string,
   tenantId: string
@@ -226,9 +228,32 @@ ${content}`;
     }
   }
 
+  // Log activity for smart label matches
+  if (matched.length > 0) {
+    logActivity({
+      userId: tenantId,
+      eventType: "smart_label.triggered",
+      title: `Smart label matched: ${matched.join(", ")}`,
+      description: `Applied to ${itemType} #${itemId}`,
+      entityType: itemType,
+      entityId: itemId,
+      metadata: { labels: matched, itemType },
+    });
+  }
+
   // Trigger auto-draft generation for email types (non-blocking)
   if (matched.length > 0 && (itemType === "email" || itemType === "gmail_email")) {
     triggerDraftGeneration(itemId, itemType, tenantId, matched);
+  }
+
+  // Move email to first matching label's Outlook folder (non-blocking)
+  if (matched.length > 0 && itemType === "email") {
+    moveEmailAfterClassification(itemId, tenantId, matched).catch((err) => {
+      console.error(
+        `[SmartLabels] Folder move failed for email ${itemId}:`,
+        err instanceof Error ? err.message : err
+      );
+    });
   }
 
   return { matches: matched, skipped: false };

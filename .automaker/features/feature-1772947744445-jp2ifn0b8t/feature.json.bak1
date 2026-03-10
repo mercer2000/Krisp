@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "Add secure local storage support for Pages.  \n\nhttp://localhost:3000/workspace/f3426eb9-7e45-4109-8d64-fcbada5245b3/a57a3daa-1e71-4616-b3a0-fbdaa82212f8",
+  "title": "Add secure local storage support for Pages",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-08T05:29:04.445Z",
+  "id": "feature-1772947744445-jp2ifn0b8t",
+  "descriptionHistory": [
+    {
+      "description": "Add secure local storage support for Pages.  \n\nhttp://localhost:3000/workspace/f3426eb9-7e45-4109-8d64-fcbada5245b3/a57a3daa-1e71-4616-b3a0-fbdaa82212f8",
+      "timestamp": "2026-03-08T05:29:05.258Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-08T05:35:37.922Z",
+  "justFinishedAt": "2026-03-08T05:35:37.901Z",
+  "summary": "## Summary: Add secure local storage support for Pages\n\n### Changes Implemented\n- Created a new `pagesCache.ts` module following the existing `inboxCache.ts` pattern with TTL-based localStorage caching, version keys for cache busting, and size-bounded eviction\n- Added stale-while-revalidate caching to `useWorkspaces()`, `usePages()`, and `usePage()` hooks — pages load instantly from localStorage cache while fresh data fetches in the background\n- Added automatic cache invalidation on all page mutations (create, update, delete) and block mutations (create, update, delete, reorder)\n- Added block draft auto-save to localStorage — every keystroke is saved to localStorage immediately (before the 500ms debounce fires), so content survives accidental refresh or navigation\n- Added draft recovery on BlockEditor mount — unsaved drafts are automatically restored and re-synced to the server\n- Added \"Unsaved changes recovered\" banner that auto-dismisses after 4 seconds\n- Added `beforeunload` warning when there are pending unsaved changes\n- Block drafts are automatically cleared once successfully saved to the server\n- Page drafts are cleared when a page is deleted\n\n### Files Modified\n- `lib/cache/pagesCache.ts` (new) — TTL-based localStorage cache module with draft support\n- `lib/hooks/usePages.ts` — Integrated localStorage caching into all query and mutation hooks\n- `lib/hooks/useBlocks.ts` — Added cache invalidation and draft clearing on block mutations\n- `components/pages/editor/BlockEditor.tsx` — Added draft auto-save, draft recovery, recovery banner, and beforeunload warning\n\n### Notes for Developer\n- Cache TTLs: 5 min for page lists, 10 min for single pages, 24 hours for unsaved drafts\n- Max 50 cache entries before oldest are evicted\n- Cache is SSR-safe (all reads/writes check for `typeof window`)\n- The `initialDataUpdatedAt: () => 0` pattern tells React Query the cached data is always stale, ensuring a background refetch every time\n- Unused imports (`hasDrafts`, `clearDrafts`) in BlockEditor are available for future use but TypeScript tree-shakes them"
+}

@@ -63,6 +63,7 @@ export async function GET(request: NextRequest) {
         labels: labelsMap[row.id] ?? [],
         is_newsletter: row.is_newsletter,
         is_spam: row.is_spam,
+        is_read: row.is_read,
         unsubscribe_link: row.unsubscribe_link,
       }));
 
@@ -93,6 +94,7 @@ export async function GET(request: NextRequest) {
         labels: [],
         is_newsletter: row.is_newsletter,
         is_spam: row.is_spam,
+        is_read: row.is_read,
         unsubscribe_link: row.unsubscribe_link,
       }));
 

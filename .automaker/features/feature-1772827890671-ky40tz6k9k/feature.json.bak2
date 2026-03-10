@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "In the inbox view, I need a way to be able to switch between email accounts, switching between my Gmail account and my Outlook account. There could be multiple Gmail and multiple Outlook accounts.",
+  "title": "Add email account switcher to inbox view",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-06T20:11:30.671Z",
+  "id": "feature-1772827890671-ky40tz6k9k",
+  "descriptionHistory": [
+    {
+      "description": "In the inbox view, I need a way to be able to switch between email accounts, switching between my Gmail account and my Outlook account. There could be multiple Gmail and multiple Outlook accounts.",
+      "timestamp": "2026-03-06T20:11:31.408Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-06T20:23:24.153Z",
+  "justFinishedAt": "2026-03-06T20:23:24.153Z"
+}

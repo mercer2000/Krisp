@@ -1,0 +1,10 @@
+{
+  "id": "evt-1772944512172-8a32119f",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-08T04:35:12.172Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1772943540489-zwycmg8qmm",
+  "featureName": "Send emails to pages with selective copying",
+  "passes": true
+}

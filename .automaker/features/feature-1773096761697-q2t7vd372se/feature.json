@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "We want to add a UI at the top of each page that would allow the user to ask questions about the page. We would use AI then to answer the user's question. We don't necessarily want the user to have to switch to the brain tab to be able to ask questions. We need a lightweight way of doing that from anywhere. Maybe that is at the bottom of the page. I'm open to design considerations.",
+  "title": "Add AI question prompt to every page",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "verified",
+  "startedAt": "2026-03-09T22:52:41.697Z",
+  "id": "feature-1773096761697-q2t7vd372se",
+  "descriptionHistory": [
+    {
+      "description": "We want to add a UI at the top of each page that would allow the user to ask questions about the page. We would use AI then to answer the user's question. We don't necessarily want the user to have to switch to the brain tab to be able to ask questions. We need a lightweight way of doing that from anywhere. Maybe that is at the bottom of the page. I'm open to design considerations.",
+      "timestamp": "2026-03-09T22:52:42.387Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-09T22:59:50.316Z",
+  "justFinishedAt": "2026-03-09T22:59:50.295Z",
+  "summary": "## Summary: Page AI Q&A - Ask About This Page\n\n### Changes Implemented\n- Created a lightweight \"Ask about this page\" feature that lets users ask AI questions about any page's content without navigating away\n- **API endpoint** (`POST /api/pages/[pageId]/ask`): Gathers page blocks (notes) and entries (knowledge, decisions, email summaries) as context, sends them along with the user's question to the AI via `chatCompletion()`, and returns the answer. Includes auth/ownership validation, context truncation (8K chars max), and proper error handling for token limits.\n- **UI component** (`PageAskBar`): A centered pill button at the bottom of each page that says \"Ask about this page...\" with a question-mark icon. When clicked, it expands into a compact card with an input field and send button. Shows a loading spinner during AI processing, displays the answer inline below the input, and handles errors gracefully. Fully themed with CSS variables for dark/light mode support.\n- **Integration**: The `PageAskBar` is rendered at the bottom of both regular pages (below tab content) and database pages, providing a consistent entry point for AI Q&A across all page types.\n\n### Files Modified\n- `app/api/pages/[pageId]/ask/route.ts` (new) - AI Q&A API endpoint\n- `components/pages/PageAskBar.tsx` (new) - Floating ask bar UI component\n- `app/(app)/workspace/[workspaceId]/[pageId]/page.tsx` - Added PageAskBar import and rendered it in both database and tabbed page layouts\n\n### Notes for Developer\n- The component follows existing patterns: `getRequiredUser()` for auth, workspace ownership check, `chatCompletion()` with `userId` for per-user API keys\n- Context is built from both blocks (notes) and page entries (knowledge/decisions/emails), truncated at 8K chars to stay within token limits\n- The UI is non-intrusive — just a small pill button that doesn't clutter the page until clicked\n- No database migrations needed — this feature uses existing tables only\n- The `TokenLimitError` from the AI client is caught and surfaced as a user-friendly 402 error"
+}

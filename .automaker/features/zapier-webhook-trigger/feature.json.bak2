@@ -1,0 +1,14 @@
+{
+  "id": "zapier-webhook-trigger",
+  "category": "Integrations",
+  "title": "Zapier & Make Outbound Webhook Triggers",
+  "description": "Allow users to register outbound webhook URLs (for Zapier, Make, or custom endpoints) that are called when specific events occur: new card created, meeting ingested, email received, or thought captured. Payloads are JSON with event type, entity ID, and snapshot data. Configurable from the integrations admin panel.",
+  "status": "in_progress",
+  "priority": 3,
+  "complexity": "moderate",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:47.194Z",
+  "updatedAt": "2026-03-02T19:21:47.194Z",
+  "startedAt": "2026-03-05T05:25:17.920Z",
+  "descriptionHistory": []
+}

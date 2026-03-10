@@ -1,0 +1,14 @@
+{
+  "id": "kanban-card-checklist",
+  "category": "Kanban",
+  "title": "Card Sub-Task Checklist",
+  "description": "Add a checklist feature to Kanban cards where each item has a title and a boolean done state, stored as JSONB in the cards table. The card thumbnail shows a completion ratio badge (e.g., 3/5 done). Checklists support drag-to-reorder and can be converted into standalone cards in one click.",
+  "status": "backlog",
+  "priority": 1,
+  "complexity": "simple",
+  "dependencies": [],
+  "createdAt": "2026-03-02T19:21:46.963Z",
+  "updatedAt": "2026-03-07T17:02:30.751Z",
+  "startedAt": "2026-03-07T16:53:46.891Z",
+  "descriptionHistory": []
+}

@@ -1,0 +1,10 @@
+{
+  "id": "evt-1773113136463-841f271b",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-10T03:25:36.463Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1773112110898-x3ulgbp0ov",
+  "featureName": "Add read/unread message tracking",
+  "passes": true
+}
