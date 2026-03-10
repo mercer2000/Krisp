@@ -12,6 +12,7 @@ import { pageEntries } from "@/lib/db/schema";
 import { logActivity } from "@/lib/activity/log";
 import { getValidOutlookAccessToken } from "@/lib/outlook/oauth";
 import { moveMessageToFolder } from "@/lib/outlook/folders";
+import { updateEmailAfterMove } from "@/lib/email/emails";
 
 interface PageWithSmartRule {
   id: string;
@@ -208,11 +209,14 @@ async function moveEmailToPageFolder(
     `;
     if (rows.length === 0 || !rows[0].message_id) return;
 
-    await moveMessageToFolder(
+    const oldMessageId = rows[0].message_id as string;
+    const moved = await moveMessageToFolder(
       accessToken,
-      rows[0].message_id as string,
+      oldMessageId,
       page.smartRuleFolderId
     );
+    // Graph API may reassign message IDs on move — update DB so Outlook links keep working
+    await updateEmailAfterMove(userId, oldMessageId, moved.id, moved.webLink);
 
     console.log(
       `[PageRules] Moved email ${itemId} to folder "${page.smartRuleFolderId}" for page "${page.title}"`

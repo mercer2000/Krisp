@@ -9,6 +9,7 @@ import {
   getMessageParentFolder,
   GraphApiError,
 } from "@/lib/outlook/folders";
+import { updateEmailAfterMove } from "@/lib/email/emails";
 import type { SmartLabel } from "@/types/smartLabel";
 
 /**
@@ -146,7 +147,9 @@ export async function moveMessageToLabelFolder(
       label = { ...label, graph_folder_id: result.graphFolderId };
     }
 
-    await moveMessageToFolder(accessToken, graphMessageId, label.graph_folder_id!);
+    const moved = await moveMessageToFolder(accessToken, graphMessageId, label.graph_folder_id!);
+    // Graph API may reassign message IDs on move — update DB so Outlook links keep working
+    await updateEmailAfterMove(label.tenant_id, graphMessageId, moved.id, moved.webLink);
     return "moved";
   } catch (err) {
     if (err instanceof GraphApiError) {
@@ -320,7 +323,8 @@ export async function processRetryQueue(limit: number = 10): Promise<{
         continue;
       }
 
-      await moveMessageToFolder(accessToken, graphMessageId, graphFolderId);
+      const moved = await moveMessageToFolder(accessToken, graphMessageId, graphFolderId);
+      await updateEmailAfterMove(tenantId, graphMessageId, moved.id, moved.webLink);
       await sql`
         UPDATE folder_move_queue SET status = 'success', updated_at = NOW()
         WHERE id = ${queueId}

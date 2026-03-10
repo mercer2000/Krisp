@@ -131,7 +131,7 @@ export async function moveMessageToFolder(
   accessToken: string,
   messageId: string,
   destinationFolderId: string
-): Promise<{ id: string; parentFolderId: string }> {
+): Promise<{ id: string; parentFolderId: string; webLink?: string }> {
   const res = await fetch(
     `${GRAPH_BASE}/me/messages/${encodeURIComponent(messageId)}/move`,
     {

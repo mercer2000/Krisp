@@ -110,6 +110,34 @@ export async function insertEmail(
 }
 
 /**
+ * Update message_id and web_link after a Graph API move (which may reassign IDs).
+ */
+export async function updateEmailAfterMove(
+  tenantId: string,
+  oldMessageId: string,
+  newMessageId: string,
+  newWebLink?: string
+): Promise<void> {
+  if (oldMessageId === newMessageId) return;
+  if (newWebLink) {
+    await sql`
+      UPDATE emails
+      SET message_id = ${newMessageId},
+          web_link = ${newWebLink},
+          updated_at = NOW()
+      WHERE tenant_id = ${tenantId} AND message_id = ${oldMessageId}
+    `;
+  } else {
+    await sql`
+      UPDATE emails
+      SET message_id = ${newMessageId},
+          updated_at = NOW()
+      WHERE tenant_id = ${tenantId} AND message_id = ${oldMessageId}
+    `;
+  }
+}
+
+/**
  * Check if an email already exists (for deduplication)
  */
 export async function emailExists(
