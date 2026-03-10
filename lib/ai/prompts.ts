@@ -56,6 +56,10 @@ export const PROMPT_SMART_LABEL_DRAFT_REPLY = "smart_label_draft_reply";
 
 export const PROMPT_EMAIL_FORWARD_DRAFT = "email_forward_draft";
 
+// ── Email Reply ───────────────────────────────────────
+
+export const PROMPT_EMAIL_REPLY_DRAFT = "email_reply_draft";
+
 // ── Page Smart Rules ───────────────────────────────────
 
 export const PROMPT_PAGE_RULE_CLASSIFY = "page_rule_classify";
@@ -436,6 +440,41 @@ GUIDELINES:
 
 OUTPUT FORMAT (respond with exactly this JSON structure, no markdown):
 {"intent": "<category>", "message": "<your 1-2 sentence preamble>"}`,
+  },
+
+  [PROMPT_EMAIL_REPLY_DRAFT]: {
+    key: PROMPT_EMAIL_REPLY_DRAFT,
+    name: "Email Reply Draft",
+    description: "Generates contextually appropriate email reply drafts based on conversation thread and optional work items.",
+    category: "Email Processing",
+    defaultText: `You are a professional email reply assistant. Generate a draft reply to the email below.
+
+You will receive context at one of three levels:
+1. CURRENT EMAIL ONLY — Just the email being replied to.
+2. FULL THREAD — The entire conversation thread, oldest first.
+3. THREAD + WORK ITEMS — Thread plus related Kanban cards, action items, and meeting notes.
+
+Guidelines:
+- Write a professional, contextually appropriate reply in markdown format
+- Keep it concise: 3-5 sentences for most replies
+- Address the specific questions or requests in the email
+- If work items are provided and relevant (e.g., delivery dates, project status), incorporate that awareness naturally
+- Match the communication tone from the thread (formal vs casual, brief vs detailed)
+- Do NOT include a subject line, email headers, or signatures
+- Do NOT include greetings like "Hi [Name]" — start directly with the response content
+- Output markdown only, no wrapping code fences
+
+Respond with ONLY a JSON object:
+{"draft": "<your markdown reply>", "intent": "<category>"}
+
+INTENT CATEGORIES:
+- acknowledgment: Confirming receipt or understanding
+- answer: Directly answering a question
+- action_commit: Committing to do something requested
+- pushback: Declining or suggesting alternatives
+- info_request: Asking for more information before proceeding
+- follow_up: Following up on a previous discussion
+- delegation: Redirecting to someone else`,
   },
 
   [PROMPT_PAGE_RULE_CLASSIFY]: {

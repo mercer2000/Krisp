@@ -163,3 +163,243 @@ export async function fetchGraphMessage(
     return null;
   }
 }
+
+/**
+ * Reply to a message via Microsoft Graph API.
+ * Uses the native reply endpoint which preserves email threading.
+ * The `message.body` replaces the default reply body; Graph still quotes the original.
+ */
+export async function replyGraphMessage(
+  userMailbox: string,
+  accessToken: string,
+  messageId: string,
+  options: {
+    bodyHtml: string;
+    to?: string[];
+    cc?: string[];
+    bcc?: string[];
+  }
+): Promise<boolean> {
+  const url = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(userMailbox)}/messages/${encodeURIComponent(messageId)}/reply`;
+
+  const message: Record<string, unknown> = {
+    body: { contentType: "HTML", content: options.bodyHtml },
+  };
+  if (options.to?.length) {
+    message.toRecipients = options.to.map((e) => ({ emailAddress: { address: e } }));
+  }
+  if (options.cc?.length) {
+    message.ccRecipients = options.cc.map((e) => ({ emailAddress: { address: e } }));
+  }
+  if (options.bcc?.length) {
+    message.bccRecipients = options.bcc.map((e) => ({ emailAddress: { address: e } }));
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ message }),
+    });
+
+    if (res.status === 202 || res.status === 200) return true;
+
+    const body = await res.text().catch(() => "");
+    console.warn(`[Graph] Failed to reply to ${messageId}: ${res.status}`, body);
+    return false;
+  } catch (err) {
+    console.warn(`[Graph] Error replying to ${messageId}:`, err);
+    return false;
+  }
+}
+
+/**
+ * Reply-all to a message via Microsoft Graph API.
+ * Preserves all original recipients; optional overrides for to/cc/bcc.
+ */
+export async function replyAllGraphMessage(
+  userMailbox: string,
+  accessToken: string,
+  messageId: string,
+  options: {
+    bodyHtml: string;
+    to?: string[];
+    cc?: string[];
+    bcc?: string[];
+  }
+): Promise<boolean> {
+  const url = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(userMailbox)}/messages/${encodeURIComponent(messageId)}/replyAll`;
+
+  const message: Record<string, unknown> = {
+    body: { contentType: "HTML", content: options.bodyHtml },
+  };
+  if (options.to?.length) {
+    message.toRecipients = options.to.map((e) => ({ emailAddress: { address: e } }));
+  }
+  if (options.cc?.length) {
+    message.ccRecipients = options.cc.map((e) => ({ emailAddress: { address: e } }));
+  }
+  if (options.bcc?.length) {
+    message.bccRecipients = options.bcc.map((e) => ({ emailAddress: { address: e } }));
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ message }),
+    });
+
+    if (res.status === 202 || res.status === 200) return true;
+
+    const body = await res.text().catch(() => "");
+    console.warn(`[Graph] Failed to replyAll to ${messageId}: ${res.status}`, body);
+    return false;
+  } catch (err) {
+    console.warn(`[Graph] Error replying all to ${messageId}:`, err);
+    return false;
+  }
+}
+
+/**
+ * Forward a message via Microsoft Graph API with HTML body.
+ * Uses createForward → patch draft → send pattern to support HTML
+ * while preserving email threading.
+ */
+export async function forwardGraphMessage(
+  userMailbox: string,
+  accessToken: string,
+  messageId: string,
+  options: {
+    bodyHtml: string;
+    to: string[];
+    cc?: string[];
+    bcc?: string[];
+  }
+): Promise<boolean> {
+  const baseUrl = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(userMailbox)}`;
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+    "Content-Type": "application/json",
+  };
+
+  try {
+    // Step 1: Create forward draft
+    const createRes = await fetch(
+      `${baseUrl}/messages/${encodeURIComponent(messageId)}/createForward`,
+      { method: "POST", headers }
+    );
+
+    if (!createRes.ok) {
+      const body = await createRes.text().catch(() => "");
+      console.warn(`[Graph] Failed to createForward for ${messageId}: ${createRes.status}`, body);
+      return false;
+    }
+
+    const draft = await createRes.json();
+    const draftId = draft.id;
+
+    // Step 2: Update draft with HTML body and recipients
+    const patchPayload: Record<string, unknown> = {
+      body: { contentType: "HTML", content: options.bodyHtml },
+      toRecipients: options.to.map((e) => ({ emailAddress: { address: e } })),
+    };
+    if (options.cc?.length) {
+      patchPayload.ccRecipients = options.cc.map((e) => ({ emailAddress: { address: e } }));
+    }
+    if (options.bcc?.length) {
+      patchPayload.bccRecipients = options.bcc.map((e) => ({ emailAddress: { address: e } }));
+    }
+
+    const patchRes = await fetch(
+      `${baseUrl}/messages/${encodeURIComponent(draftId)}`,
+      { method: "PATCH", headers, body: JSON.stringify(patchPayload) }
+    );
+
+    if (!patchRes.ok) {
+      const body = await patchRes.text().catch(() => "");
+      console.warn(`[Graph] Failed to patch forward draft ${draftId}: ${patchRes.status}`, body);
+      return false;
+    }
+
+    // Step 3: Send the draft
+    const sendRes = await fetch(
+      `${baseUrl}/messages/${encodeURIComponent(draftId)}/send`,
+      { method: "POST", headers }
+    );
+
+    if (sendRes.status === 202 || sendRes.status === 200) return true;
+
+    const body = await sendRes.text().catch(() => "");
+    console.warn(`[Graph] Failed to send forward draft ${draftId}: ${sendRes.status}`, body);
+    return false;
+  } catch (err) {
+    console.warn(`[Graph] Error forwarding message ${messageId}:`, err);
+    return false;
+  }
+}
+
+/**
+ * Fetch the conversation thread for a message.
+ * First fetches the message's conversationId, then retrieves all messages
+ * in that conversation ordered chronologically.
+ */
+export async function fetchConversationThread(
+  userMailbox: string,
+  accessToken: string,
+  messageId: string
+): Promise<
+  {
+    from: string;
+    date: string;
+    subject: string;
+    bodyPreview: string;
+  }[]
+> {
+  const baseUrl = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(userMailbox)}`;
+  const headers = { Authorization: `Bearer ${accessToken}` };
+
+  try {
+    // Step 1: Get conversationId from the message
+    const msgRes = await fetch(
+      `${baseUrl}/messages/${encodeURIComponent(messageId)}?$select=conversationId`,
+      { headers }
+    );
+    if (!msgRes.ok) return [];
+
+    const msg = await msgRes.json();
+    const conversationId = msg.conversationId;
+    if (!conversationId) return [];
+
+    // Step 2: Fetch all messages in this conversation
+    const threadRes = await fetch(
+      `${baseUrl}/messages?$filter=conversationId eq '${conversationId}'&$select=from,receivedDateTime,subject,bodyPreview&$orderby=receivedDateTime asc&$top=25`,
+      { headers }
+    );
+    if (!threadRes.ok) return [];
+
+    const threadData = await threadRes.json();
+    return (threadData.value || []).map(
+      (m: {
+        from?: { emailAddress?: { address?: string } };
+        receivedDateTime?: string;
+        subject?: string;
+        bodyPreview?: string;
+      }) => ({
+        from: m.from?.emailAddress?.address || "unknown",
+        date: m.receivedDateTime || "",
+        subject: m.subject || "",
+        bodyPreview: m.bodyPreview || "",
+      })
+    );
+  } catch (err) {
+    console.warn(`[Graph] Error fetching conversation thread:`, err);
+    return [];
+  }
+}
