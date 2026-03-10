@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import DOMPurify from "isomorphic-dompurify";
@@ -9,6 +9,9 @@ import { useToast } from "@/components/ui/Toast";
 import { EmailActionSidebar } from "@/components/email/EmailActionSidebar";
 import { SendToPageModal } from "@/components/email/SendToPageModal";
 import { CopyToPageToolbar } from "@/components/email/CopyToPageToolbar";
+import { SplitButton } from "@/components/email/SplitButton";
+import { ComposePane, type ComposeAction } from "@/components/email/ComposePane";
+import { useComposeShortcuts } from "@/hooks/useComposeShortcuts";
 import type { EmailDetail, EmailAttachmentMetadata, EmailLabelChip } from "@/types/email";
 
 interface LabelDef {
@@ -147,19 +150,54 @@ export default function EmailDetailPage() {
   const [showLabelDropdown, setShowLabelDropdown] = useState(false);
   const [classifyingOne, setClassifyingOne] = useState(false);
 
-  // Forward state
-  const [showForwardModal, setShowForwardModal] = useState(false);
-  const [forwardRecipient, setForwardRecipient] = useState("");
-  const [forwardMessage, setForwardMessage] = useState("");
-  const [forwardGenerating, setForwardGenerating] = useState(false);
-  const [forwardSending, setForwardSending] = useState(false);
-  const [forwardIntent, setForwardIntent] = useState<string | null>(null);
-  const forwardUserEdited = useRef(false);
+  // Compose pane state
+  const [composeAction, setComposeAction] = useState<ComposeAction | null>(null);
+  const [composeAiMode, setComposeAiMode] = useState(false);
 
   // Send to Page state
   const [showSendToPage, setShowSendToPage] = useState(false);
   const [sendToPageSelectedText, setSendToPageSelectedText] = useState<string | undefined>();
   const emailBodyRef = useRef<HTMLDivElement>(null);
+
+  // Determine if this is an Outlook email (compose only for Outlook)
+  const isOutlookEmail = email ? !isNaN(Number(email.id)) : false;
+
+  // Compute default recipients for compose pane
+  const getDefaultRecipients = useCallback(
+    (action: ComposeAction) => {
+      if (!email) return { to: [], cc: [] };
+      if (action === "forward") return { to: [], cc: [] };
+      if (action === "reply") return { to: [email.sender], cc: [] };
+      // reply_all: To = sender, CC = original To + CC minus sender and self
+      const allRecipients = [...email.recipients, ...email.cc];
+      const ccList = allRecipients.filter(
+        (e) => e !== email.sender && !e.includes("noreply")
+      );
+      return { to: [email.sender], cc: ccList };
+    },
+    [email]
+  );
+
+  const openCompose = useCallback(
+    (action: ComposeAction, aiMode: boolean) => {
+      if (!isOutlookEmail) return;
+      setComposeAction(action);
+      setComposeAiMode(aiMode);
+    },
+    [isOutlookEmail]
+  );
+
+  const closeCompose = useCallback(() => {
+    setComposeAction(null);
+    setComposeAiMode(false);
+  }, []);
+
+  // Keyboard shortcuts
+  useComposeShortcuts({
+    onAction: openCompose,
+    onClose: closeCompose,
+    isOpen: composeAction !== null,
+  });
 
   // Fetch labels for this email and all available labels
   useEffect(() => {
@@ -269,39 +307,6 @@ export default function EmailDetailPage() {
     fetchEmail();
   }, [params.id]);
 
-  // Auto-generate forwarding draft when modal opens
-  useEffect(() => {
-    if (!showForwardModal || !params.id) return;
-    let cancelled = false;
-
-    async function generateDraft() {
-      setForwardGenerating(true);
-      try {
-        const res = await fetch(`/api/emails/${params.id}/forward`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ generateDraft: true }),
-        });
-        if (!res.ok || cancelled) return;
-        const data = await res.json();
-        if (cancelled) return;
-        // Only set draft if user hasn't started typing
-        if (!forwardUserEdited.current && data.draft) {
-          setForwardMessage(data.draft);
-        }
-        if (data.intent) {
-          setForwardIntent(data.intent);
-        }
-      } catch {
-        // Fail silently — leave compose body blank
-      } finally {
-        if (!cancelled) setForwardGenerating(false);
-      }
-    }
-
-    generateDraft();
-    return () => { cancelled = true; };
-  }, [showForwardModal, params.id]);
 
   if (loading) {
     return (
@@ -395,17 +400,50 @@ export default function EmailDetailPage() {
               <span className="hidden md:inline">Open in Outlook</span>
             </a>
           )}
-          <button
-            onClick={() => { setForwardRecipient(""); setForwardMessage(""); setForwardIntent(null); forwardUserEdited.current = false; setShowForwardModal(true); }}
-            className="inline-flex items-center gap-2 p-2 md:px-3 md:py-1.5 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
-            title="Forward email"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 17 20 12 15 7" />
-              <path d="M4 18v-2a4 4 0 0 1 4-4h12" />
-            </svg>
-            <span className="hidden md:inline">Forward</span>
-          </button>
+          {isOutlookEmail && (
+            <>
+              <SplitButton
+                label="Reply"
+                icon={
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 17 4 12 9 7" />
+                    <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+                  </svg>
+                }
+                onClick={() => openCompose("reply", false)}
+                dropdownLabel="Reply with AI"
+                onDropdownClick={() => openCompose("reply", true)}
+                active={composeAction === "reply"}
+              />
+              <SplitButton
+                label="Reply All"
+                icon={
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 17 4 12 9 7" />
+                    <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+                    <polyline points="13 17 8 12 13 7" />
+                  </svg>
+                }
+                onClick={() => openCompose("reply_all", false)}
+                dropdownLabel="Reply All with AI"
+                onDropdownClick={() => openCompose("reply_all", true)}
+                active={composeAction === "reply_all"}
+              />
+              <SplitButton
+                label="Forward"
+                icon={
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 17 20 12 15 7" />
+                    <path d="M4 18v-2a4 4 0 0 1 4-4h12" />
+                  </svg>
+                }
+                onClick={() => openCompose("forward", false)}
+                dropdownLabel="Forward with AI"
+                onDropdownClick={() => openCompose("forward", true)}
+                active={composeAction === "forward"}
+              />
+            </>
+          )}
           <button
             onClick={() => {
               setSendToPageSelectedText(undefined);
@@ -590,6 +628,19 @@ export default function EmailDetailPage() {
               }}
             />
           </div>
+
+            {/* Compose Pane (inline below email body) */}
+            {composeAction && email && (
+              <ComposePane
+                emailId={email.id}
+                action={composeAction}
+                aiMode={composeAiMode}
+                defaultTo={getDefaultRecipients(composeAction).to}
+                defaultCc={getDefaultRecipients(composeAction).cc}
+                onClose={closeCompose}
+                onSent={closeCompose}
+              />
+            )}
         </main>
 
         {/* Action items sidebar */}
@@ -618,132 +669,6 @@ export default function EmailDetailPage() {
           >
             Delete
           </button>
-        </div>
-      </Modal>
-
-      {/* Forward email modal */}
-      <Modal
-        open={showForwardModal}
-        onClose={() => setShowForwardModal(false)}
-        title="Forward email"
-      >
-        <div className="space-y-4">
-          {/* Original email context */}
-          <div className="p-3 rounded-lg bg-[var(--secondary)]/50 border border-[var(--border)]">
-            <p className="text-xs text-[var(--muted-foreground)] mb-1">Forwarding:</p>
-            <p className="text-sm font-medium text-[var(--foreground)] truncate">
-              {email.subject || "(No subject)"}
-            </p>
-            <p className="text-xs text-[var(--muted-foreground)] truncate mt-0.5">
-              From: {email.sender}
-            </p>
-          </div>
-
-          {/* Recipient email */}
-          <div>
-            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">
-              Recipient Email
-            </label>
-            <input
-              type="email"
-              value={forwardRecipient}
-              onChange={(e) => setForwardRecipient(e.target.value)}
-              placeholder="recipient@example.com"
-              className="w-full px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-              data-testid="forward-recipient-input"
-            />
-          </div>
-
-          {/* Forwarding message */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-medium text-[var(--muted-foreground)]">
-                Message (optional)
-              </label>
-              {forwardIntent && !forwardGenerating && (
-                <span
-                  className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] font-medium"
-                  title={`AI detected this as: ${forwardIntent.replace("_", " ")}`}
-                >
-                  {forwardIntent.replace("_", " ")}
-                </span>
-              )}
-            </div>
-            <div className="relative">
-              <textarea
-                value={forwardMessage}
-                onChange={(e) => { forwardUserEdited.current = true; setForwardMessage(e.target.value); }}
-                placeholder={forwardGenerating ? "" : "Add a message to include with the forwarded email..."}
-                rows={4}
-                className={`w-full px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] resize-y${forwardGenerating && !forwardMessage ? " opacity-60" : ""}`}
-                data-testid="forward-message-input"
-              />
-              {forwardGenerating && !forwardMessage && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
-                    <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Generating suggestion...
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => setShowForwardModal(false)}
-              className="px-4 py-2 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={async () => {
-                if (!forwardRecipient.trim()) {
-                  toast({ title: "Enter a recipient email", variant: "destructive" });
-                  return;
-                }
-                setForwardSending(true);
-                try {
-                  const res = await fetch(`/api/emails/${params.id}/forward`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      recipientEmail: forwardRecipient.trim(),
-                      message: forwardMessage || undefined,
-                    }),
-                  });
-                  if (!res.ok) {
-                    const data = await res.json().catch(() => ({}));
-                    throw new Error(data.error || "Failed to forward");
-                  }
-                  toast({
-                    title: "Email forwarded",
-                    description: `Sent to ${forwardRecipient.trim()}`,
-                    variant: "success",
-                  });
-                  setShowForwardModal(false);
-                } catch (err) {
-                  toast({
-                    title: "Forward failed",
-                    description: err instanceof Error ? err.message : "Failed to forward email",
-                    variant: "destructive",
-                  });
-                } finally {
-                  setForwardSending(false);
-                }
-              }}
-              disabled={forwardSending || !forwardRecipient.trim()}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity disabled:opacity-40"
-              data-testid="forward-send-button"
-            >
-              {forwardSending ? "Sending..." : "Forward"}
-            </button>
-          </div>
         </div>
       </Modal>
 
