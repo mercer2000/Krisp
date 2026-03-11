@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { useInboxCache } from "@/lib/hooks/useInboxCache";
-import type { EmailListItem, EmailListResponse, EmailSearchResponse, EmailSearchItem, EmailLabelChip } from "@/types/email";
+import type { EmailListItem, EmailListResponse, EmailSearchResponse, EmailSearchItem, EmailLabelChip, EmailDetail } from "@/types/email";
 import type { SmartLabelChip, EmailDraft } from "@/types/smartLabel";
 import { InboxFilterDrawer } from "@/components/email/InboxFilterDrawer";
 import { SendToPageModal } from "@/components/email/SendToPageModal";
@@ -49,6 +49,69 @@ function ProviderIcon({ provider, size = 12 }: { provider: "outlook" | "gmail" |
   if (provider === "gmail") return <GmailIcon size={size} />;
   if (provider === "zoom") return <ZoomIcon size={size} />;
   return <OutlookIcon size={size} />;
+}
+
+/** Strip dangerous HTML tags/attributes for email preview. */
+function sanitizePreviewHtml(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/\s*on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, "");
+}
+
+/** Renders sanitized email HTML inside an iframe for the preview pane. Links open in new tabs. */
+function PreviewHtmlFrame({ html }: { html: string }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [height, setHeight] = useState(300);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    const doc = iframe.contentDocument;
+    if (!doc) return;
+
+    const safe = sanitizePreviewHtml(html);
+    doc.open();
+    doc.write(`<!DOCTYPE html>
+<html><head><base target="_blank"><style>
+  body { margin: 0; padding: 0; background: #fff; color: #1a1a1a; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; line-height: 1.6; word-break: break-word; overflow-wrap: break-word; }
+  img { max-width: 100%; height: auto; }
+  a { color: #2563eb; }
+  pre, code { white-space: pre-wrap; }
+  table { max-width: 100%; }
+</style></head><body>${safe}</body></html>`);
+    doc.close();
+
+    // Force all links to open in new tab (belt + suspenders with <base target="_blank">)
+    doc.querySelectorAll("a").forEach((a) => {
+      a.setAttribute("target", "_blank");
+      a.setAttribute("rel", "noopener noreferrer");
+    });
+
+    const resize = () => { if (doc.body) setHeight(doc.body.scrollHeight); };
+    const images = doc.querySelectorAll("img");
+    let loaded = 0;
+    const onImgLoad = () => { loaded++; if (loaded >= images.length) resize(); };
+    images.forEach((img) => {
+      if (img.complete) loaded++;
+      else { img.addEventListener("load", onImgLoad); img.addEventListener("error", onImgLoad); }
+    });
+    resize();
+    const timer = setTimeout(resize, 200);
+    return () => {
+      clearTimeout(timer);
+      images.forEach((img) => { img.removeEventListener("load", onImgLoad); img.removeEventListener("error", onImgLoad); });
+    };
+  }, [html]);
+
+  return (
+    <iframe
+      ref={iframeRef}
+      sandbox="allow-same-origin allow-popups"
+      style={{ width: "100%", height, border: "none", borderRadius: "4px" }}
+      title="Email preview"
+    />
+  );
 }
 
 interface LabelDef {
@@ -280,6 +343,91 @@ export default function InboxPage() {
 
   // Focused email for keyboard navigation
   const [focusedEmailId, setFocusedEmailId] = useState<string | number | null>(null);
+
+  // Preview pane state
+  const [previewEmail, setPreviewEmail] = useState<EmailDetail | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const previewAbortRef = useRef<AbortController | null>(null);
+
+  // Resizable column width (persisted in localStorage)
+  const [listWidth, setListWidth] = useState<number>(() => {
+    if (typeof window === "undefined") return 480;
+    const saved = localStorage.getItem("inbox-list-width");
+    return saved ? Math.max(280, Math.min(800, parseInt(saved, 10))) : 480;
+  });
+  const [isResizing, setIsResizing] = useState(false);
+  const listColumnRef = useRef<HTMLDivElement>(null);
+  const resizeStartXRef = useRef(0);
+  const resizeStartWidthRef = useRef(0);
+
+  // Fetch email detail when focused email changes
+  useEffect(() => {
+    if (focusedEmailId == null) {
+      setPreviewEmail(null);
+      return;
+    }
+
+    // Abort any in-flight preview fetch
+    previewAbortRef.current?.abort();
+    const controller = new AbortController();
+    previewAbortRef.current = controller;
+
+    setPreviewLoading(true);
+    fetch(`/api/emails/${focusedEmailId}`, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error("Not found");
+        return res.json();
+      })
+      .then((data: EmailDetail) => {
+        if (!controller.signal.aborted) {
+          setPreviewEmail(data);
+          setPreviewLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        if (!controller.signal.aborted) {
+          setPreviewEmail(null);
+          setPreviewLoading(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, [focusedEmailId]);
+
+  // Resize handle drag logic — uses direct DOM mutation for smooth dragging,
+  // commits to React state only on mouseup.
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    resizeStartXRef.current = e.clientX;
+    resizeStartWidthRef.current = listColumnRef.current?.offsetWidth ?? listWidth;
+    setIsResizing(true);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    function onMouseMove(ev: MouseEvent) {
+      const delta = ev.clientX - resizeStartXRef.current;
+      const newWidth = Math.max(280, Math.min(800, resizeStartWidthRef.current + delta));
+      // Direct DOM mutation — no React re-render per pixel
+      if (listColumnRef.current) {
+        listColumnRef.current.style.width = `${newWidth}px`;
+      }
+    }
+    function onMouseUp(ev: MouseEvent) {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      setIsResizing(false);
+      // Read final width from DOM and commit to React state + localStorage
+      const delta = ev.clientX - resizeStartXRef.current;
+      const finalWidth = Math.max(280, Math.min(800, resizeStartWidthRef.current + delta));
+      setListWidth(finalWidth);
+      localStorage.setItem("inbox-list-width", String(finalWidth));
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    }
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  }, [listWidth]);
 
   const [syncing, setSyncing] = useState(false);
 
@@ -806,6 +954,46 @@ export default function InboxPage() {
     }
   };
 
+  // Remove all labels (system + smart) from an email — "0" key shortcut
+  const handleRemoveAllLabels = async (emailId: string | number) => {
+    const email = emails.find((em) => em.id === emailId);
+    if (!email) return;
+
+    const systemLabels = email.labels ?? [];
+    const itemType = email.provider === "gmail" ? "gmail_email" : "email";
+    const smartLabels = smartLabelMap[String(emailId)] ?? [];
+
+    if (systemLabels.length === 0 && smartLabels.length === 0) {
+      toast({ title: "No labels to remove", variant: "default" });
+      return;
+    }
+
+    // Optimistic UI: clear labels
+    const prevEmails = emails;
+    const prevSmartLabelMap = { ...smartLabelMap };
+    setEmails((prev) => prev.map((em) => em.id === emailId ? { ...em, labels: [] } : em));
+    setSmartLabelMap((prev) => { const next = { ...prev }; delete next[String(emailId)]; return next; });
+
+    try {
+      const deletes: Promise<Response>[] = [];
+      // Remove system labels
+      for (const label of systemLabels) {
+        deletes.push(fetch(`/api/emails/${emailId}/labels?labelId=${label.id}`, { method: "DELETE" }));
+      }
+      // Remove smart labels
+      for (const label of smartLabels) {
+        deletes.push(fetch(`/api/smart-labels/${label.id}/items?itemType=${encodeURIComponent(itemType)}&itemId=${encodeURIComponent(String(emailId))}`, { method: "DELETE" }));
+      }
+      await Promise.all(deletes);
+      cache.invalidateAll();
+      toast({ title: "All labels removed", variant: "success" });
+    } catch {
+      setEmails(prevEmails);
+      setSmartLabelMap(prevSmartLabelMap);
+      toast({ title: "Failed to remove labels", variant: "destructive" });
+    }
+  };
+
   // Create custom label
   const handleCreateLabel = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -965,6 +1153,20 @@ export default function InboxPage() {
         return;
       }
 
+      // Enter → open focused email in full detail view
+      if (e.key === "Enter" && focusedEmailId != null) {
+        e.preventDefault();
+        window.location.href = `/inbox/${focusedEmailId}`;
+        return;
+      }
+
+      // Escape → close preview pane (deselect focused email)
+      if (e.key === "Escape" && focusedEmailId != null) {
+        e.preventDefault();
+        setFocusedEmailId(null);
+        return;
+      }
+
       // Arrow Up → focus previous email
       if (e.key === "ArrowUp") {
         e.preventDefault();
@@ -1025,6 +1227,13 @@ export default function InboxPage() {
           setFocusedEmailId(nextId);
           handleMarkDone(email.id, true);
         }
+        return;
+      }
+
+      // 0 → remove all labels from focused email (misclassification correction)
+      if (e.key === "0" && focusedEmailId != null) {
+        e.preventDefault();
+        handleRemoveAllLabels(focusedEmailId);
         return;
       }
     }
@@ -1661,8 +1870,14 @@ export default function InboxPage() {
         )}
       </header>
 
-      {/* Email list */}
-      <main className="flex-1 overflow-auto">
+      {/* Email list + Preview pane */}
+      <main className="flex-1 flex overflow-hidden">
+        {/* Left column: email list */}
+        <div
+          ref={listColumnRef}
+          className={`${focusedEmailId != null ? "hidden md:flex md:flex-col flex-shrink-0" : "flex-1 flex flex-col"} overflow-auto`}
+          style={focusedEmailId != null ? { width: listWidth } : undefined}
+        >
         {error && (
           <div className="mx-3 md:mx-6 mt-4 p-3 md:p-4 bg-[var(--destructive)]/10 border border-[var(--destructive)]/20 rounded-lg text-[var(--destructive)] text-sm">
             {error}
@@ -1820,8 +2035,9 @@ export default function InboxPage() {
               <div
                 data-email-id={email.id}
                 onClick={() => setFocusedEmailId(email.id)}
-                className={`flex items-start gap-2 md:gap-4 px-3 md:px-6 py-3 md:py-4 hover:bg-[var(--accent)]/50 transition-colors group ${!email.is_read ? "bg-[var(--primary)]/[0.03]" : ""} ${focusedEmailId === email.id ? "border-l-2 border-[var(--primary)] pl-[10px] md:pl-[22px]" : "border-l-2 border-transparent"}`}
+                className={`px-3 md:px-6 py-3 md:py-4 hover:bg-[var(--accent)]/50 transition-colors group ${!email.is_read ? "bg-[var(--primary)]/[0.03]" : ""} ${focusedEmailId === email.id ? "border-l-[3px] border-[var(--primary)] pl-[9px] md:pl-[21px] bg-[var(--primary)]/10 shadow-[inset_0_0_0_1px_var(--primary)]" : "border-l-[3px] border-transparent"}`}
               >
+                <div className="flex items-start gap-2 md:gap-4">
                 {/* Unread indicator dot */}
                 <div className="flex-shrink-0 pt-2 w-2 hidden md:flex items-start">
                   {!email.is_read && (
@@ -1923,10 +2139,17 @@ export default function InboxPage() {
                   )}
                 </div>
 
-                {/* Content - clickable link to detail */}
+                {/* Content - clickable link to detail (mobile) / focus for preview (desktop) */}
                 <Link
                   href={`/inbox/${email.id}`}
                   className="flex-1 min-w-0"
+                  onClick={(e) => {
+                    // On desktop (md+), prevent navigation — just focus for preview
+                    if (window.innerWidth >= 768) {
+                      e.preventDefault();
+                      setFocusedEmailId(email.id);
+                    }
+                  }}
                 >
                   {/* Mobile layout: sender + time on top, subject below */}
                   <div className="flex items-center gap-2 md:hidden">
@@ -2015,23 +2238,6 @@ export default function InboxPage() {
                     )}
                   </div>
 
-                  {/* Preview + account indicator (desktop) */}
-                  <div className="hidden md:flex items-center gap-2 mt-1">
-                    {email.preview && (
-                      <p className="text-xs text-[var(--muted-foreground)] truncate flex-1 min-w-0">
-                        {email.preview}
-                      </p>
-                    )}
-                    {accounts.length > 1 && email.account_id && (
-                      <span
-                        className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--muted-foreground)] flex-shrink-0 truncate max-w-[200px] inline-flex items-center gap-1"
-                        title={accounts.find((a) => a.id === email.account_id)?.email ?? "Unknown account"}
-                      >
-                        <ProviderIcon provider={email.provider} size={10} />
-                        {accounts.find((a) => a.id === email.account_id)?.email ?? "Unknown"}
-                      </span>
-                    )}
-                  </div>
                 </Link>
 
                 {/* Unsubscribe button — always visible for emails with unsubscribe link */}
@@ -2162,6 +2368,25 @@ export default function InboxPage() {
                       <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
                     </svg>
                   </button>
+                </div>
+                </div>
+
+                {/* Preview + account indicator (desktop) — outside flex row to span full width */}
+                <div className="hidden md:flex items-center gap-2 mt-1 ml-[86px]">
+                  {email.preview && (
+                    <p className="text-xs text-[var(--muted-foreground)] truncate flex-1 min-w-0">
+                      {email.preview}
+                    </p>
+                  )}
+                  {accounts.length > 1 && email.account_id && (
+                    <span
+                      className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--muted-foreground)] flex-shrink-0 truncate max-w-[200px] inline-flex items-center gap-1"
+                      title={accounts.find((a) => a.id === email.account_id)?.email ?? "Unknown account"}
+                    >
+                      <ProviderIcon provider={email.provider} size={10} />
+                      {accounts.find((a) => a.id === email.account_id)?.email ?? "Unknown"}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -2301,6 +2526,95 @@ export default function InboxPage() {
             })}
           </div>
           </>
+        )}
+        </div>
+
+        {/* Resize handle */}
+        {focusedEmailId != null && (
+          <div
+            className="hidden md:flex items-stretch flex-shrink-0 cursor-col-resize group"
+            onMouseDown={handleResizeStart}
+          >
+            <div className="w-1 hover:w-1.5 bg-[var(--border)] group-hover:bg-[var(--primary)]/40 group-active:bg-[var(--primary)] transition-colors" />
+          </div>
+        )}
+
+        {/* Transparent overlay during resize — prevents iframe from stealing mouse events */}
+        {isResizing && (
+          <div className="fixed inset-0 z-50 cursor-col-resize" />
+        )}
+
+        {/* Right column: preview pane (desktop only) */}
+        {focusedEmailId != null && (
+          <div className="hidden md:flex flex-col flex-1 overflow-hidden bg-[var(--background)]">
+            {previewLoading ? (
+              <div className="flex-1 p-6 space-y-4 animate-pulse">
+                <div className="h-6 bg-[var(--secondary)] rounded w-3/4" />
+                <div className="h-4 bg-[var(--secondary)] rounded w-1/2" />
+                <div className="h-4 bg-[var(--secondary)] rounded w-1/3" />
+                <div className="h-px bg-[var(--border)] my-4" />
+                <div className="space-y-2">
+                  <div className="h-4 bg-[var(--secondary)] rounded w-full" />
+                  <div className="h-4 bg-[var(--secondary)] rounded w-5/6" />
+                  <div className="h-4 bg-[var(--secondary)] rounded w-4/6" />
+                </div>
+              </div>
+            ) : previewEmail ? (
+              <div className="flex-1 overflow-auto">
+                <div className="px-5 py-4 border-b border-[var(--border)]">
+                  {/* Subject + open full link */}
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <h2 className="text-base font-semibold text-[var(--foreground)] leading-snug">
+                      {previewEmail.subject || "(No subject)"}
+                    </h2>
+                    <Link
+                      href={`/inbox/${previewEmail.id}`}
+                      className="flex-shrink-0 text-xs text-[var(--primary)] hover:underline whitespace-nowrap"
+                    >
+                      Open full
+                    </Link>
+                  </div>
+                  {/* From / To / Date */}
+                  <div className="space-y-1 text-xs text-[var(--muted-foreground)]">
+                    <div><span className="inline-block w-10">From</span> <span className="text-[var(--foreground)]">{previewEmail.sender}</span></div>
+                    {previewEmail.recipients.length > 0 && (
+                      <div><span className="inline-block w-10">To</span> <span className="text-[var(--foreground)]">{previewEmail.recipients.join(", ")}</span></div>
+                    )}
+                    {previewEmail.cc.length > 0 && (
+                      <div><span className="inline-block w-10">CC</span> <span className="text-[var(--foreground)]">{previewEmail.cc.join(", ")}</span></div>
+                    )}
+                    <div>
+                      <span className="inline-block w-10">Date</span>{" "}
+                      <span className="text-[var(--foreground)]">
+                        {new Date(previewEmail.received_at).toLocaleString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                {/* Email body */}
+                <div className="p-5">
+                  {previewEmail.body_html ? (
+                    <PreviewHtmlFrame html={previewEmail.body_html} />
+                  ) : previewEmail.body_plain_text ? (
+                    <pre className="whitespace-pre-wrap text-sm text-[var(--foreground)] font-sans leading-relaxed">
+                      {previewEmail.body_plain_text}
+                    </pre>
+                  ) : (
+                    <p className="text-[var(--muted-foreground)] italic text-sm">No message body</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-sm text-[var(--muted-foreground)]">
+                Email not found
+              </div>
+            )}
+          </div>
         )}
       </main>
 
