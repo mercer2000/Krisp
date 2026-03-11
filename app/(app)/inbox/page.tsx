@@ -1241,6 +1241,17 @@ export default function InboxPage() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [emails, filteredEmails, bulkSelected, focusedEmailId, activeFolder]);
 
+  // Clear focused email when resizing below md breakpoint (prevents blank screen)
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768 && focusedEmailId != null) {
+        setFocusedEmailId(null);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [focusedEmailId]);
+
   // Scroll focused email into view during keyboard navigation
   useEffect(() => {
     if (focusedEmailId == null) return;
@@ -2034,7 +2045,7 @@ export default function InboxPage() {
               <div key={email.id}>
               <div
                 data-email-id={email.id}
-                onClick={() => setFocusedEmailId(email.id)}
+                onClick={() => { if (window.innerWidth >= 768) setFocusedEmailId(email.id); }}
                 className={`flex items-start gap-2 md:gap-4 md:relative px-3 md:px-6 py-3 md:py-4 hover:bg-[var(--accent)]/50 transition-colors group ${!email.is_read ? "bg-[var(--primary)]/[0.03]" : ""} ${focusedEmailId === email.id ? "border-l-[3px] border-[var(--primary)] pl-[9px] md:pl-[21px] bg-[var(--primary)]/10 shadow-[inset_0_0_0_1px_var(--primary)]" : "border-l-[3px] border-transparent"}`}
               >
                 {/* Unread indicator dot */}
