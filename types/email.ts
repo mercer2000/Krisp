@@ -85,6 +85,7 @@ export interface EmailListItem {
   is_spam?: boolean;
   is_vip?: boolean;
   is_read?: boolean;
+  is_done?: boolean;
   unsubscribe_link?: string | null;
 }
 

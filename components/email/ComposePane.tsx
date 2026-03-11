@@ -170,14 +170,22 @@ export function ComposePane({
     action === "reply" ? "Reply" : action === "reply_all" ? "Reply All" : "Forward";
 
   return (
+    <>
+      {/* Mobile backdrop */}
+      <div
+        className="md:hidden fixed inset-0 z-40 bg-black/40"
+        onClick={onClose}
+      />
     <div
       ref={paneRef}
-      className="border-t border-[var(--border)] bg-[var(--background)] px-3 py-3 md:px-6 md:py-4 space-y-3"
+      className="fixed bottom-0 left-0 right-0 z-50 md:relative md:z-auto md:bottom-auto md:left-auto md:right-auto border-t md:border-t-0 md:border-l border-[var(--border)] bg-[var(--background)] md:bg-[var(--card)] px-3 py-3 md:px-4 md:py-4 space-y-3 md:w-96 md:flex-shrink-0 md:overflow-y-auto max-h-[85vh] md:max-h-none rounded-t-xl md:rounded-none"
       data-compose-pane
     >
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
+          {/* Mobile drag handle */}
+          <div className="md:hidden w-8 h-1 rounded-full bg-[var(--border)] absolute top-2 left-1/2 -translate-x-1/2" />
           <h3 className="text-sm font-medium text-[var(--foreground)]">{actionLabel}</h3>
           {intent && !generating && (
             <span
@@ -188,6 +196,17 @@ export function ComposePane({
             </span>
           )}
         </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-1 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
+          title="Close"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
       </div>
 
       {/* Recipients */}
@@ -292,5 +311,6 @@ export function ComposePane({
         </button>
       </div>
     </div>
+    </>
   );
 }

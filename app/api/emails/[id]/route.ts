@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/server";
-import { getEmailDetail, deleteEmail, markEmailRead } from "@/lib/email/emails";
-import { getGmailEmailById, markGmailEmailRead } from "@/lib/gmail/emails";
+import { getEmailDetail, deleteEmail, markEmailRead, markEmailDone } from "@/lib/email/emails";
+import { getGmailEmailById, markGmailEmailRead, markGmailEmailDone } from "@/lib/gmail/emails";
 import { getZoomMessageById } from "@/lib/zoom/messages";
 import { db } from "@/lib/db";
 import { graphSubscriptions } from "@/lib/db/schema";
@@ -196,19 +196,28 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    const { is_read } = body;
+    const { is_read, is_done } = body;
 
-    if (typeof is_read !== "boolean") {
-      return NextResponse.json({ error: "is_read must be a boolean" }, { status: 400 });
+    if (typeof is_read !== "boolean" && typeof is_done !== "boolean") {
+      return NextResponse.json({ error: "is_read or is_done must be a boolean" }, { status: 400 });
     }
+
+    const result: Record<string, unknown> = {};
 
     // UUID IDs are Gmail emails
     if (UUID_REGEX.test(id)) {
-      const updated = await markGmailEmailRead(id, userId, is_read);
-      if (!updated) {
-        return NextResponse.json({ error: "Email not found" }, { status: 404 });
+      if (typeof is_done === "boolean") {
+        const updated = await markGmailEmailDone(id, userId, is_done);
+        if (!updated) return NextResponse.json({ error: "Email not found" }, { status: 404 });
+        result.is_done = is_done;
+        if (is_done) result.is_read = true;
       }
-      return NextResponse.json({ id, is_read });
+      if (typeof is_read === "boolean" && !result.is_read) {
+        const updated = await markGmailEmailRead(id, userId, is_read);
+        if (!updated) return NextResponse.json({ error: "Email not found" }, { status: 404 });
+        result.is_read = is_read;
+      }
+      return NextResponse.json({ id, ...result });
     }
 
     // Numeric IDs are Outlook emails
@@ -217,14 +226,21 @@ export async function PATCH(
       return NextResponse.json({ error: "Invalid email ID" }, { status: 400 });
     }
 
-    const updated = await markEmailRead(emailId, userId, is_read);
-    if (!updated) {
-      return NextResponse.json({ error: "Email not found" }, { status: 404 });
+    if (typeof is_done === "boolean") {
+      const updated = await markEmailDone(emailId, userId, is_done);
+      if (!updated) return NextResponse.json({ error: "Email not found" }, { status: 404 });
+      result.is_done = is_done;
+      if (is_done) result.is_read = true;
+    }
+    if (typeof is_read === "boolean" && !result.is_read) {
+      const updated = await markEmailRead(emailId, userId, is_read);
+      if (!updated) return NextResponse.json({ error: "Email not found" }, { status: 404 });
+      result.is_read = is_read;
     }
 
-    return NextResponse.json({ id: emailId, is_read });
+    return NextResponse.json({ id: emailId, ...result });
   } catch (error) {
-    console.error("Error updating email read status:", error);
+    console.error("Error updating email:", error);
     return NextResponse.json(
       { error: "Failed to update email" },
       { status: 500 }

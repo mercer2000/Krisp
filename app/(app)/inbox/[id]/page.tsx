@@ -628,23 +628,23 @@ export default function EmailDetailPage() {
               }}
             />
           </div>
-
-            {/* Compose Pane (inline below email body) */}
-            {composeAction && email && (
-              <ComposePane
-                emailId={email.id}
-                action={composeAction}
-                aiMode={composeAiMode}
-                defaultTo={getDefaultRecipients(composeAction).to}
-                defaultCc={getDefaultRecipients(composeAction).cc}
-                onClose={closeCompose}
-                onSent={closeCompose}
-              />
-            )}
         </main>
 
-        {/* Action items sidebar */}
-        <EmailActionSidebar emailId={email.id} />
+        {/* Compose Pane — right panel on desktop, bottom sheet on mobile */}
+        {composeAction && email && (
+          <ComposePane
+            emailId={email.id}
+            action={composeAction}
+            aiMode={composeAiMode}
+            defaultTo={getDefaultRecipients(composeAction).to}
+            defaultCc={getDefaultRecipients(composeAction).cc}
+            onClose={closeCompose}
+            onSent={closeCompose}
+          />
+        )}
+
+        {/* Action items sidebar — hide when compose is open on desktop */}
+        {!composeAction && <EmailActionSidebar emailId={email.id} />}
       </div>
 
       {/* Delete confirmation modal */}

@@ -4,7 +4,6 @@ import { classifyEmail } from "@/lib/email/classifyEmail";
 import { getEmailById } from "@/lib/email/emails";
 import { classifyItem, buildEmailContent } from "@/lib/smartLabels/classify";
 import { classifyItemForPages } from "@/lib/pageRules/classify";
-import { detectAndMarkNewsletters } from "@/lib/email/newsletterDetection";
 import { detectAndMarkSpam } from "@/lib/email/spamDetection";
 import { getLabelsForEmails } from "@/lib/email/labels";
 import { isEncrypted, decryptNullable } from "@/lib/encryption";
@@ -153,21 +152,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Step 2: Newsletter + spam detection (uses AI labels assigned above)
-    let newslettersMarked = 0;
+    // Step 2: Spam detection (uses AI labels assigned above)
     let spamMarked = 0;
 
     if (processedIds.length > 0) {
       const labelsMap = await getLabelsForEmails(processedIds);
-
-      // Build batches for newsletter and spam detection
-      const newsletterBatch: {
-        id: number;
-        sender: string;
-        subject: string | null;
-        raw_payload?: Record<string, unknown> | null;
-        labels?: { name: string; confidence: number | null }[];
-      }[] = [];
 
       const spamBatch: {
         id: number;
@@ -194,14 +183,6 @@ export async function POST(request: NextRequest) {
           : (row.body_html as string | null);
         const labels = labelsMap[row.id] ?? [];
 
-        newsletterBatch.push({
-          id: row.id,
-          sender,
-          subject,
-          raw_payload: row.raw_payload,
-          labels,
-        });
-
         spamBatch.push({
           id: row.id,
           sender,
@@ -211,13 +192,6 @@ export async function POST(request: NextRequest) {
           raw_payload: row.raw_payload,
           labels,
         });
-      }
-
-      try {
-        const nlResult = await detectAndMarkNewsletters(userId, newsletterBatch);
-        newslettersMarked = nlResult.marked;
-      } catch (err) {
-        console.error("Newsletter detection failed during classify:", err);
       }
 
       try {
@@ -233,7 +207,6 @@ export async function POST(request: NextRequest) {
       total: results.length,
       processedIds,
       results,
-      newslettersMarked,
       spamMarked,
     });
   } catch (error) {

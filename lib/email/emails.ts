@@ -205,14 +205,15 @@ export async function listEmails(
   is_newsletter: boolean;
   is_spam: boolean;
   is_read: boolean;
+  is_done: boolean;
   unsubscribe_link: string | null;
 }>; total: number }> {
   const after = opts.after || null;
   const before = opts.before || null;
   const accountId = opts.accountId || null;
-  // folder filter: "newsletter" = only newsletters, "inbox" = exclude newsletters/spam, "spam" = only spam, undefined = all
-  const showNewsletter = opts.folder === "newsletter" ? true : opts.folder === "inbox" ? false : null;
+  // folder filter: "inbox" = exclude spam+done, "spam" = only spam, "done" = only done, undefined = all
   const showSpam = opts.folder === "spam" ? true : opts.folder === "inbox" ? false : null;
+  const showDone = opts.folder === "done" ? true : opts.folder === "inbox" ? false : null;
 
   // Fetch all matching emails (date-filtered server-side)
   const allRows = await sql`
@@ -226,6 +227,7 @@ export async function listEmails(
       is_newsletter,
       is_spam,
       is_read,
+      is_done,
       unsubscribe_link
     FROM emails
     WHERE tenant_id = ${tenantId}
@@ -233,8 +235,8 @@ export async function listEmails(
       AND (${after}::timestamptz IS NULL OR received_at >= ${after}::timestamptz)
       AND (${before}::timestamptz IS NULL OR received_at <= ${before}::timestamptz)
       AND (${accountId}::uuid IS NULL OR outlook_account_id = ${accountId}::uuid)
-      AND (${showNewsletter}::boolean IS NULL OR is_newsletter = ${showNewsletter}::boolean)
       AND (${showSpam}::boolean IS NULL OR is_spam = ${showSpam}::boolean)
+      AND (${showDone}::boolean IS NULL OR is_done = ${showDone}::boolean)
     ORDER BY received_at DESC
   `;
 
@@ -256,6 +258,7 @@ export async function listEmails(
       is_newsletter: dr.is_newsletter as boolean,
       is_spam: dr.is_spam as boolean,
       is_read: dr.is_read as boolean,
+      is_done: dr.is_done as boolean,
       unsubscribe_link: dr.unsubscribe_link as string | null,
     };
   });
@@ -339,6 +342,30 @@ export async function markEmailRead(
     WHERE id = ${id} AND tenant_id = ${tenantId} AND deleted_at IS NULL
     RETURNING id
   `;
+  return rows.length > 0;
+}
+
+/**
+ * Mark an email as done or not done. When marking done, also marks as read.
+ */
+export async function markEmailDone(
+  id: number,
+  tenantId: string,
+  isDone: boolean
+): Promise<boolean> {
+  const rows = isDone
+    ? await sql`
+        UPDATE emails
+        SET is_done = true, is_read = true, updated_at = NOW()
+        WHERE id = ${id} AND tenant_id = ${tenantId} AND deleted_at IS NULL
+        RETURNING id
+      `
+    : await sql`
+        UPDATE emails
+        SET is_done = false, updated_at = NOW()
+        WHERE id = ${id} AND tenant_id = ${tenantId} AND deleted_at IS NULL
+        RETURNING id
+      `;
   return rows.length > 0;
 }
 

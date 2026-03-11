@@ -18,7 +18,7 @@ interface InboxFetchParams {
   beforeDate: string;
   filterAccount: string | null;
   filterProvider: "outlook" | "gmail" | "zoom" | null;
-  activeFolder: "inbox" | "newsletter" | "spam" | "vip" | "all";
+  activeFolder: "inbox" | "spam" | "done" | "all";
 }
 
 interface CachedListData {

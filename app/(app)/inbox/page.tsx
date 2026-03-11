@@ -242,22 +242,6 @@ export default function InboxPage() {
   const [sendToPageEmails, setSendToPageEmails] = useState<EmailListItem[]>([]);
   const [bulkSelected, setBulkSelected] = useState<Set<string | number>>(new Set());
 
-  // Keyboard shortcut: Ctrl+Shift+P → Send to Page (bulk selected emails)
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "p") {
-        e.preventDefault();
-        const selected = emails.filter((em) => bulkSelected.has(em.id));
-        if (selected.length > 0) {
-          setSendToPageEmails(selected);
-          setShowSendToPage(true);
-        }
-      }
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [emails, bulkSelected]);
-
   // Auto-generate forwarding draft when forward modal opens
   useEffect(() => {
     if (!showForwardModal || !forwardEmailId) return;
@@ -291,23 +275,13 @@ export default function InboxPage() {
     return () => { cancelled = true; };
   }, [showForwardModal, forwardEmailId]);
 
-  // VIP contacts state
-  const [vipMap, setVipMap] = useState<Record<string, boolean>>({});
-  const [showVipManager, setShowVipManager] = useState(false);
-  const [vipContactList, setVipContactList] = useState<{ id: string; email: string; display_name: string | null; notify_on_new: boolean; created_at: string }[]>([]);
-  const [newVipEmail, setNewVipEmail] = useState("");
-  const [newVipName, setNewVipName] = useState("");
-  const [addingVip, setAddingVip] = useState(false);
+  // Folder & Spam state
+  const [activeFolder, setActiveFolder] = useState<"inbox" | "spam" | "done" | "all">("inbox");
 
-  // Newsletter & Spam state
-  const [activeFolder, setActiveFolder] = useState<"inbox" | "newsletter" | "spam" | "vip" | "all">("inbox");
-
+  // Focused email for keyboard navigation
+  const [focusedEmailId, setFocusedEmailId] = useState<string | number | null>(null);
 
   const [syncing, setSyncing] = useState(false);
-  const [showWhitelistManager, setShowWhitelistManager] = useState(false);
-  const [whitelist, setWhitelist] = useState<{ id: string; sender_email: string; created_at: string }[]>([]);
-  const [newWhitelistEmail, setNewWhitelistEmail] = useState("");
-  const [addingWhitelist, setAddingWhitelist] = useState(false);
 
   // Pinned tabs state (persisted in localStorage)
   const [pinnedAccounts, setPinnedAccounts] = useState<string[]>(() => {
@@ -461,7 +435,7 @@ export default function InboxPage() {
         if (beforeDate) params.set("before", new Date(beforeDate).toISOString());
         if (filterAccount) params.set("accountId", filterAccount);
         if (filterProvider) params.set("provider", filterProvider);
-        if (activeFolder !== "all" && activeFolder !== "vip") params.set("folder", activeFolder);
+        if (activeFolder !== "all") params.set("folder", activeFolder);
 
         const res = await fetch(`/api/emails?${params}`);
         if (!res.ok) throw new Error("Failed to fetch emails");
@@ -470,6 +444,7 @@ export default function InboxPage() {
         setTotal(data.total);
         setIsSemanticSearch(false);
         setEmbeddingStatus(null);
+        if (data.data.length > 0) setFocusedEmailId(data.data[0].id);
         cache.cacheListResponse(fetchParams, data);
       }
     } catch {
@@ -620,18 +595,6 @@ export default function InboxPage() {
       });
     }
 
-    // Batch-check VIP status for displayed senders
-    const senders = [...new Set(emails.map((e) => e.sender))];
-    if (senders.length > 0) {
-      fetch("/api/vip-contacts/batch-check", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ senders }),
-      })
-        .then((r) => r.json())
-        .then((d) => { if (d.vipMap) setVipMap(d.vipMap); })
-        .catch(() => {});
-    }
   }, [emails]);
 
   // Background polling: only on page 1 with no active search/filters
@@ -775,7 +738,6 @@ export default function InboxPage() {
 
       cache.invalidateAll();
       const parts = [`${data.classified} labeled`];
-      if (data.newslettersMarked > 0) parts.push(`${data.newslettersMarked} newsletters`);
       if (data.spamMarked > 0) parts.push(`${data.spamMarked} spam`);
       toast({
         title: "Classification complete",
@@ -799,143 +761,6 @@ export default function InboxPage() {
     window.open(link, "_blank", "noopener,noreferrer");
   };
 
-  // Fetch whitelist
-  const fetchWhitelist = async () => {
-    try {
-      const res = await fetch("/api/emails/newsletter/whitelist");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.data) setWhitelist(data.data);
-      }
-    } catch {
-      // silent
-    }
-  };
-
-  // Add to whitelist
-  const handleAddWhitelist = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newWhitelistEmail.trim()) return;
-    setAddingWhitelist(true);
-    try {
-      const res = await fetch("/api/emails/newsletter/whitelist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ senderEmail: newWhitelistEmail.trim() }),
-      });
-      if (!res.ok) throw new Error("Failed to add to whitelist");
-      const { data: entry } = await res.json();
-      setWhitelist((prev) => [...prev, entry]);
-      setNewWhitelistEmail("");
-      toast({ title: "Sender whitelisted", variant: "success" });
-    } catch {
-      toast({ title: "Failed to add to whitelist", variant: "destructive" });
-    } finally {
-      setAddingWhitelist(false);
-    }
-  };
-
-  // Remove from whitelist
-  const handleRemoveWhitelist = async (id: string) => {
-    try {
-      const res = await fetch(`/api/emails/newsletter/whitelist/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to remove");
-      setWhitelist((prev) => prev.filter((w) => w.id !== id));
-      toast({ title: "Sender removed from whitelist", variant: "success" });
-    } catch {
-      toast({ title: "Failed to remove from whitelist", variant: "destructive" });
-    }
-  };
-
-  // Fetch VIP contacts
-  const fetchVipContacts = async () => {
-    try {
-      const res = await fetch("/api/vip-contacts");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.data) setVipContactList(data.data);
-      }
-    } catch {
-      // silent
-    }
-  };
-
-  // Add VIP contact
-  const handleAddVip = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newVipEmail.trim()) return;
-    setAddingVip(true);
-    try {
-      const res = await fetch("/api/vip-contacts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: newVipEmail.trim(),
-          displayName: newVipName.trim() || undefined,
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Failed to add VIP contact");
-      }
-      const { data: entry } = await res.json();
-      setVipContactList((prev) => [entry, ...prev]);
-      setNewVipEmail("");
-      setNewVipName("");
-      // Refresh VIP map for inbox
-      setVipMap((prev) => ({ ...prev, [entry.email]: true }));
-      toast({ title: "VIP contact added", variant: "success" });
-    } catch (err) {
-      toast({
-        title: "Failed to add VIP contact",
-        description: err instanceof Error ? err.message : "Unknown error",
-        variant: "destructive",
-      });
-    } finally {
-      setAddingVip(false);
-    }
-  };
-
-  // Remove VIP contact
-  const handleRemoveVip = async (id: string, email: string) => {
-    try {
-      const res = await fetch(`/api/vip-contacts/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to remove");
-      setVipContactList((prev) => prev.filter((v) => v.id !== id));
-      setVipMap((prev) => {
-        const next = { ...prev };
-        delete next[email];
-        return next;
-      });
-      toast({ title: "VIP contact removed", variant: "success" });
-    } catch {
-      toast({ title: "Failed to remove VIP contact", variant: "destructive" });
-    }
-  };
-
-  // Quick-add sender as VIP from email row
-  const handleQuickAddVip = async (sender: string) => {
-    try {
-      const res = await fetch("/api/vip-contacts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: sender }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Failed to add VIP contact");
-      }
-      setVipMap((prev) => ({ ...prev, [sender]: true }));
-      toast({ title: `${sender} marked as VIP`, variant: "success" });
-    } catch (err) {
-      toast({
-        title: "Failed to add VIP",
-        description: err instanceof Error ? err.message : "Unknown error",
-        variant: "destructive",
-      });
-    }
-  };
-
   // Toggle read/unread status
   const handleToggleRead = async (emailId: string | number, currentlyRead: boolean) => {
     const newRead = !currentlyRead;
@@ -952,6 +777,32 @@ export default function InboxPage() {
       // Revert on failure
       setEmails((prev) => prev.map((em) => em.id === emailId ? { ...em, is_read: currentlyRead } : em));
       toast({ title: "Failed to update read status", variant: "destructive" });
+    }
+  };
+
+  // Mark email as done / undone
+  const handleMarkDone = async (emailId: string | number, currentlyDone: boolean) => {
+    const newDone = !currentlyDone;
+    const prevEmails = emails;
+    // Optimistic: remove from view in inbox/done tabs, toggle in "all"
+    setEmails((prev) => {
+      if ((activeFolder === "inbox" && newDone) || (activeFolder === "done" && !newDone)) {
+        return prev.filter((em) => em.id !== emailId);
+      }
+      return prev.map((em) => em.id === emailId ? { ...em, is_done: newDone, is_read: newDone ? true : em.is_read } : em);
+    });
+    try {
+      const res = await fetch(`/api/emails/${emailId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_done: newDone }),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      cache.invalidateAll();
+      toast({ title: newDone ? "Done" : "Moved back to inbox", variant: "success" });
+    } catch {
+      setEmails(prevEmails);
+      toast({ title: "Failed to update", variant: "destructive" });
     }
   };
 
@@ -1079,11 +930,8 @@ export default function InboxPage() {
   // Unread count from loaded emails
   const unreadCount = emails.filter((e) => !e.is_read).length;
 
-  // Filter emails by selected label, smart label, or VIP (client-side)
+  // Filter emails by selected label or smart label (client-side)
   let filteredEmails = emails;
-  if (activeFolder === "vip") {
-    filteredEmails = filteredEmails.filter((e) => vipMap[e.sender]);
-  }
   if (filterLabel) {
     filteredEmails = filteredEmails.filter((e) => e.labels?.some((l) => l.id === filterLabel));
   }
@@ -1098,6 +946,99 @@ export default function InboxPage() {
     );
   }
 
+  // Keyboard shortcuts: arrow navigation, E/Right=done, Ctrl+Shift+P=send to page
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName;
+      const editable = (e.target as HTMLElement)?.isContentEditable;
+      if (tag === "INPUT" || tag === "TEXTAREA" || editable) return;
+
+      // Ctrl+Shift+P → Send to Page
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        const selected = emails.filter((em) => bulkSelected.has(em.id));
+        if (selected.length > 0) {
+          setSendToPageEmails(selected);
+          setShowSendToPage(true);
+        }
+        return;
+      }
+
+      // Arrow Up → focus previous email
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setFocusedEmailId((prev) => {
+          const idx = filteredEmails.findIndex((em) => em.id === prev);
+          if (idx <= 0) return filteredEmails[0]?.id ?? null;
+          return filteredEmails[idx - 1].id;
+        });
+        return;
+      }
+
+      // Arrow Down → focus next email
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setFocusedEmailId((prev) => {
+          const idx = filteredEmails.findIndex((em) => em.id === prev);
+          if (idx < 0) return filteredEmails[0]?.id ?? null;
+          if (idx >= filteredEmails.length - 1) return prev;
+          return filteredEmails[idx + 1].id;
+        });
+        return;
+      }
+
+      // Right arrow or E → mark as done (bulk if selected, else focused)
+      if (e.key === "ArrowRight" || e.key === "e" || e.key === "E") {
+        e.preventDefault();
+        if (bulkSelected.size > 0) {
+          // Bulk done
+          const ids = Array.from(bulkSelected);
+          setEmails((prev) => prev.filter((em) => !bulkSelected.has(em.id)));
+          setBulkSelected(new Set());
+          Promise.allSettled(ids.map((id) =>
+            fetch(`/api/emails/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_done: true }) })
+          )).then(() => {
+            cache.invalidateAll();
+            toast({ title: `${ids.length} emails done`, variant: "success" });
+          });
+        } else if (focusedEmailId != null) {
+          const idx = filteredEmails.findIndex((em) => em.id === focusedEmailId);
+          const email = filteredEmails[idx];
+          if (email && !email.is_done) {
+            // Advance focus to next email before removing
+            const nextId = filteredEmails[idx + 1]?.id ?? filteredEmails[idx - 1]?.id ?? null;
+            setFocusedEmailId(nextId);
+            handleMarkDone(email.id, false);
+          }
+        }
+        return;
+      }
+
+      // Left arrow → undo done (move back to inbox) when in Done tab
+      if (e.key === "ArrowLeft" && activeFolder === "done" && focusedEmailId != null) {
+        e.preventDefault();
+        const idx = filteredEmails.findIndex((em) => em.id === focusedEmailId);
+        const email = filteredEmails[idx];
+        if (email) {
+          const nextId = filteredEmails[idx + 1]?.id ?? filteredEmails[idx - 1]?.id ?? null;
+          setFocusedEmailId(nextId);
+          handleMarkDone(email.id, true);
+        }
+        return;
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [emails, filteredEmails, bulkSelected, focusedEmailId, activeFolder]);
+
+  // Scroll focused email into view during keyboard navigation
+  useEffect(() => {
+    if (focusedEmailId == null) return;
+    const el = document.querySelector(`[data-email-id="${focusedEmailId}"]`);
+    if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [focusedEmailId]);
+
   return (
     <div className="flex h-full flex-col bg-[var(--background)]">
       {/* Header */}
@@ -1105,7 +1046,7 @@ export default function InboxPage() {
         <div className="flex items-center justify-between px-3 py-3 md:px-6 md:py-4">
           <div className="min-w-0">
             <h1 className="text-lg md:text-2xl font-bold text-[var(--foreground)]">
-              {activeFolder === "newsletter" ? "Newsletters" : activeFolder === "spam" ? "Spam" : activeFolder === "vip" ? "VIP Inbox" : "Inbox"}
+              {activeFolder === "done" ? "Done" : activeFolder === "spam" ? "Spam" : activeFolder === "all" ? "All Mail" : "Inbox"}
             </h1>
             <p className="text-xs md:text-sm text-[var(--muted-foreground)] mt-0.5 md:mt-1 truncate">
               {total} {total === 1 ? "message" : "messages"}
@@ -1152,7 +1093,7 @@ export default function InboxPage() {
               onClick={handleClassify}
               disabled={classifying}
               className="px-3 py-2 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors disabled:opacity-40"
-              title="Classify, detect newsletters, and detect spam for all emails on this page"
+              title="Classify and detect spam for all emails on this page"
               data-testid="classify-button"
             >
               {classifying ? (
@@ -1303,8 +1244,7 @@ export default function InboxPage() {
           {/* Folder tabs */}
           {([
             { key: "inbox" as const, label: "Inbox" },
-            { key: "vip" as const, label: "VIP" },
-            { key: "newsletter" as const, label: "Newsletters" },
+            { key: "done" as const, label: "Done" },
             { key: "spam" as const, label: "Spam" },
             { key: "all" as const, label: "All" },
           ]).map((tab) => (
@@ -1440,25 +1380,6 @@ export default function InboxPage() {
             );
           })}
 
-          {/* VIP / Whitelist manage buttons */}
-          {activeFolder === "vip" && !filterAccount && !filterLabel && !filterSmartLabel && !filterSmartRulePage && (
-            <button
-              onClick={() => { fetchVipContacts(); setShowVipManager(true); }}
-              className="text-xs px-2.5 py-1 rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors flex-shrink-0"
-              data-testid="manage-vip-button"
-            >
-              Manage VIPs
-            </button>
-          )}
-          {activeFolder === "newsletter" && !filterAccount && !filterLabel && !filterSmartLabel && !filterSmartRulePage && (
-            <button
-              onClick={() => { fetchWhitelist(); setShowWhitelistManager(true); }}
-              className="text-xs px-2.5 py-1 rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors flex-shrink-0"
-              data-testid="manage-whitelist-button"
-            >
-              Whitelist
-            </button>
-          )}
           </div>
           {/* Account dropdown */}
           {accounts.length > 0 && (
@@ -1821,6 +1742,26 @@ export default function InboxPage() {
                 {bulkSelected.size} selected
               </span>
               <button
+                onClick={async () => {
+                  const ids = Array.from(bulkSelected);
+                  const prevEmails = emails;
+                  setEmails((prev) => prev.filter((em) => !bulkSelected.has(em.id)));
+                  setBulkSelected(new Set());
+                  await Promise.allSettled(ids.map((id) =>
+                    fetch(`/api/emails/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_done: true }) })
+                  ));
+                  cache.invalidateAll();
+                  toast({ title: `${ids.length} emails done`, variant: "success" });
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md text-emerald-700 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+                Done
+              </button>
+              <button
                 onClick={() => {
                   const selected = filteredEmails.filter((e) => bulkSelected.has(e.id));
                   if (selected.length > 0) {
@@ -1877,7 +1818,9 @@ export default function InboxPage() {
               return (
               <div key={email.id}>
               <div
-                className={`flex items-start gap-2 md:gap-4 px-3 md:px-6 py-3 md:py-4 hover:bg-[var(--accent)]/50 transition-colors group ${!email.is_read ? "bg-[var(--primary)]/[0.03]" : ""}`}
+                data-email-id={email.id}
+                onClick={() => setFocusedEmailId(email.id)}
+                className={`flex items-start gap-2 md:gap-4 px-3 md:px-6 py-3 md:py-4 hover:bg-[var(--accent)]/50 transition-colors group ${!email.is_read ? "bg-[var(--primary)]/[0.03]" : ""} ${focusedEmailId === email.id ? "border-l-2 border-[var(--primary)] pl-[10px] md:pl-[22px]" : "border-l-2 border-transparent"}`}
               >
                 {/* Unread indicator dot */}
                 <div className="flex-shrink-0 pt-2 w-2 hidden md:flex items-start">
@@ -1989,16 +1932,12 @@ export default function InboxPage() {
                   <div className="flex items-center gap-2 md:hidden">
                     <span className={`text-sm text-[var(--foreground)] truncate min-w-0 flex-1 inline-flex items-center gap-1 ${!email.is_read ? "font-semibold" : "font-medium"}`}>
                       {!email.is_read && <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] flex-shrink-0 md:hidden" />}
-                      {email.sender}
-                      {vipMap[email.sender] && (
-                        <span
-                          className="text-[10px] px-1 py-0.5 rounded-full font-semibold flex-shrink-0"
-                          style={{ backgroundColor: "#F59E0B22", color: "#D97706", border: "1px solid #F59E0B44" }}
-                          data-testid="vip-badge"
-                        >
-                          VIP
+                      {(email.provider === "outlook" || email.provider === "gmail") && (
+                        <span className="flex-shrink-0 text-[var(--muted-foreground)]" title={email.provider === "gmail" ? "Gmail" : "Outlook"}>
+                          <ProviderIcon provider={email.provider} size={12} />
                         </span>
                       )}
+                      {email.sender}
                     </span>
                     <span
                       className="text-[10px] text-[var(--muted-foreground)] flex-shrink-0"
@@ -2030,17 +1969,12 @@ export default function InboxPage() {
                   <div className="hidden md:flex items-baseline gap-3">
                     {/* Sender */}
                     <span className={`text-sm text-[var(--foreground)] truncate max-w-[200px] inline-flex items-center gap-1 ${!email.is_read ? "font-semibold" : "font-medium"}`}>
-                      {email.sender}
-                      {vipMap[email.sender] && (
-                        <span
-                          className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0"
-                          style={{ backgroundColor: "#F59E0B22", color: "#D97706", border: "1px solid #F59E0B44" }}
-                          title="VIP Contact"
-                          data-testid="vip-badge"
-                        >
-                          VIP
+                      {(email.provider === "outlook" || email.provider === "gmail") && (
+                        <span className="flex-shrink-0 text-[var(--muted-foreground)]" title={email.provider === "gmail" ? "Gmail" : "Outlook"}>
+                          <ProviderIcon provider={email.provider} size={12} />
                         </span>
                       )}
+                      {email.sender}
                     </span>
 
                     {/* Subject */}
@@ -2114,6 +2048,25 @@ export default function InboxPage() {
 
                 {/* Actions — hidden on mobile (accessible from detail page) */}
                 <div className="flex-shrink-0 hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Done / Undo done */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleMarkDone(email.id, !!email.is_done); }}
+                    className={`p-1.5 rounded-md transition-colors ${email.is_done ? "text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10" : "text-[var(--muted-foreground)] hover:text-emerald-600 hover:bg-emerald-500/10"}`}
+                    title={email.is_done ? "Move to inbox" : "Done"}
+                    data-testid="toggle-done-button"
+                  >
+                    {email.is_done ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+                        <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                        <polyline points="22 4 12 14.01 9 11.01" />
+                      </svg>
+                    )}
+                  </button>
                   {/* Read/Unread toggle */}
                   <button
                     onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleToggleRead(email.id, !!email.is_read); }}
@@ -2134,19 +2087,6 @@ export default function InboxPage() {
                       </svg>
                     )}
                   </button>
-                  {/* VIP toggle */}
-                  {!vipMap[email.sender] && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleQuickAddVip(email.sender); }}
-                      className="p-1.5 rounded-md text-[var(--muted-foreground)] hover:text-amber-600 hover:bg-amber-500/10 transition-colors"
-                      title="Mark as VIP"
-                      data-testid="mark-vip-button"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                      </svg>
-                    </button>
-                  )}
                   <button
                     onClick={(e) => { e.stopPropagation(); e.preventDefault(); openSmartLabelCreator(email); }}
                     className="p-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
@@ -2504,143 +2444,6 @@ export default function InboxPage() {
         </div>
       </Modal>
 
-      {/* VIP Contacts Manager Modal */}
-      <Modal
-        open={showVipManager}
-        onClose={() => setShowVipManager(false)}
-        title="VIP Contacts"
-      >
-        <div className="space-y-4" data-testid="vip-manager-modal">
-          <p className="text-xs text-[var(--muted-foreground)]">
-            Emails from VIP contacts will be highlighted with a gold badge and surfaced in the VIP tab.
-          </p>
-
-          {/* Existing VIP contacts */}
-          {vipContactList.length > 0 ? (
-            <div className="space-y-2 max-h-64 overflow-auto">
-              {vipContactList.map((contact) => (
-                <div key={contact.id} className="flex items-center justify-between py-1.5">
-                  <div className="min-w-0">
-                    <span className="text-sm text-[var(--foreground)] truncate block">
-                      {contact.email}
-                    </span>
-                    {contact.display_name && (
-                      <span className="text-xs text-[var(--muted-foreground)] truncate block">
-                        {contact.display_name}
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => handleRemoveVip(contact.id, contact.email)}
-                    className="text-xs text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-colors flex-shrink-0 ml-2"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-[var(--muted-foreground)] py-2">
-              No VIP contacts yet. Add email addresses or domains below.
-            </p>
-          )}
-
-          {/* Add VIP contact */}
-          <form onSubmit={handleAddVip} className="border-t border-[var(--border)] pt-4 space-y-2">
-            <p className="text-xs font-medium text-[var(--muted-foreground)]">
-              Add VIP contact or domain
-            </p>
-            <input
-              type="text"
-              value={newVipEmail}
-              onChange={(e) => setNewVipEmail(e.target.value)}
-              placeholder="email@example.com or example.com"
-              maxLength={512}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-              data-testid="vip-email-input"
-            />
-            <input
-              type="text"
-              value={newVipName}
-              onChange={(e) => setNewVipName(e.target.value)}
-              placeholder="Display name (optional)"
-              maxLength={255}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-              data-testid="vip-name-input"
-            />
-            <button
-              type="submit"
-              disabled={addingVip || !newVipEmail.trim()}
-              className="w-full px-4 py-2 text-sm font-medium bg-[var(--primary)] text-[var(--primary-foreground)] rounded-lg hover:opacity-90 transition-opacity disabled:opacity-40"
-              data-testid="add-vip-button"
-            >
-              {addingVip ? "Adding..." : "Add VIP"}
-            </button>
-          </form>
-        </div>
-      </Modal>
-
-      {/* Newsletter Whitelist Manager Modal */}
-      <Modal
-        open={showWhitelistManager}
-        onClose={() => setShowWhitelistManager(false)}
-        title="Newsletter Whitelist"
-      >
-        <div className="space-y-4" data-testid="whitelist-manager-modal">
-          <p className="text-xs text-[var(--muted-foreground)]">
-            Whitelisted senders will never be moved to the Newsletter folder, even if detected as newsletters.
-          </p>
-
-          {/* Existing whitelist entries */}
-          {whitelist.length > 0 ? (
-            <div className="space-y-2 max-h-64 overflow-auto">
-              {whitelist.map((entry) => (
-                <div key={entry.id} className="flex items-center justify-between py-1.5">
-                  <span className="text-sm text-[var(--foreground)] truncate">
-                    {entry.sender_email}
-                  </span>
-                  <button
-                    onClick={() => handleRemoveWhitelist(entry.id)}
-                    className="text-xs text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-colors flex-shrink-0 ml-2"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-[var(--muted-foreground)] py-2">
-              No whitelisted senders yet.
-            </p>
-          )}
-
-          {/* Add to whitelist */}
-          <form onSubmit={handleAddWhitelist} className="border-t border-[var(--border)] pt-4">
-            <p className="text-xs font-medium text-[var(--muted-foreground)] mb-2">
-              Add sender to whitelist
-            </p>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={newWhitelistEmail}
-                onChange={(e) => setNewWhitelistEmail(e.target.value)}
-                placeholder="sender@example.com"
-                maxLength={512}
-                className="flex-1 px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                data-testid="whitelist-email-input"
-              />
-              <button
-                type="submit"
-                disabled={addingWhitelist || !newWhitelistEmail.trim()}
-                className="px-4 py-2 text-sm font-medium bg-[var(--primary)] text-[var(--primary-foreground)] rounded-lg hover:opacity-90 transition-opacity disabled:opacity-40"
-                data-testid="add-whitelist-button"
-              >
-                {addingWhitelist ? "Adding..." : "Add"}
-              </button>
-            </div>
-          </form>
-        </div>
-      </Modal>
 
       {/* Create Smart Label Modal */}
       <Modal

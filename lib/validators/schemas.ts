@@ -278,7 +278,7 @@ export const emailListQuerySchema = z.object({
   before: z.string().datetime({ offset: true }).optional(),
   accountId: z.string().uuid().optional(),
   provider: z.enum(["outlook", "gmail", "zoom"]).optional(),
-  folder: z.enum(["inbox", "newsletter", "spam"]).optional(),
+  folder: z.enum(["inbox", "spam", "done"]).optional(),
 });
 
 export type EmailListQueryInput = z.infer<typeof emailListQuerySchema>;
@@ -322,26 +322,6 @@ export const updateOutboundWebhookSchema = z.object({
 
 export type CreateOutboundWebhookInput = z.infer<typeof createOutboundWebhookSchema>;
 export type UpdateOutboundWebhookInput = z.infer<typeof updateOutboundWebhookSchema>;
-
-// ── VIP Contacts ─────────────────────────────────────
-export const createVipContactSchema = z.object({
-  email: z.string().min(1, "Email is required").max(512),
-  displayName: z.string().max(255).optional(),
-  notifyOnNew: z.boolean().optional(),
-});
-
-export const updateVipContactSchema = z.object({
-  displayName: z.string().max(255).nullable().optional(),
-  notifyOnNew: z.boolean().optional(),
-});
-
-export const batchCheckVipSchema = z.object({
-  senders: z.array(z.string()).min(1).max(200),
-});
-
-export type CreateVipContactInput = z.infer<typeof createVipContactSchema>;
-export type UpdateVipContactInput = z.infer<typeof updateVipContactSchema>;
-export type BatchCheckVipInput = z.infer<typeof batchCheckVipSchema>;
 
 // ── Contacts ────────────────────────────────────────
 export const contactListQuerySchema = z.object({

@@ -145,6 +145,30 @@ export async function markGmailEmailRead(
 }
 
 /**
+ * Mark a Gmail email as done or not done. When marking done, also marks as read.
+ */
+export async function markGmailEmailDone(
+  id: string,
+  tenantId: string,
+  isDone: boolean
+): Promise<boolean> {
+  const rows = isDone
+    ? await sql`
+        UPDATE gmail_emails
+        SET is_done = true, is_read = true, updated_at = NOW()
+        WHERE id = ${id} AND tenant_id = ${tenantId}
+        RETURNING id
+      `
+    : await sql`
+        UPDATE gmail_emails
+        SET is_done = false, updated_at = NOW()
+        WHERE id = ${id} AND tenant_id = ${tenantId}
+        RETURNING id
+      `;
+  return rows.length > 0;
+}
+
+/**
  * List Gmail emails for the unified inbox view with pagination, search, and date filters.
  * Returns the same shape as the Outlook listEmails function for easy merging.
  */
@@ -164,24 +188,25 @@ export async function listGmailEmails(
   is_newsletter: boolean;
   is_spam: boolean;
   is_read: boolean;
+  is_done: boolean;
   unsubscribe_link: string | null;
 }>> {
   const after = opts.after || null;
   const before = opts.before || null;
-  const showNewsletter = opts.folder === "newsletter" ? true : opts.folder === "inbox" ? false : null;
   const showSpam = opts.folder === "spam" ? true : opts.folder === "inbox" ? false : null;
+  const showDone = opts.folder === "done" ? true : opts.folder === "inbox" ? false : null;
 
   const allRows = await sql`
     SELECT
       id, sender, subject, received_at,
       recipients, attachments, body_plain,
-      tenant_id, is_newsletter, is_spam, is_read, unsubscribe_link
+      tenant_id, is_newsletter, is_spam, is_read, is_done, unsubscribe_link
     FROM gmail_emails
     WHERE tenant_id = ${tenantId}
       AND (${after}::timestamptz IS NULL OR received_at >= ${after}::timestamptz)
       AND (${before}::timestamptz IS NULL OR received_at <= ${before}::timestamptz)
-      AND (${showNewsletter}::boolean IS NULL OR is_newsletter = ${showNewsletter}::boolean)
       AND (${showSpam}::boolean IS NULL OR is_spam = ${showSpam}::boolean)
+      AND (${showDone}::boolean IS NULL OR is_done = ${showDone}::boolean)
     ORDER BY received_at DESC
   `;
 
@@ -204,6 +229,7 @@ export async function listGmailEmails(
       is_newsletter: dr.is_newsletter as boolean,
       is_spam: dr.is_spam as boolean,
       is_read: dr.is_read as boolean,
+      is_done: dr.is_done as boolean,
       unsubscribe_link: dr.unsubscribe_link as string | null,
     };
   });

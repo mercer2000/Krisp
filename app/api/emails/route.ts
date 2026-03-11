@@ -64,6 +64,7 @@ export async function GET(request: NextRequest) {
         is_newsletter: row.is_newsletter,
         is_spam: row.is_spam,
         is_read: row.is_read,
+        is_done: row.is_done,
         unsubscribe_link: row.unsubscribe_link,
       }));
 
@@ -95,14 +96,15 @@ export async function GET(request: NextRequest) {
         is_newsletter: row.is_newsletter,
         is_spam: row.is_spam,
         is_read: row.is_read,
+        is_done: row.is_done,
         unsubscribe_link: row.unsubscribe_link,
       }));
 
       allItems.push(...gmailItems);
     }
 
-    // Fetch Zoom chat messages (skip for newsletter/spam folders)
-    if (fetchZoom && folder !== "newsletter" && folder !== "spam") {
+    // Fetch Zoom chat messages (skip for spam/done folders)
+    if (fetchZoom && folder !== "spam" && folder !== "done") {
       const zoomItems = await listZoomMessages(userId, { q, after, before });
       allItems.push(...zoomItems);
     }

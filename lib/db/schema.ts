@@ -419,6 +419,7 @@ export const gmailEmails = pgTable(
     isSpam: boolean("is_spam").default(false).notNull(),
     unsubscribeLink: text("unsubscribe_link"),
     isRead: boolean("is_read").default(false).notNull(),
+    isDone: boolean("is_done").default(false).notNull(),
     ingestedAt: timestamp("ingested_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -603,6 +604,7 @@ export const emails = pgTable(
     isSpam: boolean("is_spam").default(false).notNull(),
     unsubscribeLink: text("unsubscribe_link"),
     isRead: boolean("is_read").default(false).notNull(),
+    isDone: boolean("is_done").default(false).notNull(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
