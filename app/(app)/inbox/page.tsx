@@ -1886,7 +1886,7 @@ export default function InboxPage() {
         {/* Left column: email list */}
         <div
           ref={listColumnRef}
-          className={`${focusedEmailId != null ? "hidden md:flex md:flex-col flex-shrink-0" : "flex-1 flex flex-col"} overflow-auto`}
+          className={`${focusedEmailId != null ? "flex-1 md:flex-none flex flex-col" : "flex-1 flex flex-col"} overflow-auto`}
           style={focusedEmailId != null ? { width: listWidth } : undefined}
         >
         {error && (
