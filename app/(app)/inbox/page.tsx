@@ -2035,9 +2035,8 @@ export default function InboxPage() {
               <div
                 data-email-id={email.id}
                 onClick={() => setFocusedEmailId(email.id)}
-                className={`px-3 md:px-6 py-3 md:py-4 hover:bg-[var(--accent)]/50 transition-colors group ${!email.is_read ? "bg-[var(--primary)]/[0.03]" : ""} ${focusedEmailId === email.id ? "border-l-[3px] border-[var(--primary)] pl-[9px] md:pl-[21px] bg-[var(--primary)]/10 shadow-[inset_0_0_0_1px_var(--primary)]" : "border-l-[3px] border-transparent"}`}
+                className={`flex items-start gap-2 md:gap-4 md:relative px-3 md:px-6 py-3 md:py-4 hover:bg-[var(--accent)]/50 transition-colors group ${!email.is_read ? "bg-[var(--primary)]/[0.03]" : ""} ${focusedEmailId === email.id ? "border-l-[3px] border-[var(--primary)] pl-[9px] md:pl-[21px] bg-[var(--primary)]/10 shadow-[inset_0_0_0_1px_var(--primary)]" : "border-l-[3px] border-transparent"}`}
               >
-                <div className="flex items-start gap-2 md:gap-4">
                 {/* Unread indicator dot */}
                 <div className="flex-shrink-0 pt-2 w-2 hidden md:flex items-start">
                   {!email.is_read && (
@@ -2238,6 +2237,23 @@ export default function InboxPage() {
                     )}
                   </div>
 
+                  {/* Preview + account indicator (desktop) */}
+                  <div className="hidden md:flex items-center gap-2 mt-1">
+                    {email.preview && (
+                      <p className="text-xs text-[var(--muted-foreground)] truncate flex-1 min-w-0">
+                        {email.preview}
+                      </p>
+                    )}
+                    {accounts.length > 1 && email.account_id && (
+                      <span
+                        className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--muted-foreground)] flex-shrink-0 truncate max-w-[200px] inline-flex items-center gap-1"
+                        title={accounts.find((a) => a.id === email.account_id)?.email ?? "Unknown account"}
+                      >
+                        <ProviderIcon provider={email.provider} size={10} />
+                        {accounts.find((a) => a.id === email.account_id)?.email ?? "Unknown"}
+                      </span>
+                    )}
+                  </div>
                 </Link>
 
                 {/* Unsubscribe button — always visible for emails with unsubscribe link */}
@@ -2253,7 +2269,7 @@ export default function InboxPage() {
                 )}
 
                 {/* Actions — hidden on mobile (accessible from detail page) */}
-                <div className="flex-shrink-0 hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-6 top-3 bg-[var(--background)] group-hover:bg-[var(--accent)] rounded-md pl-1">
                   {/* Done / Undo done */}
                   <button
                     onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleMarkDone(email.id, !!email.is_done); }}
@@ -2368,25 +2384,6 @@ export default function InboxPage() {
                       <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
                     </svg>
                   </button>
-                </div>
-                </div>
-
-                {/* Preview + account indicator (desktop) — outside flex row to span full width */}
-                <div className="hidden md:flex items-center gap-2 mt-1 ml-[86px]">
-                  {email.preview && (
-                    <p className="text-xs text-[var(--muted-foreground)] truncate flex-1 min-w-0">
-                      {email.preview}
-                    </p>
-                  )}
-                  {accounts.length > 1 && email.account_id && (
-                    <span
-                      className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--muted-foreground)] flex-shrink-0 truncate max-w-[200px] inline-flex items-center gap-1"
-                      title={accounts.find((a) => a.id === email.account_id)?.email ?? "Unknown account"}
-                    >
-                      <ProviderIcon provider={email.provider} size={10} />
-                      {accounts.find((a) => a.id === email.account_id)?.email ?? "Unknown"}
-                    </span>
-                  )}
                 </div>
               </div>
 
