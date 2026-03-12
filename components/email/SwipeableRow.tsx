@@ -3,9 +3,9 @@
 import { useState, useCallback, useRef } from "react";
 
 const SWIPE_THRESHOLD = 80;
-const MAX_LEFT_OFFSET = 120; // cap left swipe so it doesn't cover too much
-const DEAD_ZONE = 20; // pixels before we decide swipe vs scroll
-const HORIZONTAL_RATIO = 2.5; // dx must be this many times dy to count as swipe
+const MAX_LEFT_OFFSET = 120;
+const BREAKAWAY = 40; // px of deliberate horizontal drag before row starts moving
+const H_RATIO = 3; // horizontal must dominate vertical by this factor
 
 export function SwipeableRow({
   children,
@@ -24,7 +24,8 @@ export function SwipeableRow({
   const startY = useRef(0);
   const currentX = useRef(0);
   const swiping = useRef(false);
-  const locked = useRef(false); // true = locked to vertical scroll, ignore swipe
+  const locked = useRef(false);
+  const anchorX = useRef(0); // X position when swipe engaged — offset is relative to this
   const rowRef = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState(0);
   const [dismissed, setDismissed] = useState<"left" | "right" | false>(false);
@@ -32,6 +33,7 @@ export function SwipeableRow({
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
     startY.current = e.touches[0].clientY;
+    anchorX.current = 0;
     currentX.current = 0;
     swiping.current = false;
     locked.current = false;
@@ -42,28 +44,29 @@ export function SwipeableRow({
 
     const dx = e.touches[0].clientX - startX.current;
     const dy = e.touches[0].clientY - startY.current;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
 
     if (!swiping.current) {
-      // Still in dead zone — wait for a clear signal
-      if (Math.abs(dx) < DEAD_ZONE && Math.abs(dy) < DEAD_ZONE) {
-        return;
-      }
-      // Vertical scroll wins — lock out swipe for this gesture
-      if (Math.abs(dy) >= DEAD_ZONE || Math.abs(dx) < Math.abs(dy) * HORIZONTAL_RATIO) {
+      // Vertical wins early — lock to scroll
+      if (absDy >= 15 && absDx < absDy * H_RATIO) {
         locked.current = true;
         return;
       }
-      // Clear horizontal intent
+      // Not enough horizontal movement yet — stay idle
+      if (absDx < BREAKAWAY) return;
+      // Passed breakaway with clear horizontal intent
       swiping.current = true;
+      anchorX.current = e.touches[0].clientX; // anchor so offset starts at 0
     }
 
-    // Cap left swipe offset; right swipe is uncapped
-    let clampedDx = dx;
-    if (!onSwipeLeft && dx < 0) clampedDx = 0;
-    if (dx < 0) clampedDx = Math.max(-MAX_LEFT_OFFSET, dx);
+    // Offset is relative to where swipe engaged, not where finger first touched
+    let visualDx = e.touches[0].clientX - anchorX.current;
+    if (!onSwipeLeft && visualDx < 0) visualDx = 0;
+    if (visualDx < 0) visualDx = Math.max(-MAX_LEFT_OFFSET, visualDx);
 
-    currentX.current = clampedDx;
-    setOffset(clampedDx);
+    currentX.current = visualDx;
+    setOffset(visualDx);
   }, [onSwipeLeft]);
 
   const onTouchEnd = useCallback(() => {
