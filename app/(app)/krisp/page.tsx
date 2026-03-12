@@ -766,12 +766,105 @@ function KrispPageInner() {
                       <div className="fixed inset-0 z-50 cursor-col-resize" />
                     )}
 
-                    {/* Right panel: preview pane placeholder (desktop only) */}
+                    {/* Right panel: preview pane (desktop only) */}
                     {focusedMeetingId != null ? (
                       <div className="hidden md:flex flex-col flex-1 overflow-hidden bg-[var(--background)]">
-                        <div className="flex-1 flex items-center justify-center text-sm text-[var(--muted-foreground)]">
-                          Preview placeholder (Task 4)
-                        </div>
+                        {focusedMeeting ? (
+                          <div className="flex-1 overflow-auto">
+                            {/* Header */}
+                            <div className="px-5 py-4 border-b border-[var(--border)]">
+                              <div className="flex items-start justify-between gap-3 mb-2">
+                                <h2 className="text-base font-semibold text-[var(--foreground)] leading-snug">
+                                  {focusedMeeting.meeting_title || "Untitled Meeting"}
+                                </h2>
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenMeetingId(focusedMeeting.id)}
+                                  className="flex-shrink-0 text-xs text-[var(--primary)] hover:underline whitespace-nowrap"
+                                >
+                                  Open full
+                                </button>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
+                                <span>{formatDate(focusedMeeting.meeting_start_date)}</span>
+                                {focusedMeeting.meeting_duration && (
+                                  <>
+                                    <span className="text-[var(--border)]">&middot;</span>
+                                    <span>{formatDuration(focusedMeeting.meeting_duration)}</span>
+                                  </>
+                                )}
+                              </div>
+                              {/* Speakers */}
+                              {Array.isArray(focusedMeeting.speakers) && focusedMeeting.speakers.length > 0 && (
+                                <div className="mt-3 flex flex-wrap gap-1.5">
+                                  {focusedMeeting.speakers.map((speaker, i) => {
+                                    const name = typeof speaker === "string"
+                                      ? speaker
+                                      : [speaker.first_name, speaker.last_name].filter(Boolean).join(" ") || `Speaker ${speaker.index}`;
+                                    return (
+                                      <span
+                                        key={i}
+                                        className="text-xs px-2 py-0.5 bg-[var(--secondary)] text-[var(--secondary-foreground)] rounded"
+                                      >
+                                        {name}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Body */}
+                            <div className="p-5 space-y-5">
+                              {/* Key Points */}
+                              {Array.isArray(focusedMeeting.content) && focusedMeeting.content.length > 0 && (
+                                <div>
+                                  <h3 className="text-sm font-medium text-[var(--foreground)] mb-2">Key Points</h3>
+                                  <ul className="space-y-2">
+                                    {focusedMeeting.content.map((kp, i) => (
+                                      <li key={kp.id || i} className="text-sm text-[var(--muted-foreground)] flex gap-2 leading-snug">
+                                        <svg className="w-4 h-4 text-[var(--primary)] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                        <span>{kp.description}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {/* Transcript snippet */}
+                              {focusedMeeting.raw_content && (
+                                <div>
+                                  <h3 className="text-sm font-medium text-[var(--foreground)] mb-2">Transcript</h3>
+                                  <p className="text-sm text-[var(--muted-foreground)] whitespace-pre-wrap leading-relaxed">
+                                    {focusedMeeting.raw_content.length > 500
+                                      ? focusedMeeting.raw_content.slice(0, 500) + "..."
+                                      : focusedMeeting.raw_content}
+                                  </p>
+                                  {focusedMeeting.raw_content.length > 500 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setOpenMeetingId(focusedMeeting.id)}
+                                      className="mt-2 text-xs text-[var(--primary)] hover:underline"
+                                    >
+                                      View full transcript
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* No content fallback */}
+                              {(!focusedMeeting.content || focusedMeeting.content.length === 0) && !focusedMeeting.raw_content && (
+                                <p className="text-sm text-[var(--muted-foreground)] italic">No content recorded for this meeting.</p>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex-1 flex items-center justify-center text-sm text-[var(--muted-foreground)]">
+                            Meeting not found
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="hidden md:flex flex-col flex-1 items-center justify-center text-sm text-[var(--muted-foreground)]">
