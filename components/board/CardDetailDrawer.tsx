@@ -107,6 +107,16 @@ export function CardDetailDrawer({ card, boardId, onClose }: CardDetailDrawerPro
     return () => document.removeEventListener("keydown", handler);
   }, [onClose]);
 
+  // ── Checklist helpers (must be above early return to preserve hook order) ──
+  const saveChecklist = useCallback(
+    (items: ChecklistItem[]) => {
+      if (!card) return;
+      setChecklist(items);
+      updateCard.mutate({ id: card.id, checklist: items.length ? items : null });
+    },
+    [card, updateCard],
+  );
+
   if (!card) return null;
 
   const handleSave = () => {
@@ -133,15 +143,6 @@ export function CardDetailDrawer({ card, boardId, onClose }: CardDetailDrawerPro
       { onSuccess: () => setTagLabel("") }
     );
   };
-
-  // ── Checklist helpers ──────────────────────────────────
-  const saveChecklist = useCallback(
-    (items: ChecklistItem[]) => {
-      setChecklist(items);
-      updateCard.mutate({ id: card.id, checklist: items.length ? items : null });
-    },
-    [card.id, updateCard],
-  );
 
   const handleAddChecklistItem = () => {
     const t = newItemTitle.trim();
