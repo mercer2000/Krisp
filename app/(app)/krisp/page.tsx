@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { MeetingDetailDrawer } from "@/components/meeting/MeetingDetailDrawer";
 import { MeetingFilters } from "@/components/meeting/MeetingFilters";
@@ -67,6 +67,17 @@ function KrispPageInner() {
 
   // Focused meeting for list-view preview pane
   const [focusedMeetingId, setFocusedMeetingId] = useState<number | null>(null);
+
+  // Resizable list column width (persisted in localStorage)
+  const [listWidth, setListWidth] = useState<number>(() => {
+    if (typeof window === "undefined") return 480;
+    const saved = localStorage.getItem("krisp-list-width");
+    return saved ? Math.max(280, Math.min(800, parseInt(saved, 10))) : 480;
+  });
+  const [isResizing, setIsResizing] = useState(false);
+  const listColumnRef = useRef<HTMLDivElement>(null);
+  const resizeStartXRef = useRef(0);
+  const resizeStartWidthRef = useRef(0);
 
   // All meetings loaded on page load
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -244,6 +255,36 @@ function KrispPageInner() {
     e.stopPropagation();
     setConfirmingDeleteId(null);
   };
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    resizeStartXRef.current = e.clientX;
+    resizeStartWidthRef.current = listColumnRef.current?.offsetWidth ?? listWidth;
+    setIsResizing(true);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    function onMouseMove(ev: MouseEvent) {
+      const delta = ev.clientX - resizeStartXRef.current;
+      const newWidth = Math.max(280, Math.min(800, resizeStartWidthRef.current + delta));
+      if (listColumnRef.current) {
+        listColumnRef.current.style.width = `${newWidth}px`;
+      }
+    }
+    function onMouseUp(ev: MouseEvent) {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      setIsResizing(false);
+      const delta = ev.clientX - resizeStartXRef.current;
+      const finalWidth = Math.max(280, Math.min(800, resizeStartWidthRef.current + delta));
+      setListWidth(finalWidth);
+      localStorage.setItem("krisp-list-width", String(finalWidth));
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    }
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  }, [listWidth]);
 
   const getActionItems = (meeting: Meeting): string[] => {
     if (!Array.isArray(meeting.content)) return [];
