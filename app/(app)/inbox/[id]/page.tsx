@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import DOMPurify from "isomorphic-dompurify";
+import DOMPurify from "dompurify";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { EmailActionSidebar } from "@/components/email/EmailActionSidebar";
