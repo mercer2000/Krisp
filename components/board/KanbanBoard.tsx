@@ -22,7 +22,6 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { Column } from "./Column";
-import { Card as CardComponent } from "./Card";
 import { AddColumnButton } from "./AddColumnButton";
 import { CardDetailDrawer } from "./CardDetailDrawer";
 import { TrashDropZone, TRASH_ZONE_ID } from "./TrashDropZone";
@@ -30,6 +29,52 @@ import { useReorderColumns } from "@/lib/hooks/useColumns";
 import { useDeleteCard, useDeleteCards, useMoveCard, useReorderCards } from "@/lib/hooks/useCards";
 import type { BoardWithColumns, Card as CardType, ColumnWithCards } from "@/types";
 import type { BoardFilters } from "./BoardHeader";
+
+// ---------------------------------------------------------------------------
+// Lightweight card for DragOverlay — no dnd-kit hooks to avoid conflicts
+// ---------------------------------------------------------------------------
+
+function DragOverlayCard({ card }: { card: CardType }) {
+  const tags = card.tags ?? [];
+  const priorityLabel: Record<string, string> = {
+    low: "Low", medium: "Medium", high: "High", urgent: "Urgent",
+  };
+  const priorityColor: Record<string, string> = {
+    low: "#22c55e", medium: "#3b82f6", high: "#f97316", urgent: "#ef4444",
+  };
+
+  return (
+    <div className="rounded-lg bg-white dark:bg-slate-800 p-3">
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-2">
+          {tags.slice(0, 3).map((tag) => (
+            <span
+              key={tag.id}
+              className="inline-block h-1.5 w-8 rounded-full"
+              style={{ backgroundColor: tag.color }}
+            />
+          ))}
+        </div>
+      )}
+      <h4 className="text-sm font-medium text-[var(--card-foreground)] line-clamp-2">
+        {card.title}
+      </h4>
+      {card.description && (
+        <p className="mt-1 text-xs text-[var(--muted-foreground)] line-clamp-2">
+          {card.description}
+        </p>
+      )}
+      <div className="mt-2">
+        <span
+          className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+          style={{ color: priorityColor[card.priority], backgroundColor: `${priorityColor[card.priority]}20` }}
+        >
+          {priorityLabel[card.priority]}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Filter helpers
@@ -452,12 +497,11 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
           <AddColumnButton boardId={board.id} />
         </div>
 
-        <DragOverlay>
+        <DragOverlay dropAnimation={null}>
           {activeCard ? (
-            <div className="w-80 rotate-2 scale-105">
-              {/* Ghost card with semi-transparent, dashed border */}
+            <div className="w-80 rotate-2 scale-105 pointer-events-none">
               <div className="rounded-lg border-2 border-dashed border-blue-400 bg-blue-50/80 dark:bg-blue-900/30 shadow-lg">
-                <CardComponent card={activeCard} onClick={() => {}} />
+                <DragOverlayCard card={activeCard} />
               </div>
             </div>
           ) : null}
