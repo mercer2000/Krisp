@@ -15,58 +15,52 @@ export function TrashDropZone({ isVisible, selectedCount = 0 }: TrashDropZonePro
   });
 
   const label = selectedCount > 1
-    ? isOver ? `Delete ${selectedCount} cards` : `Drop to delete ${selectedCount} cards`
-    : isOver ? "Release to delete" : "Drop here to delete";
+    ? isOver ? `Delete ${selectedCount} cards` : `Drop to delete ${selectedCount}`
+    : isOver ? "Release to delete" : "Drop to delete";
 
   return (
     <div
       ref={setNodeRef}
-      className={`fixed left-0 top-0 z-50 flex h-full w-[200px] flex-col items-center justify-center gap-3 transition-all duration-200 ${
+      className={`fixed bottom-6 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-2xl px-6 py-3 transition-all duration-200 ${
         isVisible
-          ? "opacity-100"
-          : "pointer-events-none opacity-0"
+          ? "opacity-100 translate-y-0"
+          : "pointer-events-none opacity-0 translate-y-4"
       } ${
         isOver
-          ? "bg-red-500/20 backdrop-blur-sm"
-          : "bg-gradient-to-r from-red-950/60 to-transparent backdrop-blur-[2px]"
+          ? "bg-red-500 shadow-lg shadow-red-500/30 scale-105"
+          : "bg-red-950/80 backdrop-blur-md border border-red-500/30 shadow-lg"
       }`}
     >
       <div
-        className={`flex flex-col items-center gap-2 transition-transform duration-200 ${
-          isOver ? "scale-110" : "scale-100"
+        className={`flex h-8 w-8 items-center justify-center rounded-full border-2 border-dashed transition-colors ${
+          isOver
+            ? "border-white/60 text-white"
+            : "border-red-400/50 text-red-400"
         }`}
       >
-        <div
-          className={`flex h-12 w-12 items-center justify-center rounded-full border-2 border-dashed transition-colors ${
-            isOver
-              ? "border-red-400 bg-red-500/30 text-red-300"
-              : "border-red-400/50 bg-red-950/50 text-red-400/70"
-          }`}
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M3 6h18" />
-            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-          </svg>
-        </div>
-        <span
-          className={`text-xs font-medium transition-colors ${
-            isOver ? "text-red-300" : "text-red-400/70"
-          }`}
-        >
-          {label}
-        </span>
+          <path d="M3 6h18" />
+          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+        </svg>
       </div>
+      <span
+        className={`text-sm font-medium whitespace-nowrap transition-colors ${
+          isOver ? "text-white" : "text-red-300"
+        }`}
+      >
+        {label}
+      </span>
     </div>
   );
 }

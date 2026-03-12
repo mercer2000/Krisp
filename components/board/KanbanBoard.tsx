@@ -7,6 +7,7 @@ import {
   closestCenter,
   KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -62,6 +63,12 @@ function applyFilters(columns: ColumnWithCards[], filters: BoardFilters): Column
       if (filters.dueDate === "due_soon" && (!card.dueDate || !isDueSoon(card.dueDate))) return false;
       if (filters.dueDate === "no_date" && card.dueDate) return false;
 
+      // Tag filter
+      if (filters.tag && filters.tag !== "all") {
+        const tagLower = filters.tag.toLowerCase();
+        if (!card.tags?.some((t) => t.label.toLowerCase() === tagLower)) return false;
+      }
+
       return true;
     }),
   }));
@@ -113,7 +120,10 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 5 },
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 5 },
     }),
     useSensor(KeyboardSensor)
   );
