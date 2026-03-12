@@ -295,6 +295,9 @@ function KrispPageInner() {
 
   const focusedMeeting = meetings.find((m) => m.id === focusedMeetingId) ?? null;
 
+  // When search results exist, display them instead of the full meeting list
+  const displayedMeetings = result && result.meetings.length > 0 ? result.meetings : meetings;
+
   return (
     <div className="flex h-full flex-col bg-[var(--background)]">
       {/* Header with tabs */}
@@ -598,7 +601,7 @@ function KrispPageInner() {
                       </div>
                     ))}
                   </div>
-                ) : meetings.length === 0 ? (
+                ) : displayedMeetings.length === 0 ? (
                   <div className="text-center py-16">
                     {hasActiveFilters ? (
                       <>
@@ -662,7 +665,7 @@ function KrispPageInner() {
                       style={focusedMeetingId != null ? { width: listWidth } : undefined}
                     >
                       <div className="divide-y divide-[var(--border)]">
-                        {meetings.map((meeting) => {
+                        {displayedMeetings.map((meeting) => {
                           const actionItems = getActionItems(meeting);
                           const isSelected = focusedMeetingId === meeting.id;
                           return (
