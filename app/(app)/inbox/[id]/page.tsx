@@ -82,7 +82,7 @@ function EmailHtmlFrame({ html }: { html: string }) {
 
     doc.open();
     doc.write(`<!DOCTYPE html>
-<html><head><style>
+<html><head><base target="_blank"><style>
   body {
     margin: 0;
     padding: 0;
@@ -100,6 +100,12 @@ function EmailHtmlFrame({ html }: { html: string }) {
   table { max-width: 100%; }
 </style></head><body>${html}</body></html>`);
     doc.close();
+
+    // Force all links to open in new tab
+    doc.querySelectorAll("a").forEach((a) => {
+      a.setAttribute("target", "_blank");
+      a.setAttribute("rel", "noopener noreferrer");
+    });
 
     // Resize iframe to fit content
     const resize = () => {
@@ -129,7 +135,7 @@ function EmailHtmlFrame({ html }: { html: string }) {
   return (
     <iframe
       ref={iframeRef}
-      sandbox="allow-same-origin"
+      sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
       style={{ width: "100%", height, border: "none", borderRadius: "8px" }}
       title="Email content"
     />

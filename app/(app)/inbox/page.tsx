@@ -109,7 +109,7 @@ function PreviewHtmlFrame({ html }: { html: string }) {
   return (
     <iframe
       ref={iframeRef}
-      sandbox="allow-same-origin allow-popups"
+      sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
       style={{ width: "100%", height, border: "none", borderRadius: "4px" }}
       title="Email preview"
     />
