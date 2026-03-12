@@ -3,6 +3,9 @@
 import { useState, useCallback, useRef } from "react";
 
 const SWIPE_THRESHOLD = 80;
+const MAX_LEFT_OFFSET = 120; // cap left swipe so it doesn't cover too much
+const DEAD_ZONE = 20; // pixels before we decide swipe vs scroll
+const HORIZONTAL_RATIO = 2.5; // dx must be this many times dy to count as swipe
 
 export function SwipeableRow({
   children,
@@ -21,6 +24,7 @@ export function SwipeableRow({
   const startY = useRef(0);
   const currentX = useRef(0);
   const swiping = useRef(false);
+  const locked = useRef(false); // true = locked to vertical scroll, ignore swipe
   const rowRef = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState(0);
   const [dismissed, setDismissed] = useState<"left" | "right" | false>(false);
@@ -30,25 +34,34 @@ export function SwipeableRow({
     startY.current = e.touches[0].clientY;
     currentX.current = 0;
     swiping.current = false;
+    locked.current = false;
   }, []);
 
   const onTouchMove = useCallback((e: React.TouchEvent) => {
+    if (locked.current) return;
+
     const dx = e.touches[0].clientX - startX.current;
     const dy = e.touches[0].clientY - startY.current;
 
-    // Only start swiping if horizontal movement dominates
     if (!swiping.current) {
-      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-        swiping.current = true;
-      } else if (Math.abs(dy) > 10) {
-        return; // vertical scroll, ignore
-      } else {
-        return; // too small to decide
+      // Still in dead zone — wait for a clear signal
+      if (Math.abs(dx) < DEAD_ZONE && Math.abs(dy) < DEAD_ZONE) {
+        return;
       }
+      // Vertical scroll wins — lock out swipe for this gesture
+      if (Math.abs(dy) >= DEAD_ZONE || Math.abs(dx) < Math.abs(dy) * HORIZONTAL_RATIO) {
+        locked.current = true;
+        return;
+      }
+      // Clear horizontal intent
+      swiping.current = true;
     }
 
-    // Allow left swipe only if handler provided
-    const clampedDx = onSwipeLeft ? dx : Math.max(0, dx);
+    // Cap left swipe offset; right swipe is uncapped
+    let clampedDx = dx;
+    if (!onSwipeLeft && dx < 0) clampedDx = 0;
+    if (dx < 0) clampedDx = Math.max(-MAX_LEFT_OFFSET, dx);
+
     currentX.current = clampedDx;
     setOffset(clampedDx);
   }, [onSwipeLeft]);
@@ -64,6 +77,7 @@ export function SwipeableRow({
       setOffset(0);
     }
     swiping.current = false;
+    locked.current = false;
     currentX.current = 0;
   }, [onSwipeRight, onSwipeLeft]);
 
