@@ -959,6 +959,59 @@ export default function InboxPage() {
     }
   };
 
+  // Swipe-left: create a Kanban card from email via AI extraction
+  const handleSwipeToBoard = useCallback(async (email: EmailListItem) => {
+    // Optimistic: mark as done and remove from inbox view
+    const prevEmails = emails;
+    setEmails((prev) => {
+      if (activeFolder === "inbox") return prev.filter((em) => em.id !== email.id);
+      return prev.map((em) => em.id === email.id ? { ...em, is_done: true, is_read: true } : em);
+    });
+    toast({ title: "Adding to board...", variant: "default" });
+
+    try {
+      const res = await fetch("/api/emails/quick-triage-card", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          emailId: email.id,
+          sender: email.sender,
+          subject: email.subject,
+          preview: email.preview,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to create card");
+      }
+
+      const data = await res.json();
+
+      // Also mark email as done server-side
+      fetch(`/api/emails/${email.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_done: true }),
+      }).catch(() => {});
+      cache.invalidateAll();
+
+      toast({
+        title: `Card added to ${data.column}`,
+        description: data.title,
+        variant: "success",
+      });
+    } catch (err) {
+      // Revert optimistic update
+      setEmails(prevEmails);
+      toast({
+        title: "Failed to add to board",
+        description: err instanceof Error ? err.message : "Unknown error",
+        variant: "destructive",
+      });
+    }
+  }, [emails, activeFolder, toast, cache]);
+
   // Remove all labels (system + smart) from an email — "0" key shortcut
   const handleRemoveAllLabels = async (emailId: string | number) => {
     const email = emails.find((em) => em.id === emailId);
@@ -2041,6 +2094,7 @@ export default function InboxPage() {
               }
             }}
             onMarkDone={handleMarkDone}
+            onSwipeToBoard={handleSwipeToBoard}
           />
         ) : (
           <>
@@ -2128,6 +2182,7 @@ export default function InboxPage() {
               <SwipeableRow
                 key={email.id}
                 onSwipeRight={() => handleMarkDone(email.id, !!email.is_done)}
+                onSwipeLeft={() => handleSwipeToBoard(email)}
                 isDone={!!email.is_done}
               >
               <div>

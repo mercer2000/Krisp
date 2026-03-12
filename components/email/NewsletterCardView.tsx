@@ -17,6 +17,7 @@ interface NewsletterCardViewProps {
   emails: EmailListItem[];
   onEmailClick: (emailId: string | number) => void;
   onMarkDone: (emailId: string | number, currentlyDone: boolean) => void;
+  onSwipeToBoard?: (email: EmailListItem) => void;
 }
 
 function formatRelativeTime(dateStr: string): string {
@@ -59,6 +60,7 @@ export function NewsletterCardView({
   emails,
   onEmailClick,
   onMarkDone,
+  onSwipeToBoard,
 }: NewsletterCardViewProps) {
   const [cards, setCards] = useState<Map<string | number, NewsletterCard>>(
     new Map()
@@ -171,6 +173,7 @@ export function NewsletterCardView({
             <SwipeableRow
               key={email.id}
               onSwipeRight={() => onMarkDone(email.id, !!email.is_done)}
+              onSwipeLeft={onSwipeToBoard ? () => onSwipeToBoard(email) : undefined}
               isDone={!!email.is_done}
               className="break-inside-avoid rounded-xl"
             >

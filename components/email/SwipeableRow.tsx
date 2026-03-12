@@ -7,11 +7,13 @@ const SWIPE_THRESHOLD = 80;
 export function SwipeableRow({
   children,
   onSwipeRight,
+  onSwipeLeft,
   isDone,
   className,
 }: {
   children: React.ReactNode;
   onSwipeRight: () => void;
+  onSwipeLeft?: () => void;
   isDone: boolean;
   className?: string;
 }) {
@@ -21,7 +23,7 @@ export function SwipeableRow({
   const swiping = useRef(false);
   const rowRef = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState(0);
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState<"left" | "right" | false>(false);
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
@@ -45,32 +47,34 @@ export function SwipeableRow({
       }
     }
 
-    // Only allow right swipe
-    const clampedDx = Math.max(0, dx);
+    // Allow left swipe only if handler provided
+    const clampedDx = onSwipeLeft ? dx : Math.max(0, dx);
     currentX.current = clampedDx;
     setOffset(clampedDx);
-  }, []);
+  }, [onSwipeLeft]);
 
   const onTouchEnd = useCallback(() => {
     if (currentX.current >= SWIPE_THRESHOLD) {
-      // Animate off screen then trigger
-      setDismissed(true);
-      setTimeout(() => {
-        onSwipeRight();
-      }, 250);
+      setDismissed("right");
+      setTimeout(() => onSwipeRight(), 250);
+    } else if (onSwipeLeft && currentX.current <= -SWIPE_THRESHOLD) {
+      setDismissed("left");
+      setTimeout(() => onSwipeLeft(), 250);
     } else {
       setOffset(0);
     }
     swiping.current = false;
     currentX.current = 0;
-  }, [onSwipeRight]);
+  }, [onSwipeRight, onSwipeLeft]);
 
-  const pastThreshold = offset >= SWIPE_THRESHOLD;
+  const isRight = offset > 0;
+  const isLeft = offset < 0;
+  const pastThreshold = Math.abs(offset) >= SWIPE_THRESHOLD;
 
   return (
     <div className={`relative overflow-hidden ${className ?? ""}`}>
-      {/* Green background revealed on swipe — only rendered when swiping */}
-      {(offset > 0 || dismissed) && (
+      {/* Right swipe: green "Done" background */}
+      {((isRight && offset > 0) || dismissed === "right") && (
         <div
           className="absolute inset-0 flex items-center pl-5 rounded-[inherit]"
           style={{
@@ -99,6 +103,38 @@ export function SwipeableRow({
           </span>
         </div>
       )}
+      {/* Left swipe: blue "Add to Board" background */}
+      {((isLeft && offset < 0) || dismissed === "left") && (
+        <div
+          className="absolute inset-0 flex items-center justify-end pr-5 rounded-[inherit]"
+          style={{
+            backgroundColor: pastThreshold ? "#3b82f6" : "#3b82f644",
+          }}
+        >
+          <span
+            className="mr-2 text-sm font-semibold"
+            style={{ color: pastThreshold ? "white" : "#3b82f6" }}
+          >
+            To Board
+          </span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke={pastThreshold ? "white" : "#3b82f6"}
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect width="7" height="7" x="3" y="3" rx="1" />
+            <rect width="7" height="7" x="14" y="3" rx="1" />
+            <rect width="7" height="7" x="3" y="14" rx="1" />
+            <rect width="7" height="7" x="14" y="14" rx="1" />
+          </svg>
+        </div>
+      )}
       {/* Sliding content */}
       <div
         ref={rowRef}
@@ -107,9 +143,11 @@ export function SwipeableRow({
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         style={{
-          transform: dismissed
+          transform: dismissed === "right"
             ? "translateX(100%)"
-            : `translateX(${offset}px)`,
+            : dismissed === "left"
+              ? "translateX(-100%)"
+              : `translateX(${offset}px)`,
           transition:
             swiping.current && !dismissed
               ? "none"
