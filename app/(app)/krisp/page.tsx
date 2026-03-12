@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { MeetingDetailDrawer } from "@/components/meeting/MeetingDetailDrawer";
 import { MeetingFilters } from "@/components/meeting/MeetingFilters";
+import { AnalyticsDashboard } from "@/components/meeting/AnalyticsDashboard";
 import { useMeetingFilters } from "@/lib/hooks/useMeetingFilters";
 
 interface KeyPointContent {
@@ -30,7 +32,24 @@ interface SearchResponse {
   searchQuery: string;
 }
 
+type Tab = "meetings" | "analytics";
+
 function KrispPageInner() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const activeTab = (searchParams.get("tab") as Tab) || "meetings";
+
+  const setActiveTab = (tab: Tab) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === "meetings") {
+      params.delete("tab");
+    } else {
+      params.set("tab", tab);
+    }
+    const qs = params.toString();
+    router.push(qs ? `/krisp?${qs}` : "/krisp");
+  };
+
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<SearchResponse | null>(null);
@@ -39,6 +58,15 @@ function KrispPageInner() {
 
   // Meeting detail drawer
   const [openMeetingId, setOpenMeetingId] = useState<number | null>(null);
+
+  // View mode: "list" or "cards" (persisted in localStorage)
+  const [viewMode, setViewMode] = useState<"list" | "cards">(() => {
+    if (typeof window === "undefined") return "cards";
+    return (localStorage.getItem("krisp-view-mode") as "list" | "cards") || "cards";
+  });
+
+  // Focused meeting for list-view preview pane
+  const [focusedMeetingId, setFocusedMeetingId] = useState<number | null>(null);
 
   // All meetings loaded on page load
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -74,6 +102,11 @@ function KrispPageInner() {
     }
     fetchParticipants();
   }, []);
+
+  // Persist viewMode to localStorage
+  useEffect(() => {
+    localStorage.setItem("krisp-view-mode", viewMode);
+  }, [viewMode]);
 
   // Fetch meetings (with filters applied via query params)
   const fetchMeetings = useCallback(async () => {
@@ -221,7 +254,7 @@ function KrispPageInner() {
 
   return (
     <div className="flex h-full flex-col bg-[var(--background)]">
-      {/* Header */}
+      {/* Header with tabs */}
       <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md">
         <div className="flex items-center px-6 py-4">
           <div>
@@ -229,421 +262,508 @@ function KrispPageInner() {
               Meetings
             </h1>
             <p className="text-sm text-[var(--muted-foreground)] mt-1">
-              Recorded meetings with key points and action items
+              Recorded meetings with transcripts and action items
             </p>
           </div>
+          {/* View mode toggle */}
+          {activeTab === "meetings" && (
+            <div className="ml-auto flex items-center rounded-lg border border-[var(--border)] overflow-hidden">
+              <button
+                onClick={() => setViewMode("list")}
+                className={`px-2.5 py-2 text-sm transition-colors ${
+                  viewMode === "list"
+                    ? "bg-[var(--primary)]/10 text-[var(--primary)]"
+                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)]"
+                }`}
+                title="List view"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="8" y1="6" x2="21" y2="6" />
+                  <line x1="8" y1="12" x2="21" y2="12" />
+                  <line x1="8" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="6" x2="3.01" y2="6" />
+                  <line x1="3" y1="12" x2="3.01" y2="12" />
+                  <line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setViewMode("cards")}
+                className={`px-2.5 py-2 text-sm transition-colors ${
+                  viewMode === "cards"
+                    ? "bg-[var(--primary)]/10 text-[var(--primary)]"
+                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)]"
+                }`}
+                title="Card view"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="7" rx="1" />
+                  <rect x="14" y="3" width="7" height="7" rx="1" />
+                  <rect x="3" y="14" width="7" height="7" rx="1" />
+                  <rect x="14" y="14" width="7" height="7" rx="1" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </div>
+        {/* Tab bar */}
+        <div className="flex px-6 gap-1" role="tablist" aria-label="Meeting sections">
+          <button
+            role="tab"
+            aria-selected={activeTab === "meetings"}
+            aria-controls="panel-meetings"
+            id="tab-meetings"
+            onClick={() => setActiveTab("meetings")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
+              activeTab === "meetings"
+                ? "border-[var(--primary)] text-[var(--primary)]"
+                : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--border)]"
+            }`}
+          >
+            Meetings
+          </button>
+          <button
+            role="tab"
+            aria-selected={activeTab === "analytics"}
+            aria-controls="panel-analytics"
+            id="tab-analytics"
+            onClick={() => setActiveTab("analytics")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
+              activeTab === "analytics"
+                ? "border-[var(--primary)] text-[var(--primary)]"
+                : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--border)]"
+            }`}
+          >
+            Analytics
+          </button>
         </div>
       </header>
 
-      <main className="flex-1 overflow-auto px-6 py-8">
-        <div className="max-w-6xl mx-auto">
-          {/* Search Form */}
-          <form onSubmit={handleSearch} className="mb-6">
-            <div className="flex gap-3">
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Ask a question about your meetings... (e.g., 'What did we discuss about the budget?')"
-                className="flex-1 px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
-              />
-              <button
-                type="submit"
-                disabled={isLoading || !query.trim()}
-                className="px-6 py-3 bg-[var(--primary)] hover:opacity-90 disabled:opacity-50 text-[var(--primary-foreground)] font-medium rounded-lg transition-opacity focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:ring-offset-2"
-              >
-                {isLoading ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        fill="none"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                      />
-                    </svg>
-                    Searching...
-                  </span>
-                ) : (
-                  "Search"
-                )}
-              </button>
-            </div>
-          </form>
+      {/* Tab panels */}
+      {activeTab === "meetings" ? (
+        <main
+          id="panel-meetings"
+          role="tabpanel"
+          aria-labelledby="tab-meetings"
+          className="flex-1 overflow-auto px-6 py-8"
+        >
+          <div className="max-w-6xl mx-auto">
+            {/* Search Form */}
+            <form onSubmit={handleSearch} className="mb-6">
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Ask a question about your meetings... (e.g., 'What did we discuss about the budget?')"
+                  className="flex-1 px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
+                />
+                <button
+                  type="submit"
+                  disabled={isLoading || !query.trim()}
+                  className="px-6 py-3 bg-[var(--primary)] hover:opacity-90 disabled:opacity-50 text-[var(--primary-foreground)] font-medium rounded-lg transition-opacity focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:ring-offset-2"
+                >
+                  {isLoading ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                          fill="none"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                        />
+                      </svg>
+                      Searching...
+                    </span>
+                  ) : (
+                    "Search"
+                  )}
+                </button>
+              </div>
+            </form>
 
-          {/* Error Message */}
-          {error && (
-            <div className="mb-6 p-4 bg-[var(--destructive)]/10 border border-[var(--destructive)]/20 rounded-lg text-[var(--destructive)]">
-              {error}
-            </div>
-          )}
+            {/* Error Message */}
+            {error && (
+              <div className="mb-6 p-4 bg-[var(--destructive)]/10 border border-[var(--destructive)]/20 rounded-lg text-[var(--destructive)]">
+                {error}
+              </div>
+            )}
 
-          {/* Search Results */}
-          {result && (
-            <div className="space-y-6 mb-10">
-              {/* AI Answer */}
-              <div className="p-6 bg-[var(--primary)]/5 border border-[var(--primary)]/20 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[var(--primary)] flex items-center justify-center flex-shrink-0">
-                    <svg className="w-5 h-5 text-[var(--primary-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h2 className="font-medium text-[var(--foreground)] mb-2">AI Answer</h2>
-                    <p className="text-[var(--foreground)]/80 whitespace-pre-wrap">{result.answer}</p>
+            {/* Search Results */}
+            {result && (
+              <div className="space-y-6 mb-10">
+                {/* AI Answer */}
+                <div className="p-6 bg-[var(--primary)]/5 border border-[var(--primary)]/20 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-[var(--primary)] flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-[var(--primary-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="font-medium text-[var(--foreground)] mb-2">AI Answer</h2>
+                      <p className="text-[var(--foreground)]/80 whitespace-pre-wrap">{result.answer}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Search Result Meeting Cards */}
-              {result.meetings.length > 0 && (
-                <div>
-                  <h2 className="text-lg font-medium text-[var(--foreground)] mb-4">
-                    Related Meetings ({result.meetings.length})
-                  </h2>
-                  <div className="grid gap-4">
-                    {result.meetings.map((meeting) => (
+                {/* Search Result Meeting Cards */}
+                {result.meetings.length > 0 && (
+                  <div>
+                    <h2 className="text-lg font-medium text-[var(--foreground)] mb-4">
+                      Related Meetings ({result.meetings.length})
+                    </h2>
+                    <div className="grid gap-4">
+                      {result.meetings.map((meeting) => (
+                        <div
+                          key={meeting.id}
+                          className={`p-4 bg-[var(--card)] border rounded-lg cursor-pointer transition-all ${
+                            selectedMeeting?.id === meeting.id
+                              ? "border-[var(--primary)] ring-2 ring-[var(--primary)]"
+                              : "border-[var(--border)] hover:border-[var(--muted-foreground)]"
+                          }`}
+                          onClick={() => setSelectedMeeting(selectedMeeting?.id === meeting.id ? null : meeting)}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h3 className="font-medium text-[var(--foreground)]">
+                                {meeting.meeting_title || "Untitled Meeting"}
+                              </h3>
+                              <p className="text-sm text-[var(--muted-foreground)] mt-1">
+                                {formatDate(meeting.meeting_start_date)}
+                                {meeting.meeting_duration && (
+                                  <span className="ml-2">({formatDuration(meeting.meeting_duration)})</span>
+                                )}
+                              </p>
+                            </div>
+                            <svg
+                              className={`w-5 h-5 text-[var(--muted-foreground)] transition-transform ${
+                                selectedMeeting?.id === meeting.id ? "rotate-180" : ""
+                              }`}
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+
+                          {/* Speakers */}
+                          {Array.isArray(meeting.speakers) && meeting.speakers.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {meeting.speakers.map((speaker, i) => {
+                                const name = typeof speaker === "string"
+                                  ? speaker
+                                  : [speaker.first_name, speaker.last_name].filter(Boolean).join(" ") || `Speaker ${speaker.index}`;
+                                return (
+                                  <span
+                                    key={i}
+                                    className="text-xs px-2 py-1 bg-[var(--secondary)] text-[var(--secondary-foreground)] rounded"
+                                  >
+                                    {name}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Expanded Content */}
+                          {selectedMeeting?.id === meeting.id && (
+                            <div className="mt-4 pt-4 border-t border-[var(--border)]">
+                              {/* Key Points */}
+                              {Array.isArray(meeting.content) && meeting.content.length > 0 && (
+                                <div className="mb-4">
+                                  <h4 className="text-sm font-medium text-[var(--foreground)] mb-2">
+                                    Key Points
+                                  </h4>
+                                  <ul className="space-y-2">
+                                    {meeting.content.map((kp, i) => (
+                                      <li
+                                        key={kp.id || i}
+                                        className="text-sm text-[var(--muted-foreground)] flex gap-2"
+                                      >
+                                        <span className="text-[var(--primary)]">&bull;</span>
+                                        {kp.description}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {/* View Full Transcript button */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMeetingId(meeting.id);
+                                }}
+                                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                View Transcript
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Recorded Meetings Card Grid */}
+            <div>
+              <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">
+                Recorded Meetings
+              </h2>
+
+              {/* Filters */}
+              <MeetingFilters
+                filters={filters}
+                onFiltersChange={setFilters}
+                onRemoveFilter={removeFilter}
+                onClearAll={clearAll}
+                hasActiveFilters={hasActiveFilters}
+                totalCount={hasActiveFilters ? unfilteredTotal : totalCount}
+                filteredCount={totalCount}
+                availableParticipants={availableParticipants}
+              />
+
+              {meetingsLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="p-5 bg-[var(--card)] border border-[var(--border)] rounded-lg animate-pulse"
+                    >
+                      <div className="h-5 bg-[var(--secondary)] rounded w-3/4 mb-3" />
+                      <div className="h-3 bg-[var(--secondary)] rounded w-1/2 mb-4" />
+                      <div className="space-y-2">
+                        <div className="h-3 bg-[var(--secondary)] rounded w-full" />
+                        <div className="h-3 bg-[var(--secondary)] rounded w-5/6" />
+                        <div className="h-3 bg-[var(--secondary)] rounded w-4/6" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : meetings.length === 0 ? (
+                <div className="text-center py-16">
+                  {hasActiveFilters ? (
+                    <>
+                      <svg
+                        className="w-16 h-16 mx-auto text-[var(--muted-foreground)]/30 mb-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                      <h3 className="text-xl font-medium text-[var(--foreground)] mb-2">
+                        No Matching Meetings
+                      </h3>
+                      <p className="text-[var(--muted-foreground)] max-w-md mx-auto mb-4">
+                        No meetings match your current filters. Try adjusting or clearing your filters.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={clearAll}
+                        className="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity"
+                      >
+                        Clear All Filters
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        className="w-16 h-16 mx-auto text-[var(--muted-foreground)]/30 mb-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                        />
+                      </svg>
+                      <h3 className="text-xl font-medium text-[var(--foreground)] mb-2">
+                        No Meetings Yet
+                      </h3>
+                      <p className="text-[var(--muted-foreground)] max-w-md mx-auto">
+                        Meetings will appear here once Krisp sends webhook data. Use the search bar above to query your meeting transcripts.
+                      </p>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {meetings.map((meeting) => {
+                    const actionItems = getActionItems(meeting);
+                    return (
                       <div
                         key={meeting.id}
-                        className={`p-4 bg-[var(--card)] border rounded-lg cursor-pointer transition-all ${
-                          selectedMeeting?.id === meeting.id
-                            ? "border-[var(--primary)] ring-2 ring-[var(--primary)]"
-                            : "border-[var(--border)] hover:border-[var(--muted-foreground)]"
-                        }`}
-                        onClick={() => setSelectedMeeting(selectedMeeting?.id === meeting.id ? null : meeting)}
+                        onClick={() => setOpenMeetingId(meeting.id)}
+                        className="group relative p-5 bg-[var(--card)] border border-[var(--border)] rounded-lg hover:border-[var(--muted-foreground)] transition-colors flex flex-col cursor-pointer"
                       >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="font-medium text-[var(--foreground)]">
-                              {meeting.meeting_title || "Untitled Meeting"}
-                            </h3>
-                            <p className="text-sm text-[var(--muted-foreground)] mt-1">
-                              {formatDate(meeting.meeting_start_date)}
-                              {meeting.meeting_duration && (
-                                <span className="ml-2">({formatDuration(meeting.meeting_duration)})</span>
-                              )}
-                            </p>
-                          </div>
-                          <svg
-                            className={`w-5 h-5 text-[var(--muted-foreground)] transition-transform ${
-                              selectedMeeting?.id === meeting.id ? "rotate-180" : ""
-                            }`}
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
+                        {/* Delete confirmation overlay */}
+                        {confirmingDeleteId === meeting.id && (
+                          <div
+                            className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-lg bg-[var(--card)]/95 backdrop-blur-sm border border-[var(--destructive)]/30"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            <p className="text-sm font-medium text-[var(--foreground)]">Delete this meeting?</p>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteConfirm(e, meeting.id)}
+                                disabled={deletingId === meeting.id}
+                                className="px-4 py-1.5 text-sm font-medium rounded-md bg-[var(--destructive)] text-white hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-1.5"
+                              >
+                                {deletingId === meeting.id ? (
+                                  <>
+                                    <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                    </svg>
+                                    Deleting...
+                                  </>
+                                ) : (
+                                  "Delete"
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleDeleteCancel}
+                                disabled={deletingId === meeting.id}
+                                className="px-4 py-1.5 text-sm font-medium rounded-md border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--secondary)] transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Delete button */}
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteClick(e, meeting.id)}
+                          className="absolute top-3 right-3 p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-[var(--destructive)]/10 text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-all"
+                          title="Delete meeting"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
+                        </button>
+
+                        {/* Title */}
+                        <h3 className="font-medium text-[var(--foreground)] leading-snug line-clamp-2 pr-8">
+                          {meeting.meeting_title || "Untitled Meeting"}
+                        </h3>
+
+                        {/* Date & Duration */}
+                        <div className="flex items-center gap-2 mt-2 text-xs text-[var(--muted-foreground)]">
+                          <span>{formatDateShort(meeting.meeting_start_date)}</span>
+                          {meeting.meeting_duration && (
+                            <>
+                              <span className="text-[var(--border)]">|</span>
+                              <span>{formatDuration(meeting.meeting_duration)}</span>
+                            </>
+                          )}
                         </div>
+
+                        {/* Action Items / Key Points */}
+                        {actionItems.length > 0 ? (
+                          <ul className="mt-3 space-y-1.5 flex-1">
+                            {actionItems.slice(0, 4).map((item, i) => (
+                              <li
+                                key={i}
+                                className="text-sm text-[var(--muted-foreground)] flex gap-2 leading-snug"
+                              >
+                                <svg
+                                  className="w-4 h-4 text-[var(--primary)] flex-shrink-0 mt-0.5"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 5l7 7-7 7"
+                                  />
+                                </svg>
+                                <span className="line-clamp-2">{item}</span>
+                              </li>
+                            ))}
+                            {actionItems.length > 4 && (
+                              <li className="text-xs text-[var(--muted-foreground)] pl-6">
+                                +{actionItems.length - 4} more
+                              </li>
+                            )}
+                          </ul>
+                        ) : (
+                          <p className="mt-3 text-sm text-[var(--muted-foreground)]/60 italic flex-1">
+                            No action items recorded
+                          </p>
+                        )}
 
                         {/* Speakers */}
                         {Array.isArray(meeting.speakers) && meeting.speakers.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {meeting.speakers.map((speaker, i) => {
+                          <div className="mt-3 pt-3 border-t border-[var(--border)] flex flex-wrap gap-1.5">
+                            {meeting.speakers.slice(0, 3).map((speaker, i) => {
                               const name = typeof speaker === "string"
                                 ? speaker
                                 : [speaker.first_name, speaker.last_name].filter(Boolean).join(" ") || `Speaker ${speaker.index}`;
                               return (
                                 <span
                                   key={i}
-                                  className="text-xs px-2 py-1 bg-[var(--secondary)] text-[var(--secondary-foreground)] rounded"
+                                  className="text-xs px-2 py-0.5 bg-[var(--secondary)] text-[var(--secondary-foreground)] rounded"
                                 >
                                   {name}
                                 </span>
                               );
                             })}
-                          </div>
-                        )}
-
-                        {/* Expanded Content */}
-                        {selectedMeeting?.id === meeting.id && (
-                          <div className="mt-4 pt-4 border-t border-[var(--border)]">
-                            {/* Key Points */}
-                            {Array.isArray(meeting.content) && meeting.content.length > 0 && (
-                              <div className="mb-4">
-                                <h4 className="text-sm font-medium text-[var(--foreground)] mb-2">
-                                  Key Points
-                                </h4>
-                                <ul className="space-y-2">
-                                  {meeting.content.map((kp, i) => (
-                                    <li
-                                      key={kp.id || i}
-                                      className="text-sm text-[var(--muted-foreground)] flex gap-2"
-                                    >
-                                      <span className="text-[var(--primary)]">•</span>
-                                      {kp.description}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
+                            {meeting.speakers.length > 3 && (
+                              <span className="text-xs px-2 py-0.5 text-[var(--muted-foreground)]">
+                                +{meeting.speakers.length - 3}
+                              </span>
                             )}
-
-                            {/* View Full Transcript button */}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setOpenMeetingId(meeting.id);
-                              }}
-                              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity"
-                            >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                              </svg>
-                              View Transcript
-                            </button>
                           </div>
                         )}
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
-          )}
-
-          {/* Recorded Meetings Card Grid */}
-          <div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">
-              Recorded Meetings
-            </h2>
-
-            {/* Filters */}
-            <MeetingFilters
-              filters={filters}
-              onFiltersChange={setFilters}
-              onRemoveFilter={removeFilter}
-              onClearAll={clearAll}
-              hasActiveFilters={hasActiveFilters}
-              totalCount={hasActiveFilters ? unfilteredTotal : totalCount}
-              filteredCount={totalCount}
-              availableParticipants={availableParticipants}
-            />
-
-            {meetingsLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="p-5 bg-[var(--card)] border border-[var(--border)] rounded-lg animate-pulse"
-                  >
-                    <div className="h-5 bg-[var(--secondary)] rounded w-3/4 mb-3" />
-                    <div className="h-3 bg-[var(--secondary)] rounded w-1/2 mb-4" />
-                    <div className="space-y-2">
-                      <div className="h-3 bg-[var(--secondary)] rounded w-full" />
-                      <div className="h-3 bg-[var(--secondary)] rounded w-5/6" />
-                      <div className="h-3 bg-[var(--secondary)] rounded w-4/6" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : meetings.length === 0 ? (
-              <div className="text-center py-16">
-                {hasActiveFilters ? (
-                  <>
-                    <svg
-                      className="w-16 h-16 mx-auto text-[var(--muted-foreground)]/30 mb-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
-                    </svg>
-                    <h3 className="text-xl font-medium text-[var(--foreground)] mb-2">
-                      No Matching Meetings
-                    </h3>
-                    <p className="text-[var(--muted-foreground)] max-w-md mx-auto mb-4">
-                      No meetings match your current filters. Try adjusting or clearing your filters.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={clearAll}
-                      className="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity"
-                    >
-                      Clear All Filters
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      className="w-16 h-16 mx-auto text-[var(--muted-foreground)]/30 mb-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                      />
-                    </svg>
-                    <h3 className="text-xl font-medium text-[var(--foreground)] mb-2">
-                      No Meetings Yet
-                    </h3>
-                    <p className="text-[var(--muted-foreground)] max-w-md mx-auto">
-                      Meetings will appear here once Krisp sends webhook data. Use the search bar above to query your meeting transcripts.
-                    </p>
-                  </>
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {meetings.map((meeting) => {
-                  const actionItems = getActionItems(meeting);
-                  return (
-                    <div
-                      key={meeting.id}
-                      onClick={() => setOpenMeetingId(meeting.id)}
-                      className="group relative p-5 bg-[var(--card)] border border-[var(--border)] rounded-lg hover:border-[var(--muted-foreground)] transition-colors flex flex-col cursor-pointer"
-                    >
-                      {/* Delete confirmation overlay */}
-                      {confirmingDeleteId === meeting.id && (
-                        <div
-                          className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-lg bg-[var(--card)]/95 backdrop-blur-sm border border-[var(--destructive)]/30"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <p className="text-sm font-medium text-[var(--foreground)]">Delete this meeting?</p>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={(e) => handleDeleteConfirm(e, meeting.id)}
-                              disabled={deletingId === meeting.id}
-                              className="px-4 py-1.5 text-sm font-medium rounded-md bg-[var(--destructive)] text-white hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-1.5"
-                            >
-                              {deletingId === meeting.id ? (
-                                <>
-                                  <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                  </svg>
-                                  Deleting...
-                                </>
-                              ) : (
-                                "Delete"
-                              )}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleDeleteCancel}
-                              disabled={deletingId === meeting.id}
-                              className="px-4 py-1.5 text-sm font-medium rounded-md border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--secondary)] transition-colors"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Delete button */}
-                      <button
-                        type="button"
-                        onClick={(e) => handleDeleteClick(e, meeting.id)}
-                        className="absolute top-3 right-3 p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-[var(--destructive)]/10 text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-all"
-                        title="Delete meeting"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-
-                      {/* Title */}
-                      <h3 className="font-medium text-[var(--foreground)] leading-snug line-clamp-2 pr-8">
-                        {meeting.meeting_title || "Untitled Meeting"}
-                      </h3>
-
-                      {/* Date & Duration */}
-                      <div className="flex items-center gap-2 mt-2 text-xs text-[var(--muted-foreground)]">
-                        <span>{formatDateShort(meeting.meeting_start_date)}</span>
-                        {meeting.meeting_duration && (
-                          <>
-                            <span className="text-[var(--border)]">|</span>
-                            <span>{formatDuration(meeting.meeting_duration)}</span>
-                          </>
-                        )}
-                      </div>
-
-                      {/* Action Items / Key Points */}
-                      {actionItems.length > 0 ? (
-                        <ul className="mt-3 space-y-1.5 flex-1">
-                          {actionItems.slice(0, 4).map((item, i) => (
-                            <li
-                              key={i}
-                              className="text-sm text-[var(--muted-foreground)] flex gap-2 leading-snug"
-                            >
-                              <svg
-                                className="w-4 h-4 text-[var(--primary)] flex-shrink-0 mt-0.5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M9 5l7 7-7 7"
-                                />
-                              </svg>
-                              <span className="line-clamp-2">{item}</span>
-                            </li>
-                          ))}
-                          {actionItems.length > 4 && (
-                            <li className="text-xs text-[var(--muted-foreground)] pl-6">
-                              +{actionItems.length - 4} more
-                            </li>
-                          )}
-                        </ul>
-                      ) : (
-                        <p className="mt-3 text-sm text-[var(--muted-foreground)]/60 italic flex-1">
-                          No action items recorded
-                        </p>
-                      )}
-
-                      {/* Speakers */}
-                      {Array.isArray(meeting.speakers) && meeting.speakers.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-[var(--border)] flex flex-wrap gap-1.5">
-                          {meeting.speakers.slice(0, 3).map((speaker, i) => {
-                            const name = typeof speaker === "string"
-                              ? speaker
-                              : [speaker.first_name, speaker.last_name].filter(Boolean).join(" ") || `Speaker ${speaker.index}`;
-                            return (
-                              <span
-                                key={i}
-                                className="text-xs px-2 py-0.5 bg-[var(--secondary)] text-[var(--secondary-foreground)] rounded"
-                              >
-                                {name}
-                              </span>
-                            );
-                          })}
-                          {meeting.speakers.length > 3 && (
-                            <span className="text-xs px-2 py-0.5 text-[var(--muted-foreground)]">
-                              +{meeting.speakers.length - 3}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
           </div>
-        </div>
-      </main>
+        </main>
+      ) : (
+        <main
+          id="panel-analytics"
+          role="tabpanel"
+          aria-labelledby="tab-analytics"
+          className="flex-1 overflow-auto px-6 py-8"
+        >
+          <AnalyticsDashboard />
+        </main>
+      )}
 
       <MeetingDetailDrawer
         meetingId={openMeetingId}
@@ -662,7 +782,7 @@ export default function KrispPage() {
             <div>
               <h1 className="text-2xl font-bold text-[var(--foreground)]">Meetings</h1>
               <p className="text-sm text-[var(--muted-foreground)] mt-1">
-                Recorded meetings with key points and action items
+                Recorded meetings with transcripts and action items
               </p>
             </div>
           </div>
