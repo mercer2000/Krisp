@@ -48,16 +48,16 @@ export function SwipeableRow({
     const absDy = Math.abs(dy);
 
     if (!swiping.current) {
-      // Vertical wins early — lock to scroll
-      if (absDy >= 15 && absDx < absDy * H_RATIO) {
+      // Any vertical movement at all before breakaway → lock to scroll
+      if (absDy > 5) {
         locked.current = true;
         return;
       }
-      // Not enough horizontal movement yet — stay idle
+      // Not enough pure-horizontal movement yet — stay idle
       if (absDx < BREAKAWAY) return;
-      // Passed breakaway with clear horizontal intent
+      // Passed breakaway with zero vertical — engage swipe
       swiping.current = true;
-      anchorX.current = e.touches[0].clientX; // anchor so offset starts at 0
+      anchorX.current = e.touches[0].clientX;
     }
 
     // Offset is relative to where swipe engaged, not where finger first touched
