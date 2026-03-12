@@ -10,6 +10,7 @@ import type { SmartLabelChip, EmailDraft } from "@/types/smartLabel";
 import { InboxFilterDrawer } from "@/components/email/InboxFilterDrawer";
 import { SendToPageModal } from "@/components/email/SendToPageModal";
 import { NewsletterCardView } from "@/components/email/NewsletterCardView";
+import { SwipeableRow } from "@/components/email/SwipeableRow";
 
 const POLL_INTERVAL = 15_000; // 15 seconds
 
@@ -175,124 +176,6 @@ function contrastText(hex: string): string {
   const b = parseInt(hex.slice(5, 7), 16);
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   return luminance > 0.6 ? "#000000" : "#FFFFFF";
-}
-
-const SWIPE_THRESHOLD = 80;
-
-function SwipeableEmailRow({
-  children,
-  onSwipeRight,
-  isDone,
-}: {
-  children: React.ReactNode;
-  onSwipeRight: () => void;
-  isDone: boolean;
-}) {
-  const startX = useRef(0);
-  const startY = useRef(0);
-  const currentX = useRef(0);
-  const swiping = useRef(false);
-  const rowRef = useRef<HTMLDivElement>(null);
-  const [offset, setOffset] = useState(0);
-  const [dismissed, setDismissed] = useState(false);
-
-  const onTouchStart = useCallback((e: React.TouchEvent) => {
-    startX.current = e.touches[0].clientX;
-    startY.current = e.touches[0].clientY;
-    currentX.current = 0;
-    swiping.current = false;
-  }, []);
-
-  const onTouchMove = useCallback((e: React.TouchEvent) => {
-    const dx = e.touches[0].clientX - startX.current;
-    const dy = e.touches[0].clientY - startY.current;
-
-    // Only start swiping if horizontal movement dominates
-    if (!swiping.current) {
-      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-        swiping.current = true;
-      } else if (Math.abs(dy) > 10) {
-        return; // vertical scroll, ignore
-      } else {
-        return; // too small to decide
-      }
-    }
-
-    // Only allow right swipe
-    const clampedDx = Math.max(0, dx);
-    currentX.current = clampedDx;
-    setOffset(clampedDx);
-  }, []);
-
-  const onTouchEnd = useCallback(() => {
-    if (currentX.current >= SWIPE_THRESHOLD) {
-      // Animate off screen then trigger
-      setDismissed(true);
-      setTimeout(() => {
-        onSwipeRight();
-      }, 250);
-    } else {
-      setOffset(0);
-    }
-    swiping.current = false;
-    currentX.current = 0;
-  }, [onSwipeRight]);
-
-  const pastThreshold = offset >= SWIPE_THRESHOLD;
-
-  return (
-    <div className="relative overflow-hidden">
-      {/* Green background revealed on swipe — only rendered when swiping */}
-      {(offset > 0 || dismissed) && (
-        <div
-          className="absolute inset-0 flex items-center pl-5"
-          style={{
-            backgroundColor: pastThreshold ? "#10b981" : "#10b98144",
-          }}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke={pastThreshold ? "white" : "#10b981"}
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-            <polyline points="22 4 12 14.01 9 11.01" />
-          </svg>
-          <span
-            className="ml-2 text-sm font-semibold"
-            style={{ color: pastThreshold ? "white" : "#10b981" }}
-          >
-            {isDone ? "Undo" : "Done"}
-          </span>
-        </div>
-      )}
-      {/* Sliding content */}
-      <div
-        ref={rowRef}
-        className="relative bg-[var(--background)]"
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        style={{
-          transform: dismissed
-            ? "translateX(100%)"
-            : `translateX(${offset}px)`,
-          transition:
-            swiping.current && !dismissed
-              ? "none"
-              : "transform 0.25s ease-out",
-        }}
-      >
-        {children}
-      </div>
-    </div>
-  );
 }
 
 function LabelChips({ labels }: { labels?: EmailLabelChip[] }) {
@@ -2242,7 +2125,7 @@ export default function InboxPage() {
               const emailDraft = draftMap[String(email.id)];
               const isDraftExpanded = expandedDraft === String(email.id);
               return (
-              <SwipeableEmailRow
+              <SwipeableRow
                 key={email.id}
                 onSwipeRight={() => handleMarkDone(email.id, !!email.is_done)}
                 isDone={!!email.is_done}
@@ -2735,7 +2618,7 @@ export default function InboxPage() {
                 </div>
               )}
               </div>
-              </SwipeableEmailRow>
+              </SwipeableRow>
               );
             })}
           </div>
