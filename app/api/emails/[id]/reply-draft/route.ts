@@ -7,14 +7,76 @@ import { chatCompletion, TokenLimitError } from "@/lib/ai/client";
 import { resolvePrompt } from "@/lib/ai/resolvePrompt";
 import { PROMPT_EMAIL_REPLY_DRAFT, PROMPT_EMAIL_FORWARD_DRAFT } from "@/lib/ai/prompts";
 import { db } from "@/lib/db";
-import { cards, columns, boards } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { cards, columns, boards, pages, pageEntries, workspaces } from "@/lib/db/schema";
+import { eq, and, desc, inArray } from "drizzle-orm";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface ReplyDraftRequest {
   action: "reply" | "reply_all" | "forward";
   contextLevel: "email_only" | "full_thread" | "thread_and_app";
+}
+
+/**
+ * Fetch accumulated knowledge and decision entries from pages
+ * that this email has been routed to via smart rules.
+ */
+async function fetchPageKnowledge(emailId: string, userId: string) {
+  // Step 1: Find which pages this email was routed to
+  const matchedEntries = await db
+    .select({ pageId: pageEntries.pageId })
+    .from(pageEntries)
+    .innerJoin(pages, eq(pageEntries.pageId, pages.id))
+    .innerJoin(workspaces, eq(pages.workspaceId, workspaces.id))
+    .where(
+      and(
+        eq(pageEntries.sourceId, emailId),
+        inArray(pageEntries.sourceType, ["email", "email_reply", "email_thread_decision"]),
+        eq(workspaces.ownerId, userId),
+        eq(pages.isArchived, false)
+      )
+    );
+
+  const pageIds = [...new Set(matchedEntries.map((e) => e.pageId))];
+  if (pageIds.length === 0) return [];
+
+  // Step 2: Fetch ALL knowledge + decision entries from those pages
+  const entries = await db
+    .select({
+      pageId: pageEntries.pageId,
+      pageName: pages.title,
+      entryType: pageEntries.entryType,
+      title: pageEntries.title,
+      content: pageEntries.content,
+    })
+    .from(pageEntries)
+    .innerJoin(pages, eq(pageEntries.pageId, pages.id))
+    .where(
+      and(
+        inArray(pageEntries.pageId, pageIds),
+        inArray(pageEntries.entryType, ["knowledge", "decision"])
+      )
+    )
+    .orderBy(desc(pageEntries.createdAt))
+    .limit(10);
+
+  // Group by page, decisions first
+  const grouped = new Map<string, { pageName: string; entries: typeof entries }>();
+  for (const entry of entries) {
+    const existing = grouped.get(entry.pageId);
+    if (existing) {
+      existing.entries.push(entry);
+    } else {
+      grouped.set(entry.pageId, { pageName: entry.pageName, entries: [entry] });
+    }
+  }
+
+  return Array.from(grouped.values()).map((g) => ({
+    pageName: g.pageName,
+    entries: g.entries.sort((a, b) =>
+      a.entryType === "decision" && b.entryType !== "decision" ? -1 : 0
+    ),
+  }));
 }
 
 /**
@@ -150,6 +212,28 @@ export async function POST(
         }
       } catch {
         // Non-critical — continue without app context
+      }
+
+      // Fetch page knowledge for matched pages
+      try {
+        const pageKnowledge = await fetchPageKnowledge(String(emailId), userId);
+        if (pageKnowledge.length > 0) {
+          contextParts.push("PAGE KNOWLEDGE (from your organized pages):");
+          let charBudget = 3000;
+          for (const page of pageKnowledge) {
+            if (charBudget <= 0) break;
+            contextParts.push(`\n[Page: "${page.pageName}"]`);
+            for (const entry of page.entries) {
+              const line = `- [${entry.entryType}] ${entry.title}: ${entry.content.slice(0, 300)}`;
+              if (line.length > charBudget) break;
+              contextParts.push(line);
+              charBudget -= line.length;
+            }
+          }
+          contextParts.push("");
+        }
+      } catch {
+        // Non-critical — continue without page knowledge
       }
     }
 

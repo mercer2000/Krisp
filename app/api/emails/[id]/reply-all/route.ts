@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { after } from "next/server";
 import { auth } from "@/lib/auth/server";
 import { getEmailDetail } from "@/lib/email/emails";
 import { resolveGraphSendContext } from "@/lib/graph/resolve";
 import { replyAllGraphMessage } from "@/lib/graph/messages";
 import { markdownToEmailHtml } from "@/lib/email/markdownToHtml";
+import { processOutboundReply } from "@/lib/email/postReplyProcessing";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -88,6 +90,19 @@ export async function POST(
         { status: 502 }
       );
     }
+
+    after(async () => {
+      try {
+        await processOutboundReply({
+          emailId,
+          replyBody: body.bodyMarkdown,
+          userId,
+          messageId: email.message_id,
+        });
+      } catch (err) {
+        console.error("[ReplyKnowledge] Error processing outbound reply:", err);
+      }
+    });
 
     return NextResponse.json({ message: "Reply sent to all" });
   } catch (error) {

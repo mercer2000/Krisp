@@ -8,7 +8,7 @@ import { fetchItemContent } from "@/lib/smartLabels/classify";
 import { assignSmartLabel } from "@/lib/smartLabels/labels";
 import sql from "@/lib/smartLabels/db";
 import { db } from "@/lib/db";
-import { pageEntries } from "@/lib/db/schema";
+import { pageEntries, cardTags } from "@/lib/db/schema";
 import { logActivity } from "@/lib/activity/log";
 import { getValidOutlookAccessToken } from "@/lib/outlook/oauth";
 import { moveMessageToFolder } from "@/lib/outlook/folders";
@@ -40,7 +40,7 @@ interface RouteResult {
 }
 
 const VALID_ENTRY_TYPES = new Set<ExtractedEntry["entry_type"]>(["email_summary", "knowledge", "decision"]);
-const EMAIL_ITEM_TYPES = new Set(["email", "gmail_email"]);
+const EMAIL_ITEM_TYPES = new Set(["email", "gmail_email", "email_reply"]);
 
 /**
  * Find or create a smart label matching the page title, then assign it to the item.
@@ -242,7 +242,7 @@ export async function classifyItemForPages(
   itemType: string,
   itemId: string,
   userId: string,
-  options?: { content?: string }
+  options?: { content?: string; cardIds?: string[] }
 ): Promise<{ routed: RouteResult[] }> {
   const pages = await getActivePagesWithSmartRules(userId);
   if (pages.length === 0) {
@@ -323,6 +323,26 @@ ${content}`;
         `[PageRules] Failed to label item ${itemId} with "${page.title}":`,
         err instanceof Error ? err.message : err
       );
+    }
+  }
+
+  // Tag any associated Kanban cards with matched page titles
+  const cardIdsToTag = options?.cardIds ?? [];
+  if (cardIdsToTag.length > 0 && routed.length > 0) {
+    for (const { pageTitle } of routed) {
+      for (const cardId of cardIdsToTag) {
+        try {
+          await db
+            .insert(cardTags)
+            .values({ cardId, label: pageTitle.slice(0, 50), color: "#8B5CF6" })
+            .onConflictDoNothing();
+        } catch (err) {
+          console.error(
+            `[PageRules] Failed to tag card ${cardId} with "${pageTitle}":`,
+            err instanceof Error ? err.message : err
+          );
+        }
+      }
     }
   }
 

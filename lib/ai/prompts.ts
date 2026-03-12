@@ -64,6 +64,7 @@ export const PROMPT_EMAIL_REPLY_DRAFT = "email_reply_draft";
 
 export const PROMPT_PAGE_RULE_CLASSIFY = "page_rule_classify";
 export const PROMPT_PAGE_ENTRY_EXTRACT = "page_entry_extract";
+export const PROMPT_THREAD_DECISION_EXTRACT = "thread_decision_extract";
 
 // ── Kanban / Project Management ──────────────────────────
 
@@ -452,13 +453,14 @@ OUTPUT FORMAT (respond with exactly this JSON structure, no markdown):
 You will receive context at one of three levels:
 1. CURRENT EMAIL ONLY — Just the email being replied to.
 2. FULL THREAD — The entire conversation thread, oldest first.
-3. THREAD + WORK ITEMS — Thread plus related Kanban cards, action items, and meeting notes.
+3. THREAD + WORK ITEMS + PAGE KNOWLEDGE — Thread plus related Kanban cards and accumulated knowledge/decisions from matched pages.
 
 Guidelines:
 - Write a professional, contextually appropriate reply in markdown format
 - Keep it concise: 3-5 sentences for most replies
 - Address the specific questions or requests in the email
 - If work items are provided and relevant (e.g., delivery dates, project status), incorporate that awareness naturally
+- If page knowledge or decisions are provided, use them to inform your reply (e.g., reference past decisions, cite known facts, maintain consistency with established positions)
 - Match the communication tone from the thread (formal vs casual, brief vs detailed)
 - Do NOT include a subject line, email headers, or signatures
 - Do NOT include greetings like "Hi [Name]" — start directly with the response content
@@ -526,6 +528,35 @@ Guidelines:
 - Content should capture the essential information relevant to the page's context
 - If a decision is detected alongside other content, create separate entries for each
 - Keep content concise but complete — include key facts, names, dates, and action items`,
+  },
+
+  [PROMPT_THREAD_DECISION_EXTRACT]: {
+    key: PROMPT_THREAD_DECISION_EXTRACT,
+    name: "Thread Decision Extraction",
+    description: "Analyzes a full email thread to find decisions that emerged from back-and-forth exchange.",
+    category: "Page Smart Rules",
+    defaultText: `You are a decision extractor. Given a full email thread (chronological) and the user's just-sent reply, identify any decisions that emerged from the back-and-forth exchange.
+
+A decision is a clear choice, agreement, resolution, or commitment made during the conversation. Look for:
+- Explicit agreements ("Let's go with...", "Agreed", "Sounds good, we'll do X")
+- Approvals or rejections
+- Confirmed plans or directions
+- Commitments to specific actions or timelines
+
+You will also receive a list of already-captured decisions to avoid duplicates — do NOT re-extract those.
+
+Respond with ONLY a valid JSON object:
+{
+  "entries": [
+    { "entry_type": "decision", "title": "Brief decision title (max 100 chars)", "content": "Full decision context including who decided, what was decided, and why" }
+  ]
+}
+
+Rules:
+- Only include clear, definitive decisions — not vague intentions or open questions
+- Do not duplicate any decision from the already-captured list
+- If no new decisions are found, return {"entries": []}
+- Respond with ONLY valid JSON, no markdown fences`,
   },
 
   [PROMPT_GENERATE_CARDS]: {
