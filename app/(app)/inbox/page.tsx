@@ -9,6 +9,7 @@ import type { EmailListItem, EmailListResponse, EmailSearchResponse, EmailSearch
 import type { SmartLabelChip, EmailDraft } from "@/types/smartLabel";
 import { InboxFilterDrawer } from "@/components/email/InboxFilterDrawer";
 import { SendToPageModal } from "@/components/email/SendToPageModal";
+import { NewsletterCardView } from "@/components/email/NewsletterCardView";
 
 const POLL_INTERVAL = 15_000; // 15 seconds
 
@@ -176,6 +177,124 @@ function contrastText(hex: string): string {
   return luminance > 0.6 ? "#000000" : "#FFFFFF";
 }
 
+const SWIPE_THRESHOLD = 80;
+
+function SwipeableEmailRow({
+  children,
+  onSwipeRight,
+  isDone,
+}: {
+  children: React.ReactNode;
+  onSwipeRight: () => void;
+  isDone: boolean;
+}) {
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const currentX = useRef(0);
+  const swiping = useRef(false);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [offset, setOffset] = useState(0);
+  const [dismissed, setDismissed] = useState(false);
+
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    startX.current = e.touches[0].clientX;
+    startY.current = e.touches[0].clientY;
+    currentX.current = 0;
+    swiping.current = false;
+  }, []);
+
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    const dx = e.touches[0].clientX - startX.current;
+    const dy = e.touches[0].clientY - startY.current;
+
+    // Only start swiping if horizontal movement dominates
+    if (!swiping.current) {
+      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        swiping.current = true;
+      } else if (Math.abs(dy) > 10) {
+        return; // vertical scroll, ignore
+      } else {
+        return; // too small to decide
+      }
+    }
+
+    // Only allow right swipe
+    const clampedDx = Math.max(0, dx);
+    currentX.current = clampedDx;
+    setOffset(clampedDx);
+  }, []);
+
+  const onTouchEnd = useCallback(() => {
+    if (currentX.current >= SWIPE_THRESHOLD) {
+      // Animate off screen then trigger
+      setDismissed(true);
+      setTimeout(() => {
+        onSwipeRight();
+      }, 250);
+    } else {
+      setOffset(0);
+    }
+    swiping.current = false;
+    currentX.current = 0;
+  }, [onSwipeRight]);
+
+  const pastThreshold = offset >= SWIPE_THRESHOLD;
+
+  return (
+    <div className="relative overflow-hidden">
+      {/* Green background revealed on swipe — only rendered when swiping */}
+      {(offset > 0 || dismissed) && (
+        <div
+          className="absolute inset-0 flex items-center pl-5"
+          style={{
+            backgroundColor: pastThreshold ? "#10b981" : "#10b98144",
+          }}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke={pastThreshold ? "white" : "#10b981"}
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+          </svg>
+          <span
+            className="ml-2 text-sm font-semibold"
+            style={{ color: pastThreshold ? "white" : "#10b981" }}
+          >
+            {isDone ? "Undo" : "Done"}
+          </span>
+        </div>
+      )}
+      {/* Sliding content */}
+      <div
+        ref={rowRef}
+        className="relative bg-[var(--background)]"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        style={{
+          transform: dismissed
+            ? "translateX(100%)"
+            : `translateX(${offset}px)`,
+          transition:
+            swiping.current && !dismissed
+              ? "none"
+              : "transform 0.25s ease-out",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function LabelChips({ labels }: { labels?: EmailLabelChip[] }) {
   if (!labels || labels.length === 0) return null;
   return (
@@ -340,6 +459,9 @@ export default function InboxPage() {
 
   // Folder & Spam state
   const [activeFolder, setActiveFolder] = useState<"inbox" | "spam" | "done" | "all">("inbox");
+
+  // View mode: "list" (default) or "cards" (Pinterest-style newsletter view)
+  const [viewMode, setViewMode] = useState<"list" | "cards">("list");
 
   // Focused email for keyboard navigation
   const [focusedEmailId, setFocusedEmailId] = useState<string | number | null>(null);
@@ -1347,6 +1469,44 @@ export default function InboxPage() {
               Labels
             </button>
 
+            {/* View mode toggle: list ↔ cards */}
+            <div className="flex items-center rounded-lg border border-[var(--border)] overflow-hidden">
+              <button
+                onClick={() => setViewMode("list")}
+                className={`px-2.5 py-2 text-sm transition-colors ${
+                  viewMode === "list"
+                    ? "bg-[var(--primary)]/10 text-[var(--primary)]"
+                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)]"
+                }`}
+                title="List view"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="8" y1="6" x2="21" y2="6" />
+                  <line x1="8" y1="12" x2="21" y2="12" />
+                  <line x1="8" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="6" x2="3.01" y2="6" />
+                  <line x1="3" y1="12" x2="3.01" y2="12" />
+                  <line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setViewMode("cards")}
+                className={`px-2.5 py-2 text-sm transition-colors ${
+                  viewMode === "cards"
+                    ? "bg-[var(--primary)]/10 text-[var(--primary)]"
+                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)]"
+                }`}
+                title="Newsletter card view"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="9" rx="1" />
+                  <rect x="14" y="3" width="7" height="5" rx="1" />
+                  <rect x="14" y="12" width="7" height="9" rx="1" />
+                  <rect x="3" y="16" width="7" height="5" rx="1" />
+                </svg>
+              </button>
+            </div>
+
             {/* Search */}
             <form onSubmit={handleSearch} className="flex gap-2">
               <input
@@ -1393,6 +1553,34 @@ export default function InboxPage() {
 
           {/* Mobile toolbar — icon-only buttons */}
           <div className="flex md:hidden items-center gap-1">
+            {/* View mode toggle (mobile) */}
+            <button
+              onClick={() => setViewMode(viewMode === "list" ? "cards" : "list")}
+              className={`p-2 rounded-lg transition-colors ${
+                viewMode === "cards"
+                  ? "text-[var(--primary)] bg-[var(--primary)]/10"
+                  : "text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
+              }`}
+              title={viewMode === "list" ? "Card view" : "List view"}
+            >
+              {viewMode === "cards" ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="8" y1="6" x2="21" y2="6" />
+                  <line x1="8" y1="12" x2="21" y2="12" />
+                  <line x1="8" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="6" x2="3.01" y2="6" />
+                  <line x1="3" y1="12" x2="3.01" y2="12" />
+                  <line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="9" rx="1" />
+                  <rect x="14" y="3" width="7" height="5" rx="1" />
+                  <rect x="14" y="12" width="7" height="9" rx="1" />
+                  <rect x="3" y="16" width="7" height="5" rx="1" />
+                </svg>
+              )}
+            </button>
             <button
               onClick={handleSync}
               disabled={syncing}
@@ -1886,8 +2074,8 @@ export default function InboxPage() {
         {/* Left column: email list */}
         <div
           ref={listColumnRef}
-          className={`${focusedEmailId != null ? "flex-1 md:flex-none flex flex-col" : "flex-1 flex flex-col"} overflow-auto`}
-          style={focusedEmailId != null ? { width: listWidth } : undefined}
+          className={`${focusedEmailId != null && viewMode !== "cards" ? "flex-1 md:flex-none flex flex-col" : "flex-1 flex flex-col"} overflow-auto`}
+          style={focusedEmailId != null && viewMode !== "cards" ? { width: listWidth } : undefined}
         >
         {error && (
           <div className="mx-3 md:mx-6 mt-4 p-3 md:p-4 bg-[var(--destructive)]/10 border border-[var(--destructive)]/20 rounded-lg text-[var(--destructive)] text-sm">
@@ -1959,6 +2147,18 @@ export default function InboxPage() {
               }
             </p>
           </div>
+        ) : viewMode === "cards" ? (
+          <NewsletterCardView
+            emails={filteredEmails}
+            onEmailClick={(id) => {
+              if (window.innerWidth >= 768) {
+                setFocusedEmailId(id);
+              } else {
+                window.location.href = `/inbox/${id}`;
+              }
+            }}
+            onMarkDone={handleMarkDone}
+          />
         ) : (
           <>
           {/* Bulk action bar */}
@@ -2042,7 +2242,12 @@ export default function InboxPage() {
               const emailDraft = draftMap[String(email.id)];
               const isDraftExpanded = expandedDraft === String(email.id);
               return (
-              <div key={email.id}>
+              <SwipeableEmailRow
+                key={email.id}
+                onSwipeRight={() => handleMarkDone(email.id, !!email.is_done)}
+                isDone={!!email.is_done}
+              >
+              <div>
               <div
                 data-email-id={email.id}
                 onClick={() => { if (window.innerWidth >= 768) setFocusedEmailId(email.id); }}
@@ -2530,6 +2735,7 @@ export default function InboxPage() {
                 </div>
               )}
               </div>
+              </SwipeableEmailRow>
               );
             })}
           </div>
@@ -2537,8 +2743,8 @@ export default function InboxPage() {
         )}
         </div>
 
-        {/* Resize handle */}
-        {focusedEmailId != null && (
+        {/* Resize handle (hidden in card view) */}
+        {focusedEmailId != null && viewMode !== "cards" && (
           <div
             className="hidden md:flex items-stretch flex-shrink-0 cursor-col-resize group"
             onMouseDown={handleResizeStart}
@@ -2552,8 +2758,8 @@ export default function InboxPage() {
           <div className="fixed inset-0 z-50 cursor-col-resize" />
         )}
 
-        {/* Right column: preview pane (desktop only) */}
-        {focusedEmailId != null && (
+        {/* Right column: preview pane (desktop only, hidden in card view) */}
+        {focusedEmailId != null && viewMode !== "cards" && (
           <div className="hidden md:flex flex-col flex-1 overflow-hidden bg-[var(--background)]">
             {previewLoading ? (
               <div className="flex-1 p-6 space-y-4 animate-pulse">
