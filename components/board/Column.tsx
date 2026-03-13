@@ -23,6 +23,8 @@ const STATUS_ACCENT: Record<string, string> = {
   "complete": "bg-green-500",
   "completed": "bg-green-500",
   "draft": "bg-purple-500",
+  "snooze": "bg-amber-500",
+  "snoozed": "bg-amber-500",
 };
 
 function getAccentClass(title: string): string {
@@ -33,17 +35,31 @@ function getAccentClass(title: string): string {
 // Column Component
 // ---------------------------------------------------------------------------
 
+interface ColumnOption {
+  id: string;
+  title: string;
+}
+
+// Check if a column title indicates it's a snooze column
+export function isSnoozeColumn(title: string): boolean {
+  const t = title.toLowerCase().trim();
+  return t === "snooze" || t === "snoozed";
+}
+
 interface ColumnProps {
   column: ColumnWithCards;
   boardId: string;
   onCardClick: (card: CardType) => void;
   onDeleteCard?: (cardId: string) => void;
+  onMoveCard?: (cardId: string, targetColumnId: string) => void;
+  onSnoozeCard?: (cardId: string, snoozedUntil: string, returnColumnId: string) => void;
+  allColumns?: ColumnOption[];
   isOver?: boolean;
   selectedCardIds?: Set<string>;
   onSelectCard?: (cardId: string, e: React.MouseEvent) => void;
 }
 
-export function Column({ column, boardId, onCardClick, onDeleteCard, isOver, selectedCardIds, onSelectCard }: ColumnProps) {
+export function Column({ column, boardId, onCardClick, onDeleteCard, onMoveCard, onSnoozeCard, allColumns, isOver, selectedCardIds, onSelectCard }: ColumnProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState(column.title);
   const [isAddingCard, setIsAddingCard] = useState(false);
@@ -163,6 +179,7 @@ export function Column({ column, boardId, onCardClick, onDeleteCard, isOver, sel
     .sort((a, b) => a.position - b.position);
 
   const accentClass = getAccentClass(column.title);
+  const isSnoozed = isSnoozeColumn(column.title);
 
   // Collapsed state — show minimal icon-width column
   if (isCollapsed) {
@@ -247,13 +264,29 @@ export function Column({ column, boardId, onCardClick, onDeleteCard, isOver, sel
           </svg>
         </div>
 
-        {/* Color indicator */}
-        {column.color && (
+        {/* Color indicator or snooze clock icon */}
+        {isSnoozed ? (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="shrink-0 text-amber-500"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+        ) : column.color ? (
           <div
             className="h-3 w-3 shrink-0 rounded-full"
             style={{ backgroundColor: column.color }}
           />
-        )}
+        ) : null}
 
         {/* Title */}
         {isEditingTitle ? (
@@ -401,6 +434,11 @@ export function Column({ column, boardId, onCardClick, onDeleteCard, isOver, sel
               card={card}
               onClick={() => onCardClick(card)}
               onDelete={onDeleteCard}
+              onMove={onMoveCard}
+              onSnooze={onSnoozeCard}
+              columns={allColumns}
+              currentColumnId={column.id}
+              isInSnoozeColumn={isSnoozed}
               isSelected={selectedCardIds?.has(card.id)}
               hasSelection={(selectedCardIds?.size ?? 0) > 0}
               onSelect={onSelectCard}

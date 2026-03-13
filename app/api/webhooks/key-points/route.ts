@@ -178,25 +178,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    extractActionItemsForMeeting(
-      result.id,
-      userId,
-      userRow?.defaultBoardId || undefined,
-      "auto_webhook"
-    ).catch((err) =>
-      console.error(
-        `Auto-extraction failed for meeting ${result.id}:`,
-        err
-      )
-    );
+    // Extract action items, then classify for pages with card IDs so cards get page tags
+    (async () => {
+      let cardIds: string[] = [];
+      try {
+        const extractionResult = await extractActionItemsForMeeting(
+          result.id,
+          userId,
+          userRow?.defaultBoardId || undefined,
+          "auto_webhook"
+        );
+        cardIds = extractionResult.cardIds;
+      } catch (err) {
+        console.error(
+          `Auto-extraction failed for meeting ${result.id}:`,
+          err
+        );
+      }
 
-    // Page smart rule classification (non-blocking)
-    classifyItemForPages("meeting", String(result.id), userId).catch((err) =>
-      console.error(
-        `Page rule classification failed for meeting ${result.id}:`,
-        err
-      )
-    );
+      try {
+        await classifyItemForPages("meeting", String(result.id), userId, { cardIds });
+      } catch (err) {
+        console.error(
+          `Page rule classification failed for meeting ${result.id}:`,
+          err
+        );
+      }
+    })();
 
     return NextResponse.json(
       {

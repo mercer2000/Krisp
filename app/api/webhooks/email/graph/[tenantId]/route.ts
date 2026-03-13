@@ -267,14 +267,16 @@ export async function POST(
             });
 
             // Auto-extract action items and create Kanban cards
+            let cardIds: string[] = [];
             try {
-              await autoProcessEmailActions(tenantId, {
+              const actionResult = await autoProcessEmailActions(tenantId, {
                 sender: fullEmail.from,
                 recipients: fullEmail.to,
                 subject: fullEmail.subject ?? null,
                 bodyPlainText: fullEmail.bodyPlainText ?? null,
                 receivedAt: fullEmail.receivedDateTime,
               });
+              cardIds = actionResult.cardIds;
             } catch (actionErr) {
               console.error(
                 `[Graph] Error auto-processing actions for message ${item.messageId}:`,
@@ -307,9 +309,9 @@ export async function POST(
                 );
               }
 
-              // Page smart rule classification (independent of smart labels)
+              // Page smart rule classification — pass cardIds so matched pages get tagged on cards
               try {
-                await classifyItemForPages("email", emailDbId, tenantId, { content });
+                await classifyItemForPages("email", emailDbId, tenantId, { content, cardIds });
               } catch (pageRuleErr) {
                 console.error(
                   `[Graph] Page rule classification failed for message ${item.messageId}:`,

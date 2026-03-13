@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { autoProcessEmailActions } from "@/lib/actions/autoProcessEmailActions";
 import { dispatchWebhooks } from "@/lib/webhooks/dispatch";
 import { classifyItem, buildEmailContent } from "@/lib/smartLabels/classify";
+import { classifyItemForPages } from "@/lib/pageRules/classify";
 
 const EMAIL_WEBHOOK_SECRET = process.env.EMAIL_WEBHOOK_SECRET;
 
@@ -119,14 +120,16 @@ export async function POST(
     // Auto-extract action items + smart label classification in background
     after(async () => {
       // Auto-process action items
+      let cardIds: string[] = [];
       try {
-        await autoProcessEmailActions(tenantId, {
+        const actionResult = await autoProcessEmailActions(tenantId, {
           sender: payload.from,
           recipients: payload.to,
           subject: payload.subject ?? null,
           bodyPlainText: payload.bodyPlainText ?? null,
           receivedAt: payload.receivedDateTime,
         });
+        cardIds = actionResult.cardIds;
       } catch (err) {
         console.error(
           `[M365] Error auto-processing actions for message ${payload.messageId}:`,
@@ -134,19 +137,30 @@ export async function POST(
         );
       }
 
+      const content = buildEmailContent({
+        sender: payload.from,
+        recipients: payload.to,
+        subject: payload.subject ?? null,
+        bodyPlainText: payload.bodyPlainText ?? null,
+      });
+
       // Smart label classification
       try {
-        const content = buildEmailContent({
-          sender: payload.from,
-          recipients: payload.to,
-          subject: payload.subject ?? null,
-          bodyPlainText: payload.bodyPlainText ?? null,
-        });
         await classifyItem("email", String(result.id), tenantId, { content });
       } catch (err) {
         console.error(
           `[M365] Smart label classification failed for message ${payload.messageId}:`,
           err instanceof Error ? err.message : err
+        );
+      }
+
+      // Page smart rule classification — pass cardIds so matched pages get tagged on cards
+      try {
+        await classifyItemForPages("email", String(result.id), tenantId, { content, cardIds });
+      } catch (pageRuleErr) {
+        console.error(
+          `[M365] Page rule classification failed for message ${payload.messageId}:`,
+          pageRuleErr instanceof Error ? pageRuleErr.message : pageRuleErr
         );
       }
     });

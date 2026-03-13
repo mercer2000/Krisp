@@ -2,12 +2,13 @@
 
 import type { Page } from "@/types";
 
-export type PageTab = "notes" | "knowledge" | "decisions" | "smart-rules" | "activity";
+export type PageTab = "notes" | "knowledge" | "decisions" | "kanban" | "smart-rules" | "activity";
 
 const TAB_CONFIG: { id: PageTab; label: string; icon: string }[] = [
   { id: "notes", label: "Notes", icon: "📝" },
   { id: "knowledge", label: "Knowledge", icon: "🧠" },
   { id: "decisions", label: "Decisions", icon: "⚖️" },
+  { id: "kanban", label: "Kanban", icon: "📌" },
   { id: "smart-rules", label: "Smart Rules", icon: "✨" },
   { id: "activity", label: "Activity", icon: "📋" },
 ];

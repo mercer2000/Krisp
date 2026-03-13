@@ -19,7 +19,6 @@ const MORE_ITEMS = [
   { key: "reviews", label: "Reviews", href: "/weekly-reviews", icon: ReviewsMoreIcon },
   { key: "pages", label: "Pages", href: "/workspace", icon: PagesMoreIcon },
   { key: "contacts", label: "Contacts", href: "/contacts", icon: ContactsMoreIcon },
-  { key: "analytics", label: "Analytics", href: "/analytics", icon: AnalyticsMoreIcon },
   { key: "activity", label: "Activity", href: "/activity", icon: ActivityMoreIcon },
   { key: "integrations", label: "Integrations", href: "/admin/integrations", icon: IntegrationsMoreIcon },
   { key: "prompts", label: "AI Prompts", href: "/admin/prompts", icon: PromptsMoreIcon },
@@ -40,7 +39,6 @@ export function MobileBottomNav() {
     if (href === "/weekly-reviews") return pathname.startsWith("/weekly-reviews");
     if (href === "/workspace") return pathname.startsWith("/workspace");
     if (href === "/contacts") return pathname.startsWith("/contacts");
-    if (href === "/analytics") return pathname === "/analytics";
     if (href === "/activity") return pathname === "/activity";
     if (href === "/admin/integrations") return pathname.startsWith("/admin/integrations");
     if (href === "/admin/prompts") return pathname.startsWith("/admin/prompts");
@@ -260,15 +258,6 @@ function ContactsMoreIcon({ size = 22 }: { size?: number }) {
       <circle cx="9" cy="7" r="4" />
       <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  );
-}
-
-function AnalyticsMoreIcon({ size = 22 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 3v18h18" />
-      <path d="m19 9-5 5-4-4-3 3" />
     </svg>
   );
 }

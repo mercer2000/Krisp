@@ -20,12 +20,12 @@ import {
   horizontalListSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
-import { Column } from "./Column";
+import { Column, isSnoozeColumn } from "./Column";
 import { AddColumnButton } from "./AddColumnButton";
 import { CardDetailDrawer } from "./CardDetailDrawer";
 import { TrashDropZone, TRASH_ZONE_ID } from "./TrashDropZone";
-import { useReorderColumns } from "@/lib/hooks/useColumns";
-import { useDeleteCard, useDeleteCards, useMoveCard, useReorderCards } from "@/lib/hooks/useCards";
+import { useReorderColumns, useCreateColumn } from "@/lib/hooks/useColumns";
+import { useDeleteCard, useDeleteCards, useMoveCard, useReorderCards, useUpdateCard } from "@/lib/hooks/useCards";
 import type { BoardWithColumns, Card as CardType, ColumnWithCards } from "@/types";
 import type { BoardFilters } from "./BoardHeader";
 
@@ -141,6 +141,7 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
   const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
   const [selectedCard, setSelectedCard] = useState<CardType | null>(null);
   const [selectedCardIds, setSelectedCardIds] = useState<Set<string>>(new Set());
+  const [pendingSnooze, setPendingSnooze] = useState<{ cardId: string; returnColumnId: string } | null>(null);
 
   // Local columns state for real-time cross-column drag feedback.
   const [localColumns, setLocalColumns] = useState<ColumnWithCards[]>(() =>
@@ -161,6 +162,20 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
   const reorderCards = useReorderCards(board.id);
   const deleteCard = useDeleteCard(board.id);
   const deleteCards = useDeleteCards(board.id);
+  const updateCard = useUpdateCard(board.id);
+  const createColumn = useCreateColumn(board.id);
+
+  // Auto-create a Snooze column if the board doesn't have one
+  const hasSnoozeColumn = useMemo(
+    () => board.columns.some((col) => isSnoozeColumn(col.title)),
+    [board.columns],
+  );
+
+  useEffect(() => {
+    if (!hasSnoozeColumn && !createColumn.isPending) {
+      createColumn.mutate({ title: "Snooze" });
+    }
+  }, [hasSnoozeColumn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -440,6 +455,18 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
         targetColumnId: currentColumn.id,
         position: position !== -1 ? position : sortedCards.length,
       });
+
+      // If dropped into a snooze column, show the snooze picker
+      if (isSnoozeColumn(currentColumn.title) && dragSourceColumnId) {
+        setPendingSnooze({ cardId: activeId, returnColumnId: dragSourceColumnId });
+      }
+      // If dragged out of a snooze column, clear snooze fields
+      else if (dragSourceColumnId && activeCard.snoozedUntil) {
+        const srcCol = board.columns.find((c) => c.id === dragSourceColumnId);
+        if (srcCol && isSnoozeColumn(srcCol.title)) {
+          updateCard.mutate({ id: activeId, snoozedUntil: null, snoozeReturnColumnId: null });
+        }
+      }
     }
 
     setActiveCard(null);
@@ -460,6 +487,103 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
   const handleDeleteCard = useCallback((cardId: string) => {
     deleteCard.mutate(cardId);
   }, [deleteCard]);
+
+  // Column options for the Move picker on each card
+  const columnOptions = useMemo(
+    () => localColumns.map((col) => ({ id: col.id, title: col.title })),
+    [localColumns]
+  );
+
+  // Snooze a card: set snoozedUntil and snoozeReturnColumnId
+  const handleSnoozeCard = useCallback((cardId: string, snoozedUntil: string, returnColumnId: string) => {
+    // Find a snooze column on this board
+    const snoozeCol = localColumns.find((col) => isSnoozeColumn(col.title));
+    const srcCol = localColumns.find((col) => col.cards.some((c) => c.id === cardId));
+    const effectiveReturnColumnId = returnColumnId || srcCol?.id || "";
+
+    updateCard.mutate({
+      id: cardId,
+      snoozedUntil,
+      snoozeReturnColumnId: effectiveReturnColumnId,
+    });
+
+    // If the card is not already in the snooze column, move it there
+    if (snoozeCol && srcCol && srcCol.id !== snoozeCol.id) {
+      const movedCard = srcCol.cards.find((c) => c.id === cardId);
+      if (movedCard) {
+        setLocalColumns((prev) =>
+          prev.map((col) => {
+            if (col.id === srcCol.id) {
+              return { ...col, cards: col.cards.filter((c) => c.id !== cardId) };
+            }
+            if (col.id === snoozeCol.id) {
+              const newPosition = col.cards.length * 1024;
+              return {
+                ...col,
+                cards: [...col.cards, { ...movedCard, position: newPosition, snoozedUntil, snoozeReturnColumnId: effectiveReturnColumnId }],
+              };
+            }
+            return col;
+          })
+        );
+
+        const dstCardCount = snoozeCol.cards.filter((c) => !c.archived).length;
+        moveCard.mutate({
+          cardId,
+          targetColumnId: snoozeCol.id,
+          position: dstCardCount,
+        });
+      }
+    }
+
+    setPendingSnooze(null);
+  }, [localColumns, updateCard, moveCard]);
+
+  // Move card to a different column via the Move button
+  const handleMoveCardToColumn = useCallback((cardId: string, targetColumnId: string) => {
+    const srcCol = localColumns.find((col) => col.cards.some((c) => c.id === cardId));
+    if (!srcCol || srcCol.id === targetColumnId) return;
+
+    const movedCard = srcCol.cards.find((c) => c.id === cardId);
+    if (!movedCard) return;
+
+    const dstCol = localColumns.find((col) => col.id === targetColumnId);
+    if (!dstCol) return;
+
+    // Optimistic local update
+    setLocalColumns((prev) =>
+      prev.map((col) => {
+        if (col.id === srcCol.id) {
+          return { ...col, cards: col.cards.filter((c) => c.id !== cardId) };
+        }
+        if (col.id === targetColumnId) {
+          const newPosition = col.cards.length * 1024;
+          return {
+            ...col,
+            cards: [...col.cards, { ...movedCard, position: newPosition }],
+          };
+        }
+        return col;
+      })
+    );
+
+    // Persist to server
+    const dstCardCount = dstCol.cards.filter((c) => !c.archived).length;
+    moveCard.mutate({
+      cardId,
+      targetColumnId,
+      position: dstCardCount,
+    });
+
+    // If moved to a snooze column via the Move button, show snooze picker
+    if (isSnoozeColumn(dstCol.title)) {
+      setPendingSnooze({ cardId, returnColumnId: srcCol.id });
+    }
+    // If a snoozed card is manually moved out of a snooze column, clear snooze fields
+    else if (movedCard.snoozedUntil && isSnoozeColumn(srcCol.title)) {
+      updateCard.mutate({ id: cardId, snoozedUntil: null, snoozeReturnColumnId: null });
+    }
+  }, [localColumns, moveCard, updateCard]);
 
   return (
     <>
@@ -483,6 +607,9 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
                 boardId={board.id}
                 onCardClick={handleCardClick}
                 onDeleteCard={handleDeleteCard}
+                onMoveCard={handleMoveCardToColumn}
+                onSnoozeCard={handleSnoozeCard}
+                allColumns={columnOptions}
                 isOver={dragOverColumnId === column.id}
                 selectedCardIds={selectedCardIds}
                 onSelectCard={handleSelectCard}
@@ -550,6 +677,51 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
             Clear
           </button>
         </div>
+      )}
+
+      {/* Snooze duration picker modal (appears when card is dropped into snooze column) */}
+      {pendingSnooze && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
+            onClick={() => setPendingSnooze(null)}
+          />
+          <div className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-xl min-w-[260px]">
+            <h3 className="text-sm font-semibold text-[var(--foreground)] mb-1">Snooze this card</h3>
+            <p className="text-xs text-[var(--muted-foreground)] mb-3">Choose how long to snooze. The card will return to its original column when the time is up.</p>
+            <div className="space-y-1">
+              {[
+                { label: "1 hour", hours: 1 },
+                { label: "4 hours", hours: 4 },
+                { label: "1 day", hours: 24 },
+                { label: "3 days", hours: 72 },
+                { label: "1 week", hours: 168 },
+                { label: "2 weeks", hours: 336 },
+              ].map((opt) => (
+                <button
+                  key={opt.label}
+                  onClick={() => {
+                    const until = new Date(Date.now() + opt.hours * 60 * 60 * 1000).toISOString();
+                    handleSnoozeCard(pendingSnooze.cardId, until, pendingSnooze.returnColumnId);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-[var(--foreground)] hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-700 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setPendingSnooze(null)}
+              className="mt-3 w-full rounded-lg px-3 py-1.5 text-xs text-[var(--muted-foreground)] hover:bg-[var(--accent)] transition-colors"
+            >
+              Cancel (leave without snooze timer)
+            </button>
+          </div>
+        </>
       )}
 
       {/* Card detail slide-over drawer */}

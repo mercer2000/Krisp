@@ -34,10 +34,10 @@ export async function autoProcessEmailActions(
   tenantId: string,
   email: EmailData,
   options?: { boardId?: string | null }
-): Promise<{ actionItemsCreated: number; cardsCreated: number }> {
+): Promise<{ actionItemsCreated: number; cardsCreated: number; cardIds: string[] }> {
   // Skip emails with no body content
   if (!email.bodyPlainText?.trim()) {
-    return { actionItemsCreated: 0, cardsCreated: 0 };
+    return { actionItemsCreated: 0, cardsCreated: 0, cardIds: [] };
   }
 
   // Look up user's email action board preference and email
@@ -52,7 +52,7 @@ export async function autoProcessEmailActions(
   // Per-account board takes priority over global user setting
   const boardId = options?.boardId ?? user?.emailActionBoardId;
   if (!boardId) {
-    return { actionItemsCreated: 0, cardsCreated: 0 };
+    return { actionItemsCreated: 0, cardsCreated: 0, cardIds: [] };
   }
 
   // Verify board exists and belongs to user
@@ -65,7 +65,7 @@ export async function autoProcessEmailActions(
     console.warn(
       `[AutoProcess] Board ${boardId} not found for user ${tenantId}`
     );
-    return { actionItemsCreated: 0, cardsCreated: 0 };
+    return { actionItemsCreated: 0, cardsCreated: 0, cardIds: [] };
   }
 
   // Prefer a "Draft" column; fall back to first column by position
@@ -79,7 +79,7 @@ export async function autoProcessEmailActions(
     console.warn(
       `[AutoProcess] No columns found in board ${boardId} for user ${tenantId}`
     );
-    return { actionItemsCreated: 0, cardsCreated: 0 };
+    return { actionItemsCreated: 0, cardsCreated: 0, cardIds: [] };
   }
 
   const firstCol =
@@ -98,11 +98,12 @@ export async function autoProcessEmailActions(
   );
 
   if (extracted.length === 0) {
-    return { actionItemsCreated: 0, cardsCreated: 0 };
+    return { actionItemsCreated: 0, cardsCreated: 0, cardIds: [] };
   }
 
   let actionItemsCreated = 0;
   let cardsCreated = 0;
+  const cardIds: string[] = [];
 
   for (const action of extracted) {
     try {
@@ -160,6 +161,7 @@ export async function autoProcessEmailActions(
         .set({ cardId: card.id, updatedAt: new Date() })
         .where(eq(actionItems.id, item.id));
 
+      cardIds.push(card.id);
       cardsCreated++;
     } catch (err) {
       console.error(
@@ -173,5 +175,5 @@ export async function autoProcessEmailActions(
     `[AutoProcess] User ${tenantId}: ${actionItemsCreated} action items, ${cardsCreated} cards created from email "${email.subject}"`
   );
 
-  return { actionItemsCreated, cardsCreated };
+  return { actionItemsCreated, cardsCreated, cardIds };
 }

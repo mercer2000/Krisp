@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Drawer } from "@/components/ui/Drawer";
 import type { ActionItem, Board, Column } from "@/types";
+import type { MeetingAnalytics } from "@/types/analytics";
 
 // ---------------------------------------------------------------------------
 // AI-generated card preview type
@@ -265,8 +266,12 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
   const [meeting, setMeeting] = useState<MeetingDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"transcript" | "key-points" | "action-items">("transcript");
+  const [activeTab, setActiveTab] = useState<"transcript" | "action-items" | "analytics">("transcript");
   const [hasAutoSwitchedTab, setHasAutoSwitchedTab] = useState(false);
+
+  // Per-meeting analytics state
+  const [meetingAnalytics, setMeetingAnalytics] = useState<MeetingAnalytics | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   // Action items state
   const [meetingActionItems, setMeetingActionItems] = useState<ActionItem[]>([]);
@@ -335,6 +340,7 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
     if (!meetingId) {
       setMeeting(null);
       setMeetingActionItems([]);
+      setMeetingAnalytics(null);
       setActiveTab("transcript");
       setFilteredSpeaker(null);
       return;
@@ -352,6 +358,14 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
       .then((data) => setMeeting(data.meeting))
       .catch(() => setError("Failed to load meeting details"))
       .finally(() => setLoading(false));
+
+    // Fetch per-meeting analytics
+    setAnalyticsLoading(true);
+    fetch(`/api/meetings/${meetingId}/analytics`)
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => setMeetingAnalytics(data))
+      .catch(() => setMeetingAnalytics(null))
+      .finally(() => setAnalyticsLoading(false));
 
     // Fetch action items for this meeting
     setActionItemsLoading(true);
@@ -559,10 +573,6 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
     return result;
   }, [speakerNames, segments, speakerColorMap]);
 
-  const keyPoints = meeting?.content?.filter(
-    (item): item is KeyPointContent => "description" in item
-  ) ?? [];
-
   return (
     <Drawer
       open={meetingId !== null}
@@ -654,44 +664,9 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
               </div>
             )}
 
-            {/* Extract Action Items section */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => handleExtract(meetingActionItems.length > 0)}
-                disabled={extracting}
-                className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-opacity disabled:opacity-50 ${
-                  meetingActionItems.length > 0
-                    ? "border border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] hover:bg-[var(--accent)]"
-                    : "bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90"
-                }`}
-              >
-                {extracting ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Extracting...
-                  </>
-                ) : meetingActionItems.length > 0 ? (
-                  <>
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Re-extract Action Items
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                    </svg>
-                    Extract Action Items
-                  </>
-                )}
-              </button>
-
-              {/* Board selector */}
-              {boardsList.length > 0 && (
+            {/* Board selector */}
+            {boardsList.length > 0 && meetingActionItems.length > 0 && (
+              <div className="flex items-center gap-2 flex-wrap">
                 <div className="flex items-center gap-1.5">
                   <svg className="w-4 h-4 text-[var(--muted-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7" />
@@ -723,15 +698,14 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
                     </span>
                   )}
                 </div>
-              )}
 
-              {/* No board configured prompt */}
-              {boardsList.length > 0 && !selectedBoardId && meetingActionItems.length > 0 && !meetingActionItems.some(i => i.cardId) && (
-                <span className="text-xs text-amber-600">
-                  Select a board to create Kanban cards
-                </span>
-              )}
-            </div>
+                {!selectedBoardId && !meetingActionItems.some(i => i.cardId) && (
+                  <span className="text-xs text-amber-600">
+                    Select a board to create Kanban cards
+                  </span>
+                )}
+              </div>
+            )}
             {extractError && (
               <p className="text-sm text-[var(--destructive)]">{extractError}</p>
             )}
@@ -752,17 +726,6 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab("key-points")}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "key-points"
-                  ? "border-[var(--primary)] text-[var(--foreground)]"
-                  : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-              }`}
-            >
-              Key Points{keyPoints.length > 0 ? ` (${keyPoints.length})` : ""}
-            </button>
-            <button
-              type="button"
               onClick={() => setActiveTab("action-items")}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === "action-items"
@@ -771,6 +734,17 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
               }`}
             >
               Action Items{meetingActionItems.length > 0 ? ` (${meetingActionItems.length})` : ""}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("analytics")}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === "analytics"
+                  ? "border-[var(--primary)] text-[var(--foreground)]"
+                  : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              Analytics
             </button>
           </div>
 
@@ -842,26 +816,154 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
                 </p>
               )}
             </div>
-          ) : activeTab === "key-points" ? (
-            <div className="space-y-2">
-              {keyPoints.length > 0 ? (
-                keyPoints.map((kp, i) => (
-                  <div
-                    key={kp.id || i}
-                    className="flex gap-3 p-3 rounded-lg bg-[var(--secondary)]/50"
-                  >
-                    <span className="text-[var(--primary)] font-medium text-sm mt-0.5 flex-shrink-0">
-                      {i + 1}.
-                    </span>
-                    <p className="text-sm text-[var(--foreground)] leading-relaxed">
-                      {kp.description}
-                    </p>
+          ) : activeTab === "analytics" ? (
+            <div className="space-y-4">
+              {analyticsLoading ? (
+                <div className="space-y-4 animate-pulse py-2">
+                  <div className="grid grid-cols-3 gap-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="p-4 bg-[var(--secondary)]/50 rounded-lg">
+                        <div className="h-4 bg-[var(--secondary)] rounded w-1/2 mb-2" />
+                        <div className="h-6 bg-[var(--secondary)] rounded w-3/4" />
+                      </div>
+                    ))}
                   </div>
-                ))
+                </div>
+              ) : meetingAnalytics ? (
+                <>
+                  {/* Sentiment */}
+                  <div className="p-4 bg-[var(--card)] border border-[var(--border)] rounded-lg">
+                    <h4 className="text-xs font-medium text-[var(--muted-foreground)] mb-3">Sentiment Breakdown</h4>
+                    <div className="flex items-center gap-4">
+                      <div className="flex-shrink-0">
+                        <span className={`text-lg font-bold ${
+                          meetingAnalytics.sentiment.overall > 0.15
+                            ? "text-emerald-500"
+                            : meetingAnalytics.sentiment.overall < -0.15
+                              ? "text-red-500"
+                              : "text-[var(--muted-foreground)]"
+                        }`}>
+                          {meetingAnalytics.sentiment.overall > 0.15
+                            ? "Positive"
+                            : meetingAnalytics.sentiment.overall < -0.15
+                              ? "Negative"
+                              : "Neutral"}
+                        </span>
+                      </div>
+                      <div className="flex-1 space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
+                          <span className="text-xs text-[var(--muted-foreground)] w-16">Positive</span>
+                          <div className="flex-1 h-2 rounded-full bg-[var(--secondary)]">
+                            <div className="h-2 rounded-full bg-emerald-500 transition-all" style={{ width: `${Math.round(meetingAnalytics.sentiment.positive * 100)}%` }} />
+                          </div>
+                          <span className="text-xs text-[var(--foreground)] w-10 text-right">{Math.round(meetingAnalytics.sentiment.positive * 100)}%</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-slate-400 flex-shrink-0" />
+                          <span className="text-xs text-[var(--muted-foreground)] w-16">Neutral</span>
+                          <div className="flex-1 h-2 rounded-full bg-[var(--secondary)]">
+                            <div className="h-2 rounded-full bg-slate-400 transition-all" style={{ width: `${Math.round(meetingAnalytics.sentiment.neutral * 100)}%` }} />
+                          </div>
+                          <span className="text-xs text-[var(--foreground)] w-10 text-right">{Math.round(meetingAnalytics.sentiment.neutral * 100)}%</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
+                          <span className="text-xs text-[var(--muted-foreground)] w-16">Negative</span>
+                          <div className="flex-1 h-2 rounded-full bg-[var(--secondary)]">
+                            <div className="h-2 rounded-full bg-red-500 transition-all" style={{ width: `${Math.round(meetingAnalytics.sentiment.negative * 100)}%` }} />
+                          </div>
+                          <span className="text-xs text-[var(--foreground)] w-10 text-right">{Math.round(meetingAnalytics.sentiment.negative * 100)}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Talk-Time Distribution */}
+                  <div className="p-4 bg-[var(--card)] border border-[var(--border)] rounded-lg">
+                    <h4 className="text-xs font-medium text-[var(--muted-foreground)] mb-3">Talk-Time Distribution</h4>
+                    {meetingAnalytics.talkTime.length > 0 ? (
+                      <div className="space-y-2">
+                        {meetingAnalytics.talkTime.map((s, i) => {
+                          const barColors = ["#6366f1", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316"];
+                          return (
+                            <div key={s.speaker} className="flex items-center gap-3">
+                              <div className="w-24 text-xs text-[var(--foreground)] truncate" title={s.speaker}>
+                                {s.speaker}
+                              </div>
+                              <div className="flex-1 h-2 rounded-full bg-[var(--secondary)]">
+                                <div
+                                  className="h-2 rounded-full transition-all"
+                                  style={{ width: `${s.percentage}%`, backgroundColor: barColors[i % barColors.length] }}
+                                />
+                              </div>
+                              <div className="w-20 text-xs text-[var(--muted-foreground)] text-right">
+                                {s.percentage}% ({s.wordCount})
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-[var(--muted-foreground)]">No speaker data</p>
+                    )}
+                  </div>
+
+                  {/* Engagement Score */}
+                  <div className="p-4 bg-[var(--card)] border border-[var(--border)] rounded-lg">
+                    <h4 className="text-xs font-medium text-[var(--muted-foreground)] mb-3">Engagement Score</h4>
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className={`text-3xl font-bold ${
+                        meetingAnalytics.engagement.score >= 70
+                          ? "text-emerald-500"
+                          : meetingAnalytics.engagement.score >= 40
+                            ? "text-amber-500"
+                            : "text-red-500"
+                      }`}>
+                        {meetingAnalytics.engagement.score}
+                      </div>
+                      <span className="text-sm text-[var(--muted-foreground)]">/ 100</span>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <div className="flex justify-between text-xs mb-0.5">
+                          <span className="text-[var(--muted-foreground)]">Participant Balance</span>
+                          <span className="text-[var(--foreground)]">{meetingAnalytics.engagement.factors.participantBalance}</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-[var(--secondary)]">
+                          <div className="h-2 rounded-full bg-indigo-500 transition-all" style={{ width: `${meetingAnalytics.engagement.factors.participantBalance}%` }} />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-xs mb-0.5">
+                          <span className="text-[var(--muted-foreground)]">Key Points Density</span>
+                          <span className="text-[var(--foreground)]">{meetingAnalytics.engagement.factors.keyPointsDensity}</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-[var(--secondary)]">
+                          <div className="h-2 rounded-full bg-amber-500 transition-all" style={{ width: `${meetingAnalytics.engagement.factors.keyPointsDensity}%` }} />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-xs mb-0.5">
+                          <span className="text-[var(--muted-foreground)]">Duration Score</span>
+                          <span className="text-[var(--foreground)]">{meetingAnalytics.engagement.factors.duration}</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-[var(--secondary)]">
+                          <div className="h-2 rounded-full bg-emerald-500 transition-all" style={{ width: `${meetingAnalytics.engagement.factors.duration}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 text-xs text-[var(--muted-foreground)]">
+                      {meetingAnalytics.keyPointsCount} key point{meetingAnalytics.keyPointsCount !== 1 ? "s" : ""} &middot; {meetingAnalytics.participantCount} participant{meetingAnalytics.participantCount !== 1 ? "s" : ""}
+                    </div>
+                  </div>
+                </>
               ) : (
-                <p className="text-sm text-[var(--muted-foreground)] italic py-4 text-center">
-                  No key points recorded for this meeting
-                </p>
+                <div className="text-center py-6">
+                  <p className="text-sm text-[var(--muted-foreground)]">
+                    No analytics data available for this meeting
+                  </p>
+                </div>
               )}
             </div>
           ) : (
@@ -960,14 +1062,24 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
                     No action items found
                   </p>
                   <p className="text-xs text-[var(--muted-foreground)] mb-3">
-                    Action items are extracted automatically when meetings arrive. You can also extract them manually.
+                    Action items are extracted automatically when meetings arrive.
                   </p>
                   <button
                     onClick={() => handleExtract(false)}
                     disabled={extracting}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50 transition-opacity"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--secondary)] transition-colors disabled:opacity-50"
                   >
-                    Extract Action Items
+                    {extracting ? (
+                      <>
+                        <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        Extracting...
+                      </>
+                    ) : (
+                      "Re-extract manually"
+                    )}
                   </button>
                 </div>
               )}

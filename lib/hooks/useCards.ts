@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Card, CardTag, ChecklistItem } from "@/types";
 
 async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
@@ -49,6 +49,8 @@ export function useUpdateCard(boardId: string) {
       colorLabel?: string | null;
       archived?: boolean;
       checklist?: ChecklistItem[] | null;
+      snoozedUntil?: string | null;
+      snoozeReturnColumnId?: string | null;
     }) =>
       fetchJSON<Card>(`/api/v1/cards/${id}`, {
         method: "PATCH",
@@ -140,5 +142,27 @@ export function useDeleteTag(boardId: string) {
     mutationFn: (tagId: string) =>
       fetchJSON(`/api/v1/tags/${tagId}`, { method: "DELETE" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["board", boardId] }),
+  });
+}
+
+// Poll snooze wake-up endpoint to move snoozed cards back when their timer expires
+export function useSnoozeWakeUp(boardId: string, hasSnoozedCards: boolean) {
+  const qc = useQueryClient();
+  return useQuery({
+    queryKey: ["snooze-wake", boardId],
+    queryFn: async () => {
+      const res = await fetchJSON<{ wokenUp: number }>(
+        `/api/v1/boards/${boardId}/snooze-wake`,
+        { method: "POST" },
+      );
+      if (res.wokenUp > 0) {
+        qc.invalidateQueries({ queryKey: ["board", boardId] });
+      }
+      return res;
+    },
+    // Only poll when there are snoozed cards
+    enabled: hasSnoozedCards,
+    refetchInterval: 30_000, // Poll every 30 seconds
+    refetchIntervalInBackground: true,
   });
 }

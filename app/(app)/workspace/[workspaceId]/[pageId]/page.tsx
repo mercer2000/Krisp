@@ -10,6 +10,7 @@ import { KnowledgeTab } from "@/components/pages/tabs/KnowledgeTab";
 import { DecisionsTab } from "@/components/pages/tabs/DecisionsTab";
 import { SmartRulesTab } from "@/components/pages/tabs/SmartRulesTab";
 import { ActivityTab } from "@/components/pages/tabs/ActivityTab";
+import { PageKanbanTab } from "@/components/pages/tabs/PageKanbanTab";
 import { PageAskBar } from "@/components/pages/PageAskBar";
 
 export default function PageView({
@@ -74,6 +75,7 @@ export default function PageView({
       {activeTab === "notes" && <BlockEditor page={page} />}
       {activeTab === "knowledge" && <KnowledgeTab page={page} />}
       {activeTab === "decisions" && <DecisionsTab page={page} />}
+      {activeTab === "kanban" && <PageKanbanTab page={page} />}
       {activeTab === "smart-rules" && <SmartRulesTab page={page} />}
       {activeTab === "activity" && <ActivityTab page={page} />}
 

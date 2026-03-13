@@ -234,8 +234,9 @@ async function handlePubSubPush(
               : [];
 
             // Auto-process action items
+            let cardIds: string[] = [];
             try {
-              await autoProcessEmailActions(tenantId, {
+              const actionResult = await autoProcessEmailActions(tenantId, {
                 sender: emailData.sender,
                 recipients,
                 subject: emailData.subject ?? null,
@@ -245,6 +246,7 @@ async function handlePubSubPush(
                     ? emailData.received_at.toISOString()
                     : String(emailData.received_at),
               });
+              cardIds = actionResult.cardIds;
             } catch (actionErr) {
               console.error(
                 `[Gmail Pub/Sub] Error auto-processing actions for ${emailData.gmail_message_id}:`,
@@ -269,9 +271,9 @@ async function handlePubSubPush(
               );
             }
 
-            // Page smart rule classification (independent of smart labels)
+            // Page smart rule classification — pass cardIds so matched pages get tagged on cards
             try {
-              await classifyItemForPages("gmail_email", emailData._dbId, tenantId, { content });
+              await classifyItemForPages("gmail_email", emailData._dbId, tenantId, { content, cardIds });
             } catch (pageRuleErr) {
               console.error(
                 `[Gmail Pub/Sub] Page rule classification failed for ${emailData.gmail_message_id}:`,
@@ -373,14 +375,16 @@ async function handleAppsScriptPayload(
 
   // Auto-extract action items + smart label classification in background
   after(async () => {
+    let cardIds: string[] = [];
     try {
-      await autoProcessEmailActions(tenantId, {
+      const actionResult = await autoProcessEmailActions(tenantId, {
         sender: payload.sender,
         recipients: recipientsList,
         subject: payload.subject ?? null,
         bodyPlainText: payload.bodyPlain ?? null,
         receivedAt: payload.receivedAt,
       });
+      cardIds = actionResult.cardIds;
     } catch (err) {
       console.error(
         `[Gmail Apps Script] Error auto-processing actions for ${payload.messageId}:`,
@@ -405,9 +409,9 @@ async function handleAppsScriptPayload(
       );
     }
 
-    // Page smart rule classification (independent of smart labels)
+    // Page smart rule classification — pass cardIds so matched pages get tagged on cards
     try {
-      await classifyItemForPages("gmail_email", String(result.id), tenantId, { content });
+      await classifyItemForPages("gmail_email", String(result.id), tenantId, { content, cardIds });
     } catch (pageRuleErr) {
       console.error(
         `[Gmail Apps Script] Page rule classification failed for ${payload.messageId}:`,

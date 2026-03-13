@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Card as CardType } from "@/types";
@@ -57,17 +57,58 @@ function avatarColor(id: string): string {
 // Card Component
 // ---------------------------------------------------------------------------
 
+interface ColumnOption {
+  id: string;
+  title: string;
+}
+
 interface CardProps {
   card: CardType;
   onClick: () => void;
   onDelete?: (cardId: string) => void;
+  onMove?: (cardId: string, targetColumnId: string) => void;
+  onSnooze?: (cardId: string, snoozedUntil: string, returnColumnId: string) => void;
+  columns?: ColumnOption[];
+  currentColumnId?: string;
+  isInSnoozeColumn?: boolean;
   isSelected?: boolean;
   hasSelection?: boolean;
   onSelect?: (cardId: string, e: React.MouseEvent) => void;
 }
 
-export function Card({ card, onClick, onDelete, isSelected, hasSelection, onSelect }: CardProps) {
+// Format a snooze countdown
+function formatSnoozeRemaining(snoozedUntil: string): string {
+  const until = new Date(snoozedUntil);
+  const now = new Date();
+  const diffMs = until.getTime() - now.getTime();
+  if (diffMs <= 0) return "Waking up...";
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 60) return `${diffMins}m left`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ${diffMins % 60}m left`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ${diffHours % 24}h left`;
+}
+
+export function Card({ card, onClick, onDelete, onMove, onSnooze, columns, currentColumnId, isInSnoozeColumn, isSelected, hasSelection, onSelect }: CardProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showMoveMenu, setShowMoveMenu] = useState(false);
+  const [showSnoozePicker, setShowSnoozePicker] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdowns when clicking outside this card
+  useEffect(() => {
+    if (!showMoveMenu && !confirmDelete && !showSnoozePicker) return;
+    const handler = (e: MouseEvent) => {
+      if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
+        setShowMoveMenu(false);
+        setConfirmDelete(false);
+        setShowSnoozePicker(false);
+      }
+    };
+    document.addEventListener("pointerdown", handler);
+    return () => document.removeEventListener("pointerdown", handler);
+  }, [showMoveMenu, confirmDelete, showSnoozePicker]);
   const {
     attributes,
     listeners,
@@ -110,7 +151,10 @@ export function Card({ card, onClick, onDelete, isSelected, hasSelection, onSele
 
   return (
     <div
-      ref={setNodeRef}
+      ref={(node) => {
+        setNodeRef(node);
+        (cardRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+      }}
       style={style}
       {...attributes}
       {...listeners}
@@ -147,48 +191,124 @@ export function Card({ card, onClick, onDelete, isSelected, hasSelection, onSele
         </button>
       )}
 
-      {/* Quick delete button (top-right, visible on hover) */}
-      {onDelete && (
-        confirmDelete ? (
-          <div
-            className="absolute top-1 right-1 z-10 flex items-center gap-1 rounded-md bg-red-50 dark:bg-red-900/40 px-1.5 py-0.5 shadow-sm border border-red-200 dark:border-red-800"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <span className="text-[10px] text-red-600 dark:text-red-400 font-medium whitespace-nowrap">Delete?</span>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(card.id);
-              }}
-              className="rounded px-1 py-0.5 text-[10px] font-medium bg-red-600 text-white hover:bg-red-700 transition-colors"
-            >
-              Yes
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setConfirmDelete(false);
-              }}
-              className="rounded px-1 py-0.5 text-[10px] font-medium bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 transition-colors"
-            >
-              No
-            </button>
-          </div>
-        ) : (
+      {/* Inline delete confirmation (top-right) */}
+      {confirmDelete && (
+        <div
+          className="absolute top-1 right-1 z-10 flex items-center gap-1 rounded-md bg-red-50 dark:bg-red-900/40 px-1.5 py-0.5 shadow-sm border border-red-200 dark:border-red-800"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <span className="text-[10px] text-red-600 dark:text-red-400 font-medium whitespace-nowrap">Delete?</span>
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setConfirmDelete(true);
+              onDelete?.(card.id);
             }}
-            className="absolute top-1 right-1 z-10 hidden group-hover:flex items-center justify-center h-6 w-6 rounded-md bg-white/90 dark:bg-slate-700/90 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 shadow-sm border border-slate-200 dark:border-slate-600 transition-colors"
-            title="Delete card"
+            className="rounded px-1 py-0.5 text-[10px] font-medium bg-red-600 text-white hover:bg-red-700 transition-colors"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-            </svg>
+            Yes
           </button>
-        )
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setConfirmDelete(false);
+            }}
+            className="rounded px-1 py-0.5 text-[10px] font-medium bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 transition-colors"
+          >
+            No
+          </button>
+        </div>
+      )}
+
+      {/* Move column picker dropdown */}
+      {showMoveMenu && columns && (
+        <div
+          className="absolute top-1 right-1 z-20 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg py-1 min-w-[140px]"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-2 py-1 text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">
+            Move to
+          </div>
+          {columns
+            .filter((col) => col.id !== currentColumnId)
+            .map((col) => (
+              <button
+                key={col.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMove?.(card.id, col.id);
+                  setShowMoveMenu(false);
+                }}
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+                {col.title}
+              </button>
+            ))}
+          {columns.filter((col) => col.id !== currentColumnId).length === 0 && (
+            <div className="px-2 py-1.5 text-xs text-[var(--muted-foreground)]">No other columns</div>
+          )}
+          <div className="border-t border-slate-200 dark:border-slate-700 mt-1 pt-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMoveMenu(false);
+              }}
+              className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-[var(--muted-foreground)] hover:bg-[var(--accent)] transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Snooze duration picker dropdown */}
+      {showSnoozePicker && (
+        <div
+          className="absolute top-1 right-1 z-20 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg py-1 min-w-[160px]"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-2 py-1 text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">
+            Snooze for
+          </div>
+          {[
+            { label: "1 hour", hours: 1 },
+            { label: "4 hours", hours: 4 },
+            { label: "1 day", hours: 24 },
+            { label: "3 days", hours: 72 },
+            { label: "1 week", hours: 168 },
+            { label: "2 weeks", hours: 336 },
+          ].map((opt) => (
+            <button
+              key={opt.label}
+              onClick={(e) => {
+                e.stopPropagation();
+                const until = new Date(Date.now() + opt.hours * 60 * 60 * 1000).toISOString();
+                onSnooze?.(card.id, until, currentColumnId ?? "");
+                setShowSnoozePicker(false);
+              }}
+              className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              {opt.label}
+            </button>
+          ))}
+          <div className="border-t border-slate-200 dark:border-slate-700 mt-1 pt-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowSnoozePicker(false);
+              }}
+              className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-[var(--muted-foreground)] hover:bg-[var(--accent)] transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Tag strip at top of card (colored pills) */}
@@ -225,6 +345,50 @@ export function Card({ card, onClick, onDelete, isSelected, hasSelection, onSele
         <h4 className="text-sm font-medium text-[var(--card-foreground)] line-clamp-2">
           {card.title}
         </h4>
+
+        {/* Description preview */}
+        {card.description && (
+          <p className="mt-1 text-xs text-[var(--muted-foreground)] line-clamp-2 leading-relaxed">
+            {card.description}
+          </p>
+        )}
+
+        {/* Checklist items preview */}
+        {checklistTotal > 0 && (
+          <div className="mt-2 space-y-0.5">
+            {checklistItems.slice(0, 3).map((item) => (
+              <div key={item.id} className="flex items-center gap-1.5">
+                <div
+                  className={`h-3 w-3 shrink-0 rounded-sm border flex items-center justify-center ${
+                    item.done
+                      ? "bg-green-500 border-green-500"
+                      : "border-slate-300 dark:border-slate-600"
+                  }`}
+                >
+                  {item.done && (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </div>
+                <span
+                  className={`text-xs truncate ${
+                    item.done
+                      ? "line-through text-[var(--muted-foreground)]"
+                      : "text-[var(--card-foreground)]"
+                  }`}
+                >
+                  {item.title}
+                </span>
+              </div>
+            ))}
+            {checklistTotal > 3 && (
+              <span className="text-xs text-[var(--muted-foreground)] pl-[18px]">
+                +{checklistTotal - 3} more
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Meta row */}
         <div className="mt-2 flex items-center gap-2">
@@ -265,24 +429,6 @@ export function Card({ card, onClick, onDelete, isSelected, hasSelection, onSele
                 {formatDueDate(card.dueDate)}
               </span>
             )}
-
-            {/* Comment count icon */}
-            <span className="inline-flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
-              0
-            </span>
 
             {/* Checklist completion badge */}
             {checklistTotal > 0 && (
@@ -333,6 +479,30 @@ export function Card({ card, onClick, onDelete, isSelected, hasSelection, onSele
                 </svg>
               </span>
             )}
+
+            {/* Snooze countdown */}
+            {card.snoozedUntil && (
+              <span
+                className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400"
+                title={`Snoozed until ${new Date(card.snoozedUntil).toLocaleString()}`}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                {formatSnoozeRemaining(card.snoozedUntil)}
+              </span>
+            )}
           </div>
 
           {/* Assignee avatar placeholder */}
@@ -364,6 +534,67 @@ export function Card({ card, onClick, onDelete, isSelected, hasSelection, onSele
               <span className="text-xs text-[var(--muted-foreground)]">
                 +{extraTagCount} more
               </span>
+            )}
+          </div>
+        )}
+
+        {/* Action buttons — always visible for touch accessibility */}
+        {(onMove || onDelete) && (
+          <div className="mt-2 flex items-center gap-1 border-t border-slate-100 dark:border-slate-700/50 pt-2">
+            {onMove && columns && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMoveMenu(!showMoveMenu);
+                  setConfirmDelete(false);
+                }}
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)] transition-colors"
+                title="Move to column"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 9l4-4 4 4" />
+                  <path d="M9 5v12" />
+                  <path d="M19 15l-4 4-4-4" />
+                  <path d="M15 19V7" />
+                </svg>
+                Move
+              </button>
+            )}
+            {onSnooze && !isInSnoozeColumn && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowSnoozePicker(!showSnoozePicker);
+                  setShowMoveMenu(false);
+                  setConfirmDelete(false);
+                }}
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-[var(--muted-foreground)] hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 transition-colors"
+                title="Snooze card"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                Snooze
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setConfirmDelete(true);
+                  setShowMoveMenu(false);
+                }}
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-[var(--muted-foreground)] hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-colors"
+                title="Delete card"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h18" />
+                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                </svg>
+                Delete
+              </button>
             )}
           </div>
         )}

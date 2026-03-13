@@ -512,6 +512,64 @@ export function CardDetailDrawer({ card, boardId, onClose }: CardDetailDrawerPro
             />
           </div>
 
+          {/* Snooze */}
+          <div>
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">
+              Snooze
+            </label>
+            {card.snoozedUntil ? (
+              <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                    Snoozed until {new Date(card.snoozedUntil).toLocaleString()}
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    updateCard.mutate({
+                      id: card.id,
+                      snoozedUntil: null,
+                      snoozeReturnColumnId: null,
+                    });
+                  }}
+                  className="w-full rounded-lg px-3 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-800/30 hover:bg-amber-200 dark:hover:bg-amber-800/50 transition-colors"
+                >
+                  Wake up now
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { label: "1h", hours: 1 },
+                  { label: "4h", hours: 4 },
+                  { label: "1d", hours: 24 },
+                  { label: "3d", hours: 72 },
+                  { label: "1w", hours: 168 },
+                  { label: "2w", hours: 336 },
+                ].map((opt) => (
+                  <button
+                    key={opt.label}
+                    onClick={() => {
+                      const until = new Date(Date.now() + opt.hours * 60 * 60 * 1000).toISOString();
+                      updateCard.mutate({
+                        id: card.id,
+                        snoozedUntil: until,
+                        snoozeReturnColumnId: card.columnId,
+                      });
+                    }}
+                    className="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs text-[var(--foreground)] hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:border-amber-300 dark:hover:border-amber-700 transition-colors"
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Tags */}
           <div>
             <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">

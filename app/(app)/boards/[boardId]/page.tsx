@@ -1,7 +1,8 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState, useEffect, useMemo } from "react";
 import { useBoard } from "@/lib/hooks/useBoard";
+import { useSnoozeWakeUp } from "@/lib/hooks/useCards";
 import { BoardHeader, type BoardFilters, type BoardView } from "@/components/board/BoardHeader";
 import { KanbanBoard } from "@/components/board/KanbanBoard";
 import { PriorityReviewPanel } from "@/components/board/PriorityReviewPanel";
@@ -46,6 +47,7 @@ const DEFAULT_FILTERS: BoardFilters = {
   priority: "all",
   dueDate: "all",
   view: "kanban",
+  tag: "all",
 };
 
 interface BoardPageProps {
@@ -84,6 +86,32 @@ export default function BoardPage({ params }: BoardPageProps) {
       localStorage.setItem("board-view-pref", next.view);
     } catch {}
   };
+
+  // Collect unique tag labels from all cards for the tag filter dropdown
+  // (must be before early returns to satisfy Rules of Hooks)
+  const availableTags = useMemo(() => {
+    if (!board) return [];
+    const tagSet = new Set<string>();
+    for (const col of board.columns) {
+      for (const card of col.cards) {
+        for (const tag of card.tags ?? []) {
+          tagSet.add(tag.label);
+        }
+      }
+    }
+    return Array.from(tagSet).sort((a, b) => a.localeCompare(b));
+  }, [board]);
+
+  // Check if any cards have active snooze timers
+  const hasSnoozedCards = useMemo(() => {
+    if (!board) return false;
+    return board.columns.some((col) =>
+      col.cards.some((card) => card.snoozedUntil != null),
+    );
+  }, [board]);
+
+  // Poll the snooze wake-up endpoint to automatically unsnoze cards
+  useSnoozeWakeUp(boardId, hasSnoozedCards);
 
   // Loading state
   if (isLoading) {
@@ -152,6 +180,7 @@ export default function BoardPage({ params }: BoardPageProps) {
         board={board}
         filters={filters}
         onFiltersChange={handleFiltersChange}
+        availableTags={availableTags}
       />
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-hidden">

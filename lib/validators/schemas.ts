@@ -70,6 +70,8 @@ export const updateCardSchema = z.object({
     .optional(),
   archived: z.boolean().optional(),
   checklist: z.array(checklistItemSchema).nullable().optional(),
+  snoozedUntil: z.string().nullable().optional(),
+  snoozeReturnColumnId: z.string().uuid().nullable().optional(),
 });
 
 export const moveCardSchema = z.object({

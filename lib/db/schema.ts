@@ -168,6 +168,8 @@ export const cards = pgTable("cards", {
   colorLabel: varchar("color_label", { length: 7 }),
   checklist: jsonb("checklist").$type<{ id: string; title: string; done: boolean }[]>(),
   archived: boolean("archived").default(false).notNull(),
+  snoozedUntil: timestamp("snoozed_until", { withTimezone: true }),
+  snoozeReturnColumnId: uuid("snooze_return_column_id"),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -2238,5 +2240,68 @@ export const adminActionLogs = pgTable(
   },
   (table) => [
     index("idx_admin_action_logs_admin").on(table.adminUserId),
+  ]
+);
+
+// ── Inbox sections (split-view pane filters) ──────────────────────────
+export const inboxSections = pgTable(
+  "inbox_sections",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 100 }).notNull(),
+    filterCriteria: jsonb("filter_criteria").notNull(), // { provider?, accountId?, labelId?, smartLabelId?, senderDomain?, unreadOnly?, folder? }
+    color: varchar("color", { length: 7 }).notNull().default("#6366F1"),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_inbox_sections_tenant").on(table.tenantId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
+    }),
+  ]
+);
+
+// ── Saved split-view layouts ──────────────────────────────────────────
+export const inboxLayouts = pgTable(
+  "inbox_layouts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 100 }).notNull(),
+    leftSectionId: uuid("left_section_id").references(() => inboxSections.id, {
+      onDelete: "set null",
+    }),
+    rightSectionId: uuid("right_section_id").references(
+      () => inboxSections.id,
+      { onDelete: "set null" }
+    ),
+    isDefault: boolean("is_default").default(false).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_inbox_layouts_tenant").on(table.tenantId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
+    }),
   ]
 );

@@ -26,6 +26,7 @@ interface ExtractedActionItem {
 interface ExtractionResult {
   actionItems: typeof actionItems.$inferSelect[];
   cardsCreated: number;
+  cardIds: string[];
 }
 
 /**
@@ -66,12 +67,12 @@ export async function extractActionItemsForMeeting(
         )
       );
     const decItems = decryptRows(items as Record<string, unknown>[], ACTION_ITEM_ENCRYPTED_FIELDS) as typeof items;
-    return { actionItems: decItems, cardsCreated: 0 };
+    return { actionItems: decItems, cardsCreated: 0, cardIds: [] };
   }
 
   const meeting = await getMeetingById(meetingId, userId);
   if (!meeting) {
-    return { actionItems: [], cardsCreated: 0 };
+    return { actionItems: [], cardsCreated: 0, cardIds: [] };
   }
 
   // Build context from meeting data
@@ -121,11 +122,11 @@ Today's date: ${today}`;
     extracted = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
   } catch {
     console.error("Failed to parse AI response:", text);
-    return { actionItems: [], cardsCreated: 0 };
+    return { actionItems: [], cardsCreated: 0, cardIds: [] };
   }
 
   if (extracted.length === 0) {
-    return { actionItems: [], cardsCreated: 0 };
+    return { actionItems: [], cardsCreated: 0, cardIds: [] };
   }
 
   // Insert all extracted items
@@ -152,34 +153,37 @@ Today's date: ${today}`;
 
   // Create Kanban cards if a board is specified
   let cardsCreated = 0;
+  let cardIds: string[] = [];
   if (boardId) {
-    cardsCreated = await createCardsForActionItems(
+    const result = await createCardsForActionItems(
       insertedItems,
       boardId,
       userId
     );
+    cardsCreated = result.created;
+    cardIds = result.cardIds;
   }
 
-  return { actionItems: insertedItems, cardsCreated };
+  return { actionItems: insertedItems, cardsCreated, cardIds };
 }
 
 /**
  * Create Kanban cards from action items on the specified board.
  * Links each card back to its action item via cardId.
- * Returns the number of cards created.
+ * Returns the number of cards created and their IDs.
  */
 export async function createCardsForActionItems(
   items: (typeof actionItems.$inferSelect)[],
   boardId: string,
   userId: string
-): Promise<number> {
+): Promise<{ created: number; cardIds: string[] }> {
   // Verify board ownership
   const [board] = await db
     .select({ id: boards.id })
     .from(boards)
     .where(and(eq(boards.id, boardId), eq(boards.userId, userId)));
 
-  if (!board) return 0;
+  if (!board) return { created: 0, cardIds: [] };
 
   // Prefer a "Draft" column; fall back to first column by position
   const allCols = await db
@@ -188,7 +192,7 @@ export async function createCardsForActionItems(
     .where(eq(columns.boardId, boardId))
     .orderBy(asc(columns.position));
 
-  if (allCols.length === 0) return 0;
+  if (allCols.length === 0) return { created: 0, cardIds: [] };
 
   const firstCol =
     allCols.find((c) => c.title.toLowerCase() === "draft") ?? allCols[0];
@@ -201,6 +205,7 @@ export async function createCardsForActionItems(
 
   let nextPosition = (posResult?.maxPosition ?? 0) + 1024;
   let created = 0;
+  const cardIds: string[] = [];
 
   for (const item of items) {
     // Skip if this action item already has a card linked
@@ -235,9 +240,10 @@ export async function createCardsForActionItems(
       .set({ cardId: card.id, updatedAt: new Date() })
       .where(eq(actionItems.id, item.id));
 
+    cardIds.push(card.id);
     nextPosition += 1024;
     created++;
   }
 
-  return created;
+  return { created, cardIds };
 }

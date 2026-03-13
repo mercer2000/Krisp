@@ -45,6 +45,8 @@ export interface Card {
   colorLabel: string | null;
   checklist: ChecklistItem[] | null;
   archived: boolean;
+  snoozedUntil: string | null;
+  snoozeReturnColumnId: string | null;
   deletedAt: string | null;
   createdAt: Date;
   updatedAt: Date;

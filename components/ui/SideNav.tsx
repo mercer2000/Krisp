@@ -1,11 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { authClient } from "@/lib/auth/client";
 import { ThemeToggle } from "./ThemeToggle";
 import { UpcomingEvents } from "@/components/calendar/UpcomingEvents";
+import {
+  SHORTCUT_REGISTRY,
+  formatShortcut,
+} from "@/lib/shortcuts/registry";
+import { useIsMac } from "@/lib/hooks/useKeyboardShortcuts";
 
 // ---------------------------------------------------------------------------
 // Nav items configuration
@@ -17,7 +22,6 @@ const NAV_ITEMS = [
     label: "Brain",
     href: "/brain",
     icon: BrainIcon,
-    shortcut: "Ctrl+B",
   },
   {
     key: "dashboard",
@@ -66,12 +70,6 @@ const NAV_ITEMS = [
     label: "Calendar",
     href: "/calendar",
     icon: CalendarIcon,
-  },
-  {
-    key: "analytics",
-    label: "Analytics",
-    href: "/analytics",
-    icon: AnalyticsIcon,
   },
   {
     key: "activity",
@@ -287,25 +285,6 @@ function WeeklyReviewIcon({ size = 20 }: { size?: number }) {
       <rect width="18" height="18" x="3" y="4" rx="2" />
       <path d="M3 10h18" />
       <path d="M10 14h4" />
-    </svg>
-  );
-}
-
-function AnalyticsIcon({ size = 20 }: { size?: number }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 3v18h18" />
-      <path d="m19 9-5 5-4-4-3 3" />
     </svg>
   );
 }
@@ -593,6 +572,18 @@ export function SideNav() {
   const [collapsed, setCollapsed] = useState(false);
   const [lastBoardId, setLastBoardId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const isMac = useIsMac();
+
+  // Build href → display shortcut map from registry
+  const shortcutByHref = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const entry of SHORTCUT_REGISTRY) {
+      if (entry.action.type === "navigate" && entry.keys.length > 0) {
+        map.set(entry.action.href, formatShortcut(entry.keys[0], isMac));
+      }
+    }
+    return map;
+  }, [isMac]);
 
   // Persist collapsed state and read last board from localStorage
   useEffect(() => {
@@ -635,7 +626,6 @@ export function SideNav() {
     if (href === "/workspace") return pathname.startsWith("/workspace");
     if (href === "/brain") return pathname.startsWith("/brain");
     if (href === "/weekly-reviews") return pathname.startsWith("/weekly-reviews");
-    if (href === "/analytics") return pathname === "/analytics";
     if (href === "/activity") return pathname === "/activity";
     if (href === "/settings") return pathname.startsWith("/settings");
     if (href === "/trash") return pathname === "/trash";
@@ -671,7 +661,7 @@ export function SideNav() {
         {NAV_ITEMS.map((item) => {
           const active = isActive(item.href);
           const Icon = item.icon;
-          const shortcut = "shortcut" in item ? item.shortcut : undefined;
+          const shortcut = shortcutByHref.get(item.href);
           const resolvedHref =
             item.key === "boards" && lastBoardId
               ? `/boards/${lastBoardId}`

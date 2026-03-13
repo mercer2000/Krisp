@@ -17,6 +17,7 @@ export interface BoardFilters {
   priority: Priority | "all";
   dueDate: DueDateFilter;
   view: BoardView;
+  tag: string; // "all" or a specific tag label
 }
 
 // ---------------------------------------------------------------------------
@@ -27,9 +28,10 @@ interface BoardHeaderProps {
   board: Board;
   filters: BoardFilters;
   onFiltersChange: (filters: BoardFilters) => void;
+  availableTags?: string[];
 }
 
-export function BoardHeader({ board, filters, onFiltersChange }: BoardHeaderProps) {
+export function BoardHeader({ board, filters, onFiltersChange, availableTags = [] }: BoardHeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(board.title);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -186,10 +188,26 @@ export function BoardHeader({ board, filters, onFiltersChange }: BoardHeaderProp
           <option value="no_date">No Date</option>
         </select>
 
+        {/* Tag / Page filter */}
+        {availableTags.length > 0 && (
+          <select
+            value={filters.tag}
+            onChange={(e) =>
+              onFiltersChange({ ...filters, tag: e.target.value })
+            }
+            className="rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-xs text-[var(--foreground)] outline-none focus:ring-2 focus:ring-[var(--ring)]"
+          >
+            <option value="all">All Tags</option>
+            {availableTags.map((tag) => (
+              <option key={tag} value={tag}>{tag}</option>
+            ))}
+          </select>
+        )}
+
         {/* Clear filters */}
-        {(filters.priority !== "all" || filters.dueDate !== "all") && (
+        {(filters.priority !== "all" || filters.dueDate !== "all" || filters.tag !== "all") && (
           <button
-            onClick={() => onFiltersChange({ ...filters, priority: "all", dueDate: "all" })}
+            onClick={() => onFiltersChange({ ...filters, priority: "all", dueDate: "all", tag: "all" })}
             className="rounded-md px-2 py-1 text-xs text-[var(--muted-foreground)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
           >
             Clear

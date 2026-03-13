@@ -77,9 +77,15 @@ export async function PATCH(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
+    // Convert snoozedUntil string to Date for the timestamp column
+    const updateData: Record<string, unknown> = { ...parsed.data, updatedAt: new Date() };
+    if (parsed.data.snoozedUntil !== undefined) {
+      updateData.snoozedUntil = parsed.data.snoozedUntil ? new Date(parsed.data.snoozedUntil) : null;
+    }
+
     const [updated] = await db
       .update(cards)
-      .set(encryptFields({ ...parsed.data, updatedAt: new Date() }, CARD_ENCRYPTED_FIELDS))
+      .set(encryptFields(updateData, CARD_ENCRYPTED_FIELDS))
       .where(eq(cards.id, id))
       .returning();
 

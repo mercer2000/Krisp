@@ -30,6 +30,8 @@ Expected: All three packages listed in dependencies.
 
 **Step 3: Commit**
 
+
+
 ```bash
 git add package.json package-lock.json
 git commit -m "chore: add react-markdown, remark-gfm, marked for compose pane"

@@ -10,7 +10,11 @@ import type { SmartLabelChip, EmailDraft } from "@/types/smartLabel";
 import { InboxFilterDrawer } from "@/components/email/InboxFilterDrawer";
 import { SendToPageModal } from "@/components/email/SendToPageModal";
 import { NewsletterCardView } from "@/components/email/NewsletterCardView";
+import { DelveDiscovery } from "@/components/email/DelveDiscovery";
 import { SwipeableRow } from "@/components/email/SwipeableRow";
+import { SplitInboxPane } from "@/components/email/SplitInboxPane";
+import { SectionManager } from "@/components/email/SectionManager";
+import type { InboxSection, SplitViewState } from "@/types/inboxSection";
 
 const POLL_INTERVAL = 15_000; // 15 seconds
 
@@ -343,8 +347,8 @@ export default function InboxPage() {
   // Folder & Spam state
   const [activeFolder, setActiveFolder] = useState<"inbox" | "spam" | "done" | "all">("inbox");
 
-  // View mode: "list" (default) or "cards" (Pinterest-style newsletter view)
-  const [viewMode, setViewMode] = useState<"list" | "cards">("list");
+  // View mode: "list" (default), "cards" (Pinterest-style newsletter), or "delve" (Delve-inspired discovery)
+  const [viewMode, setViewMode] = useState<"list" | "cards" | "delve">("list");
 
   // Focused email for keyboard navigation
   const [focusedEmailId, setFocusedEmailId] = useState<string | number | null>(null);
@@ -353,6 +357,21 @@ export default function InboxPage() {
   const [previewEmail, setPreviewEmail] = useState<EmailDetail | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const previewAbortRef = useRef<AbortController | null>(null);
+
+  // ── Split View State ──────────────────────────────────────────────
+  const [splitView, setSplitView] = useState<SplitViewState>(() => {
+    if (typeof window === "undefined") return { enabled: false, leftSectionId: null, rightSectionId: null };
+    try {
+      const saved = localStorage.getItem("inbox-split-view");
+      return saved ? JSON.parse(saved) : { enabled: false, leftSectionId: null, rightSectionId: null };
+    } catch {
+      return { enabled: false, leftSectionId: null, rightSectionId: null };
+    }
+  });
+  const [inboxSections, setInboxSections] = useState<InboxSection[]>([]);
+  const [showSectionManager, setShowSectionManager] = useState(false);
+  const [splitPreviewVisible, setSplitPreviewVisible] = useState(false);
+  const [splitPreviewSourcePane, setSplitPreviewSourcePane] = useState<"left" | "right" | null>(null);
 
   // Resizable column width (persisted in localStorage)
   const [listWidth, setListWidth] = useState<number>(() => {
@@ -519,8 +538,18 @@ export default function InboxPage() {
       .then((r) => r.json())
       .then((d) => { if (d.data) setAllSmartRulePages(d.data); })
       .catch(() => {});
+    // Fetch inbox sections for split view
+    fetch("/api/inbox-sections")
+      .then((r) => r.json())
+      .then((d) => { if (d.data) setInboxSections(d.data); })
+      .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Persist split view state to localStorage
+  useEffect(() => {
+    localStorage.setItem("inbox-split-view", JSON.stringify(splitView));
+  }, [splitView]);
 
   const fetchEmails = useCallback(async (silent = false) => {
     const fetchParams = { page, limit, query, afterDate, beforeDate, filterAccount, filterProvider, activeFolder };
@@ -1218,9 +1247,13 @@ export default function InboxPage() {
         return;
       }
 
-      // Escape → close preview pane (deselect focused email)
+      // Escape → close preview pane (deselect focused email / hide split preview)
       if (e.key === "Escape" && focusedEmailId != null) {
         e.preventDefault();
+        if (splitView.enabled) {
+          setSplitPreviewVisible(false);
+          setSplitPreviewSourcePane(null);
+        }
         setFocusedEmailId(null);
         return;
       }
@@ -1441,6 +1474,61 @@ export default function InboxPage() {
                   <rect x="3" y="16" width="7" height="5" rx="1" />
                 </svg>
               </button>
+              <button
+                onClick={() => setViewMode("delve")}
+                className={`px-2.5 py-2 text-sm transition-colors ${
+                  viewMode === "delve"
+                    ? "bg-[var(--primary)]/10 text-[var(--primary)]"
+                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)]"
+                }`}
+                title="Discovery view"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                  <line x1="8" y1="21" x2="16" y2="21" />
+                  <line x1="12" y1="17" x2="12" y2="21" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Split View toggle */}
+            <div className="flex items-center rounded-lg border border-[var(--border)] overflow-hidden">
+              <button
+                onClick={() => {
+                  const next = !splitView.enabled;
+                  setSplitView((prev) => ({ ...prev, enabled: next }));
+                  if (!next) {
+                    // Exiting split view: collapse preview gracefully
+                    setSplitPreviewVisible(false);
+                    setSplitPreviewSourcePane(null);
+                  } else {
+                    // Entering split view: close single-pane preview
+                    setFocusedEmailId(null);
+                  }
+                }}
+                className={`px-2.5 py-2 text-sm transition-colors flex items-center gap-1.5 ${
+                  splitView.enabled
+                    ? "bg-[var(--primary)]/10 text-[var(--primary)]"
+                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)]"
+                }`}
+                title={splitView.enabled ? "Disable split view" : "Enable split view"}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <line x1="12" y1="3" x2="12" y2="21" />
+                </svg>
+                <span className="text-xs">Split</span>
+              </button>
+              <button
+                onClick={() => setShowSectionManager(true)}
+                className="px-2.5 py-2 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors border-l border-[var(--border)]"
+                title="Manage inbox sections"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
+                </svg>
+              </button>
             </div>
 
             {/* Search */}
@@ -1489,17 +1577,17 @@ export default function InboxPage() {
 
           {/* Mobile toolbar — icon-only buttons */}
           <div className="flex md:hidden items-center gap-1">
-            {/* View mode toggle (mobile) */}
+            {/* View mode toggle (mobile) — cycles list → cards → delve → list */}
             <button
-              onClick={() => setViewMode(viewMode === "list" ? "cards" : "list")}
+              onClick={() => setViewMode(viewMode === "list" ? "cards" : viewMode === "cards" ? "delve" : "list")}
               className={`p-2 rounded-lg transition-colors ${
-                viewMode === "cards"
+                viewMode !== "list"
                   ? "text-[var(--primary)] bg-[var(--primary)]/10"
                   : "text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
               }`}
-              title={viewMode === "list" ? "Card view" : "List view"}
+              title={viewMode === "list" ? "Card view" : viewMode === "cards" ? "Discovery view" : "List view"}
             >
-              {viewMode === "cards" ? (
+              {viewMode === "delve" ? (
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="8" y1="6" x2="21" y2="6" />
                   <line x1="8" y1="12" x2="21" y2="12" />
@@ -1507,6 +1595,12 @@ export default function InboxPage() {
                   <line x1="3" y1="6" x2="3.01" y2="6" />
                   <line x1="3" y1="12" x2="3.01" y2="12" />
                   <line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+              ) : viewMode === "cards" ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                  <line x1="8" y1="21" x2="16" y2="21" />
+                  <line x1="12" y1="17" x2="12" y2="21" />
                 </svg>
               ) : (
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2006,12 +2100,136 @@ export default function InboxPage() {
       </header>
 
       {/* Email list + Preview pane */}
-      <main className="flex-1 flex overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden">
+        {/* ── Split View Mode ── */}
+        {splitView.enabled && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Two-pane split layout — horizontal on wide screens, vertical on narrow (<1024px) */}
+            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
+              <SplitInboxPane
+                section={inboxSections.find((s) => s.id === splitView.leftSectionId) ?? null}
+                sections={inboxSections}
+                onSectionChange={(id) => setSplitView((prev) => ({ ...prev, leftSectionId: id }))}
+                onEmailClick={(emailId) => {
+                  setFocusedEmailId(emailId);
+                  setSplitPreviewVisible(true);
+                  setSplitPreviewSourcePane("left");
+                }}
+                focusedEmailId={splitPreviewSourcePane === "left" ? focusedEmailId : null}
+                paneId="left"
+                onSwapPanes={() => setSplitView((prev) => ({
+                  ...prev,
+                  leftSectionId: prev.rightSectionId,
+                  rightSectionId: prev.leftSectionId,
+                }))}
+                otherSectionId={splitView.rightSectionId}
+              />
+              <SplitInboxPane
+                section={inboxSections.find((s) => s.id === splitView.rightSectionId) ?? null}
+                sections={inboxSections}
+                onSectionChange={(id) => setSplitView((prev) => ({ ...prev, rightSectionId: id }))}
+                onEmailClick={(emailId) => {
+                  setFocusedEmailId(emailId);
+                  setSplitPreviewVisible(true);
+                  setSplitPreviewSourcePane("right");
+                }}
+                focusedEmailId={splitPreviewSourcePane === "right" ? focusedEmailId : null}
+                paneId="right"
+                onSwapPanes={() => setSplitView((prev) => ({
+                  ...prev,
+                  leftSectionId: prev.rightSectionId,
+                  rightSectionId: prev.leftSectionId,
+                }))}
+                otherSectionId={splitView.leftSectionId}
+              />
+            </div>
+
+            {/* Preview pane (below split panes, collapsible) */}
+            {splitPreviewVisible && focusedEmailId != null && (
+              <div className="border-t border-[var(--border)] bg-[var(--background)] flex flex-col" style={{ height: "40%", minHeight: 200 }}>
+                {/* Preview header with dismiss */}
+                <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] flex-shrink-0">
+                  <span className="text-xs text-[var(--muted-foreground)]">
+                    Preview {splitPreviewSourcePane === "left" ? "(left pane)" : "(right pane)"}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/inbox/${focusedEmailId}`}
+                      className="text-xs text-[var(--primary)] hover:underline"
+                    >
+                      Open full
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setSplitPreviewVisible(false);
+                        setFocusedEmailId(null);
+                        setSplitPreviewSourcePane(null);
+                      }}
+                      className="p-1 text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] rounded transition-colors"
+                      title="Hide preview"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Preview content */}
+                <div className="flex-1 overflow-auto">
+                  {previewLoading ? (
+                    <div className="p-4 space-y-3 animate-pulse">
+                      <div className="h-5 bg-[var(--secondary)] rounded w-3/4" />
+                      <div className="h-4 bg-[var(--secondary)] rounded w-1/2" />
+                      <div className="h-px bg-[var(--border)] my-2" />
+                      <div className="h-4 bg-[var(--secondary)] rounded w-full" />
+                      <div className="h-4 bg-[var(--secondary)] rounded w-5/6" />
+                    </div>
+                  ) : previewEmail ? (
+                    <div>
+                      <div className="px-4 py-3 border-b border-[var(--border)]">
+                        <h2 className="text-sm font-semibold text-[var(--foreground)] leading-snug">
+                          {previewEmail.subject || "(No subject)"}
+                        </h2>
+                        <div className="mt-1 space-y-0.5 text-xs text-[var(--muted-foreground)]">
+                          <div>From: <span className="text-[var(--foreground)]">{previewEmail.sender}</span></div>
+                          {previewEmail.recipients.length > 0 && (
+                            <div>To: <span className="text-[var(--foreground)]">{previewEmail.recipients.join(", ")}</span></div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        {previewEmail.body_html ? (
+                          <PreviewHtmlFrame html={previewEmail.body_html} />
+                        ) : previewEmail.body_plain_text ? (
+                          <pre className="whitespace-pre-wrap text-sm text-[var(--foreground)] font-sans leading-relaxed">
+                            {previewEmail.body_plain_text}
+                          </pre>
+                        ) : (
+                          <p className="text-[var(--muted-foreground)] italic text-sm">No message body</p>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-sm text-[var(--muted-foreground)]">
+                      Email not found
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Single View Mode (original layout) ── */}
+        {!splitView.enabled && (
+        <div className="flex-1 flex overflow-hidden">
         {/* Left column: email list */}
         <div
           ref={listColumnRef}
-          className={`${focusedEmailId != null && viewMode !== "cards" ? "flex-1 md:flex-none flex flex-col" : "flex-1 flex flex-col"} overflow-auto`}
-          style={focusedEmailId != null && viewMode !== "cards" ? { width: listWidth } : undefined}
+          className={`${focusedEmailId != null && viewMode === "list" ? "flex-1 md:flex-none flex flex-col" : "flex-1 flex flex-col"} overflow-auto`}
+          style={focusedEmailId != null && viewMode === "list" ? { width: listWidth } : undefined}
         >
         {error && (
           <div className="mx-3 md:mx-6 mt-4 p-3 md:p-4 bg-[var(--destructive)]/10 border border-[var(--destructive)]/20 rounded-lg text-[var(--destructive)] text-sm">
@@ -2095,6 +2313,18 @@ export default function InboxPage() {
             }}
             onMarkDone={handleMarkDone}
             onSwipeToBoard={handleSwipeToBoard}
+          />
+        ) : viewMode === "delve" ? (
+          <DelveDiscovery
+            emails={filteredEmails}
+            onEmailClick={(id) => {
+              if (window.innerWidth >= 768) {
+                setFocusedEmailId(id);
+              } else {
+                window.location.href = `/inbox/${id}`;
+              }
+            }}
+            onMarkDone={handleMarkDone}
           />
         ) : (
           <>
@@ -2682,7 +2912,7 @@ export default function InboxPage() {
         </div>
 
         {/* Resize handle (hidden in card view) */}
-        {focusedEmailId != null && viewMode !== "cards" && (
+        {focusedEmailId != null && viewMode === "list" && (
           <div
             className="hidden md:flex items-stretch flex-shrink-0 cursor-col-resize group"
             onMouseDown={handleResizeStart}
@@ -2697,7 +2927,7 @@ export default function InboxPage() {
         )}
 
         {/* Right column: preview pane (desktop only, hidden in card view) */}
-        {focusedEmailId != null && viewMode !== "cards" && (
+        {focusedEmailId != null && viewMode === "list" && (
           <div className="hidden md:flex flex-col flex-1 overflow-hidden bg-[var(--background)]">
             {previewLoading ? (
               <div className="flex-1 p-6 space-y-4 animate-pulse">
@@ -2768,10 +2998,12 @@ export default function InboxPage() {
             )}
           </div>
         )}
+        </div>
+        )}
       </main>
 
-      {/* Pagination (hidden during semantic search) */}
-      {totalPages > 1 && !initialLoading && !isSemanticSearch && (
+      {/* Pagination (hidden during semantic search — also hidden in split view) */}
+      {totalPages > 1 && !initialLoading && !isSemanticSearch && !splitView.enabled && (
         <footer className="border-t border-[var(--border)] px-3 md:px-6 py-3 flex items-center justify-between bg-[var(--background)]">
           <span className="text-xs md:text-sm text-[var(--muted-foreground)]">
             {page}/{totalPages}
@@ -3208,6 +3440,17 @@ export default function InboxPage() {
           setPage={setPage}
         />
       </div>
+
+      {/* Section Manager modal */}
+      <SectionManager
+        open={showSectionManager}
+        onClose={() => setShowSectionManager(false)}
+        sections={inboxSections}
+        onSectionsChange={setInboxSections}
+        accounts={accounts}
+        allLabels={allLabels}
+        allSmartLabels={allSmartLabels}
+      />
     </div>
   );
 }
