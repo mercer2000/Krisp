@@ -322,6 +322,7 @@ export const actionItems = pgTable("action_items", {
     onDelete: "set null",
   }),
   cardId: uuid("card_id").references(() => cards.id, { onDelete: "set null" }),
+  emailId: integer("email_id"),
   title: varchar("title", { length: 500 }).notNull(),
   description: text("description"),
   assignee: varchar("assignee", { length: 255 }),
@@ -2402,6 +2403,34 @@ export const inboxLayouts = pgTable(
   },
   (table) => [
     index("idx_inbox_layouts_tenant").on(table.tenantId),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.tenantId),
+      modify: authUid(table.tenantId),
+    }),
+  ]
+);
+
+// ── Uploads (image/file storage tracking) ────────────
+export const uploads = pgTable(
+  "uploads",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    filename: varchar("filename", { length: 512 }).notNull(),
+    contentType: varchar("content_type", { length: 100 }).notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    blobUrl: text("blob_url").notNull(),
+    source: varchar("source", { length: 50 }).notNull(),
+    sourceId: varchar("source_id", { length: 255 }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_uploads_tenant").on(table.tenantId),
     crudPolicy({
       role: authenticatedRole,
       read: authUid(table.tenantId),

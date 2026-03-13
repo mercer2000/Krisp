@@ -23,6 +23,7 @@ const SLASH_COMMANDS: SlashCommandItem[] = [
   { type: "quote", label: "Quote", description: "Block quote", icon: "\u201C" },
   { type: "divider", label: "Divider", description: "Horizontal line", icon: "—" },
   { type: "callout", label: "Callout", description: "Highlighted note", icon: "💡" },
+  { type: "image", label: "Image", description: "Upload an image", icon: "🖼" },
 ];
 
 interface SlashCommandMenuProps {

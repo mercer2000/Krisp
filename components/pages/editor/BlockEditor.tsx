@@ -377,6 +377,43 @@ export function BlockEditor({ page }: BlockEditorProps) {
     (type: BlockType) => {
       if (!slashMenu) return;
       const block = blocks.find((b) => b.id === slashMenu.blockId);
+
+      // Image: open file picker instead of converting the block
+      if (type === "image") {
+        const afterSortOrder = block ? block.sortOrder : 0;
+        setSlashMenu(null);
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.onchange = async () => {
+          const file = input.files?.[0];
+          if (!file) return;
+          // Clear the slash command text from the trigger block
+          if (block) {
+            const el = blockRefs.current.get(block.id);
+            if (el) el.textContent = "";
+            updateBlock.mutate({ blockId: block.id, content: { text: "" } });
+          }
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("source", "page_block");
+          try {
+            const res = await fetch("/api/upload", { method: "POST", body: formData });
+            if (!res.ok) return;
+            const { url } = await res.json();
+            createBlock.mutate({
+              type: "image",
+              content: { url, caption: "" },
+              sort_order: afterSortOrder + 1,
+            });
+          } catch (err) {
+            console.error("Image upload error:", err);
+          }
+        };
+        input.click();
+        return;
+      }
+
       if (block) {
         const el = blockRefs.current.get(block.id);
         if (el) el.textContent = "";
@@ -389,7 +426,7 @@ export function BlockEditor({ page }: BlockEditorProps) {
       }
       setSlashMenu(null);
     },
-    [slashMenu, blocks, updateBlock]
+    [slashMenu, blocks, updateBlock, createBlock]
   );
 
   // Block handle click → open action menu
@@ -547,8 +584,63 @@ export function BlockEditor({ page }: BlockEditorProps) {
     ? blocks.find((b) => b.id === draggingBlockId)
     : null;
 
+  // Upload an image file and create an image block
+  const uploadAndCreateImageBlock = useCallback(
+    async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("source", "page_block");
+
+      try {
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          console.error("Image upload failed:", err.error || res.status);
+          return;
+        }
+
+        const { url } = await res.json();
+        const lastSortOrder =
+          blocks.length > 0 ? blocks[blocks.length - 1].sortOrder : 0;
+
+        createBlock.mutate({
+          type: "image",
+          content: { url, caption: "" },
+          sort_order: lastSortOrder + 1,
+        });
+      } catch (err) {
+        console.error("Image upload error:", err);
+      }
+    },
+    [blocks, createBlock]
+  );
+
+  // Intercept image paste events
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (const item of Array.from(items)) {
+        if (!item.type.startsWith("image/")) continue;
+
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file) continue;
+
+        uploadAndCreateImageBlock(file);
+        return;
+      }
+    },
+    [uploadAndCreateImageBlock]
+  );
+
   return (
-    <div className="relative pb-32">
+    <div className="relative pb-32" onPaste={handlePaste}>
       {/* Draft recovery banner */}
       {draftRecovered && (
         <div className="mb-2 flex items-center gap-2 rounded-lg bg-[var(--accent)] px-3 py-1.5 text-sm text-[var(--foreground)] shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
