@@ -15,7 +15,7 @@ function buildGmailAuthUrl(redirectUri: string, state: string): string {
     client_id: process.env.GOOGLE_CLIENT_ID!,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: "https://www.googleapis.com/auth/gmail.readonly email",
+    scope: "https://www.googleapis.com/auth/gmail.modify email",
     access_type: "offline",
     prompt: "consent",
     state,

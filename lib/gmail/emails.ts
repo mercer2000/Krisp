@@ -169,6 +169,23 @@ export async function markGmailEmailDone(
 }
 
 /**
+ * Delete a Gmail email from the local database.
+ * Returns the gmail_message_id so the caller can also trash it via the Gmail API.
+ */
+export async function deleteGmailEmail(
+  id: string,
+  tenantId: string
+): Promise<{ gmail_message_id: string } | null> {
+  const rows = await sql`
+    DELETE FROM gmail_emails
+    WHERE id = ${id} AND tenant_id = ${tenantId}
+    RETURNING gmail_message_id
+  `;
+  if (!rows[0]) return null;
+  return { gmail_message_id: rows[0].gmail_message_id as string };
+}
+
+/**
  * List Gmail emails for the unified inbox view with pagination, search, and date filters.
  * Returns the same shape as the Outlook listEmails function for easy merging.
  */

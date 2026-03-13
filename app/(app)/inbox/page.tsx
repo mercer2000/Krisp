@@ -827,15 +827,17 @@ export default function InboxPage() {
   };
 
   const [deletingId, setDeletingId] = useState<number | string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<number | string | null>(null);
 
-  const confirmDelete = async () => {
-    if (deleteTarget === null) return;
-    const emailId = deleteTarget;
-    setDeleteTarget(null);
-
+  const handleDelete = async (emailId: number | string) => {
     const previousEmails = emails;
     const previousTotal = total;
+
+    // Advance focus to the next email (or previous if at the end)
+    if (focusedEmailId === emailId) {
+      const idx = filteredEmails.findIndex((em) => em.id === emailId);
+      const nextId = filteredEmails[idx + 1]?.id ?? filteredEmails[idx - 1]?.id ?? null;
+      setFocusedEmailId(nextId);
+    }
 
     // Optimistic update
     setEmails((prev) => prev.filter((e) => e.id !== emailId));
@@ -1318,6 +1320,13 @@ export default function InboxPage() {
           setFocusedEmailId(nextId);
           handleMarkDone(email.id, true);
         }
+        return;
+      }
+
+      // Delete or Backspace → delete focused email
+      if ((e.key === "Delete" || e.key === "Backspace") && focusedEmailId != null) {
+        e.preventDefault();
+        handleDelete(focusedEmailId);
         return;
       }
 
@@ -2757,7 +2766,7 @@ export default function InboxPage() {
                     </a>
                   )}
                   <button
-                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); setDeleteTarget(email.id); }}
+                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleDelete(email.id); }}
                     disabled={deletingId === email.id}
                     className="p-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/10 transition-colors disabled:opacity-40"
                     title="Delete email"
@@ -3048,30 +3057,6 @@ export default function InboxPage() {
         </footer>
       )}
 
-      {/* Delete confirmation modal */}
-      <Modal
-        open={deleteTarget !== null}
-        onClose={() => setDeleteTarget(null)}
-        title="Delete email"
-      >
-        <p className="text-sm text-[var(--muted-foreground)] mb-6">
-          This email will be permanently removed from your inbox and your mailbox. This action cannot be undone.
-        </p>
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={() => setDeleteTarget(null)}
-            className="px-4 py-2 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={confirmDelete}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--destructive)] text-white hover:opacity-90 transition-opacity"
-          >
-            Delete
-          </button>
-        </div>
-      </Modal>
 
       {/* Label Manager Modal */}
       <Modal

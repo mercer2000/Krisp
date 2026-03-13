@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/server";
 import { getEmailDetail } from "@/lib/email/emails";
 import { getGmailEmailById } from "@/lib/gmail/emails";
+import { getActiveWatch, getValidAccessToken } from "@/lib/gmail/watch";
+import { forwardGmailMessage } from "@/lib/gmail/messages";
 import { resolveGraphSendContext } from "@/lib/graph/resolve";
 import { forwardGraphMessage } from "@/lib/graph/messages";
 import { markdownToEmailHtml } from "@/lib/email/markdownToHtml";
@@ -80,11 +82,45 @@ export async function POST(
       if (!gmailEmail) {
         return NextResponse.json({ error: "Email not found" }, { status: 404 });
       }
-      // Gmail emails can't use Graph forward — fall back error
-      return NextResponse.json(
-        { error: "Forwarding is only supported for Outlook emails" },
-        { status: 400 }
+
+      const watch = await getActiveWatch(userId);
+      if (!watch) {
+        return NextResponse.json(
+          { error: "Gmail not connected. Please reconnect your Gmail account." },
+          { status: 502 }
+        );
+      }
+
+      const accessToken = await getValidAccessToken(watch);
+      const markdown = body.bodyMarkdown || body.message || "";
+      const fwdBodyHtml = markdown ? markdownToEmailHtml(markdown) : "";
+
+      const sent = await forwardGmailMessage(
+        accessToken,
+        gmailEmail.gmail_message_id,
+        watch.emailAddress,
+        {
+          bodyHtml: fwdBodyHtml,
+          to: toRecipients,
+          cc: body.cc,
+          bcc: body.bcc,
+          subject: gmailEmail.subject || "",
+          originalBody: gmailEmail.body_html || gmailEmail.body_plain || "",
+          originalSender: gmailEmail.sender,
+          originalDate: gmailEmail.received_at
+            ? new Date(gmailEmail.received_at).toLocaleString()
+            : "",
+        }
       );
+
+      if (!sent) {
+        return NextResponse.json(
+          { error: "Failed to forward email. Your Gmail account may need additional permissions." },
+          { status: 502 }
+        );
+      }
+
+      return NextResponse.json({ message: "Email forwarded successfully", to: toRecipients });
     }
 
     const emailId = parseInt(id, 10);

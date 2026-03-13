@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/server";
 import { getEmailDetail, deleteEmail, markEmailRead, markEmailDone } from "@/lib/email/emails";
-import { getGmailEmailById, markGmailEmailRead, markGmailEmailDone } from "@/lib/gmail/emails";
+import { getGmailEmailById, markGmailEmailRead, markGmailEmailDone, deleteGmailEmail } from "@/lib/gmail/emails";
+import { getActiveWatch, getValidAccessToken } from "@/lib/gmail/watch";
 import { getZoomMessageById } from "@/lib/zoom/messages";
 import { db } from "@/lib/db";
-import { graphSubscriptions } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { graphSubscriptions, graphCredentials, calendarSyncState } from "@/lib/db/schema";
+import { eq, and, desc } from "drizzle-orm";
 import {
   getGraphCredentialsByIdUnsafe,
   getGraphAccessTokenFromCreds,
@@ -13,7 +14,12 @@ import {
 import {
   extractUserFromResource,
   deleteGraphMessage,
+  deleteGraphMessageMe,
 } from "@/lib/graph/messages";
+import {
+  getOutlookTokensForTenant,
+  getValidOutlookAccessToken,
+} from "@/lib/outlook/oauth";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -113,6 +119,45 @@ export async function DELETE(
     }
 
     const { id } = await params;
+
+    // UUID IDs are Gmail emails
+    if (UUID_REGEX.test(id)) {
+      const gmailEmail = await getGmailEmailById(id, userId);
+      if (!gmailEmail) {
+        return NextResponse.json({ error: "Email not found" }, { status: 404 });
+      }
+
+      // Trash the message in Gmail via the API
+      const watch = await getActiveWatch(userId);
+      if (watch) {
+        try {
+          const accessToken = await getValidAccessToken(watch);
+          const trashRes = await fetch(
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${gmailEmail.gmail_message_id}/trash`,
+            { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } }
+          );
+          if (!trashRes.ok) {
+            const err = await trashRes.text();
+            console.warn("[Delete Gmail] Trash API failed:", err);
+            return NextResponse.json(
+              { error: "Failed to trash email in Gmail — check app permissions" },
+              { status: 502 }
+            );
+          }
+        } catch (err) {
+          console.warn("[Delete Gmail] Token/API error:", err);
+          return NextResponse.json(
+            { error: "Failed to trash email in Gmail" },
+            { status: 502 }
+          );
+        }
+      }
+
+      // Delete from local database
+      await deleteGmailEmail(id, userId);
+      return NextResponse.json({ message: "Email deleted" });
+    }
+
     const emailId = parseInt(id, 10);
     if (isNaN(emailId) || emailId < 1) {
       return NextResponse.json({ error: "Invalid email ID" }, { status: 400 });
@@ -124,45 +169,109 @@ export async function DELETE(
       return NextResponse.json({ error: "Email not found" }, { status: 404 });
     }
 
-    // Resolve Graph credentials to delete from mailbox
-    const [subscription] = await db
-      .select()
-      .from(graphSubscriptions)
-      .where(
-        and(
-          eq(graphSubscriptions.tenantId, userId),
-          eq(graphSubscriptions.active, true)
-        )
-      );
+    // Resolve an access token and mailbox to delete via Microsoft Graph.
+    // Two auth paths: Outlook OAuth (personal) or Graph credentials (enterprise).
+    let token: string | null = null;
+    let userMailbox: string | null = null;
 
-    if (!subscription?.credentialId) {
-      console.warn("[Delete] No active Graph subscription found for tenant", userId);
+    // 1. Try Outlook OAuth (personal Microsoft accounts)
+    const outlookAccounts = await getOutlookTokensForTenant(userId);
+    if (outlookAccounts.length > 0) {
+      const account = outlookAccounts[0];
+      try {
+        token = await getValidOutlookAccessToken(account.id, userId);
+        userMailbox = account.outlook_email;
+      } catch (err) {
+        console.warn("[Delete] Outlook OAuth token refresh failed:", err);
+      }
+    }
+
+    // 2. Fall back to Graph credentials (enterprise Azure AD)
+    if (!token) {
+      let credentialId: string | null = null;
+
+      // Try active subscription first
+      const [activeSub] = await db
+        .select()
+        .from(graphSubscriptions)
+        .where(
+          and(
+            eq(graphSubscriptions.tenantId, userId),
+            eq(graphSubscriptions.active, true)
+          )
+        );
+
+      if (activeSub?.credentialId) {
+        credentialId = activeSub.credentialId;
+        userMailbox = extractUserFromResource(activeSub.resource);
+      }
+
+      // Fall back to any subscription
+      if (!credentialId) {
+        const [anySub] = await db
+          .select()
+          .from(graphSubscriptions)
+          .where(eq(graphSubscriptions.tenantId, userId))
+          .orderBy(desc(graphSubscriptions.createdAt))
+          .limit(1);
+
+        if (anySub?.credentialId) {
+          credentialId = anySub.credentialId;
+          userMailbox = extractUserFromResource(anySub.resource);
+        }
+      }
+
+      // Fall back to direct credential lookup
+      if (!credentialId) {
+        const [cred] = await db
+          .select({ id: graphCredentials.id })
+          .from(graphCredentials)
+          .where(eq(graphCredentials.tenantId, userId))
+          .orderBy(desc(graphCredentials.createdAt))
+          .limit(1);
+
+        if (cred) credentialId = cred.id;
+      }
+
+      if (credentialId) {
+        const creds = await getGraphCredentialsByIdUnsafe(credentialId);
+        if (creds) {
+          token = await getGraphAccessTokenFromCreds(creds);
+
+          // Resolve mailbox if not found from subscription
+          if (!userMailbox) {
+            const [syncState] = await db
+              .select({ mailbox: calendarSyncState.mailbox })
+              .from(calendarSyncState)
+              .where(eq(calendarSyncState.tenantId, userId))
+              .limit(1);
+
+            if (syncState?.mailbox) {
+              userMailbox = syncState.mailbox;
+            }
+          }
+        }
+      }
+    }
+
+    // Last resort for mailbox: use email recipients
+    if (token && !userMailbox && email.recipients?.length) {
+      userMailbox = email.recipients[0];
+    }
+
+    if (!token || !userMailbox) {
+      console.warn("[Delete] No credentials or mailbox found for tenant", userId);
       return NextResponse.json(
-        { error: "No active Graph subscription — cannot delete from mailbox" },
+        { error: "No Outlook credentials found — cannot delete from mailbox" },
         { status: 502 }
       );
     }
 
-    const creds = await getGraphCredentialsByIdUnsafe(subscription.credentialId);
-    if (!creds) {
-      console.warn("[Delete] Graph credentials not found for", subscription.credentialId);
-      return NextResponse.json(
-        { error: "Graph credentials not found" },
-        { status: 502 }
-      );
-    }
-
-    const token = await getGraphAccessTokenFromCreds(creds);
-    const userMailbox = extractUserFromResource(subscription.resource);
-    if (!userMailbox) {
-      console.warn("[Delete] Could not extract mailbox from resource:", subscription.resource);
-      return NextResponse.json(
-        { error: "Could not determine mailbox from subscription" },
-        { status: 502 }
-      );
-    }
-
-    const graphDeleted = await deleteGraphMessage(userMailbox, email.message_id, token);
+    // Outlook OAuth uses delegated /me/ endpoint; Graph credentials use /users/{mailbox}/
+    const isDelegated = outlookAccounts.length > 0;
+    const graphDeleted = isDelegated
+      ? await deleteGraphMessageMe(email.message_id, token)
+      : await deleteGraphMessage(userMailbox, email.message_id, token);
     if (!graphDeleted) {
       return NextResponse.json(
         { error: "Failed to delete email from Outlook — check app permissions (Mail.ReadWrite required)" },

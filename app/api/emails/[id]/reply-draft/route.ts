@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/server";
 import { getEmailDetail } from "@/lib/email/emails";
+import { getGmailEmailById } from "@/lib/gmail/emails";
+import { getActiveWatch, getValidAccessToken } from "@/lib/gmail/watch";
+import { fetchGmailThread } from "@/lib/gmail/messages";
 import { resolveGraphSendContext } from "@/lib/graph/resolve";
 import { fetchConversationThread } from "@/lib/graph/messages";
 import { chatCompletion, TokenLimitError } from "@/lib/ai/client";
@@ -100,27 +103,50 @@ export async function POST(
     const body: ReplyDraftRequest = await request.json();
     const { action = "reply", contextLevel = "email_only" } = body;
 
-    // Only support Outlook emails (numeric IDs)
+    // Resolve email data — works for both Gmail (UUID) and Outlook (numeric)
+    let emailData: { sender: string; recipients: string[]; cc: string[]; subject: string; bodyText: string; receivedAt: string; messageId: string | null; threadId: string | null; isGmail: boolean };
+
     if (UUID_REGEX.test(id)) {
-      return NextResponse.json(
-        { error: "AI drafts are only supported for Outlook emails" },
-        { status: 400 }
-      );
-    }
-
-    const emailId = parseInt(id, 10);
-    if (isNaN(emailId) || emailId < 1) {
-      return NextResponse.json({ error: "Invalid email ID" }, { status: 400 });
-    }
-
-    const email = await getEmailDetail(emailId, userId);
-    if (!email) {
-      return NextResponse.json({ error: "Email not found" }, { status: 404 });
+      const gmailEmail = await getGmailEmailById(id, userId);
+      if (!gmailEmail) {
+        return NextResponse.json({ error: "Email not found" }, { status: 404 });
+      }
+      const recipients = Array.isArray(gmailEmail.recipients) ? gmailEmail.recipients : [];
+      emailData = {
+        sender: gmailEmail.sender,
+        recipients: recipients as string[],
+        cc: [],
+        subject: gmailEmail.subject || "",
+        bodyText: (gmailEmail.body_plain || "").trim(),
+        receivedAt: gmailEmail.received_at ? String(gmailEmail.received_at) : "",
+        messageId: gmailEmail.gmail_message_id,
+        threadId: gmailEmail.thread_id,
+        isGmail: true,
+      };
+    } else {
+      const emailId = parseInt(id, 10);
+      if (isNaN(emailId) || emailId < 1) {
+        return NextResponse.json({ error: "Invalid email ID" }, { status: 400 });
+      }
+      const email = await getEmailDetail(emailId, userId);
+      if (!email) {
+        return NextResponse.json({ error: "Email not found" }, { status: 404 });
+      }
+      emailData = {
+        sender: email.sender,
+        recipients: email.recipients,
+        cc: email.cc,
+        subject: email.subject || "",
+        bodyText: (email.body_plain_text || "").trim(),
+        receivedAt: email.received_at,
+        messageId: email.message_id,
+        threadId: null,
+        isGmail: false,
+      };
     }
 
     // Skip generation for empty emails
-    const bodyText = email.body_plain_text?.trim();
-    if (!bodyText || bodyText.length < 10) {
+    if (!emailData.bodyText || emailData.bodyText.length < 10) {
       return NextResponse.json({
         draft: "",
         intent: action === "forward" ? "fyi" : "acknowledgment",
@@ -135,29 +161,58 @@ export async function POST(
     const contextParts: string[] = [];
 
     if (contextLevel === "full_thread" || contextLevel === "thread_and_app") {
-      // Fetch thread from Graph API
-      const graphResult = await resolveGraphSendContext(userId);
-      if ("context" in graphResult && email.message_id) {
-        const thread = await fetchConversationThread(
-          graphResult.context.mailbox,
-          graphResult.context.token,
-          email.message_id
-        );
-        if (thread.length > 1) {
-          contextParts.push("CONVERSATION THREAD (oldest first):");
-          for (const msg of thread) {
-            const date = msg.date
-              ? new Date(msg.date).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })
-              : "";
-            contextParts.push("---");
-            contextParts.push(`From: ${msg.from} | Date: ${date}`);
-            contextParts.push(msg.bodyPreview.slice(0, 500));
+      if (emailData.isGmail && emailData.threadId) {
+        // Fetch thread from Gmail API
+        try {
+          const watch = await getActiveWatch(userId);
+          if (watch) {
+            const accessToken = await getValidAccessToken(watch);
+            const thread = await fetchGmailThread(accessToken, emailData.threadId);
+            if (thread.length > 1) {
+              contextParts.push("CONVERSATION THREAD (oldest first):");
+              for (const msg of thread) {
+                const date = msg.date
+                  ? new Date(msg.date).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })
+                  : "";
+                contextParts.push("---");
+                contextParts.push(`From: ${msg.from} | Date: ${date}`);
+                contextParts.push(msg.bodyPreview.slice(0, 500));
+              }
+              contextParts.push("---");
+              contextParts.push("");
+            }
           }
-          contextParts.push("---");
-          contextParts.push("");
+        } catch {
+          // Non-critical — continue without thread
+        }
+      } else if (!emailData.isGmail) {
+        // Fetch thread from Graph API
+        const graphResult = await resolveGraphSendContext(userId);
+        if ("context" in graphResult && emailData.messageId) {
+          const thread = await fetchConversationThread(
+            graphResult.context.mailbox,
+            graphResult.context.token,
+            emailData.messageId
+          );
+          if (thread.length > 1) {
+            contextParts.push("CONVERSATION THREAD (oldest first):");
+            for (const msg of thread) {
+              const date = msg.date
+                ? new Date(msg.date).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })
+                : "";
+              contextParts.push("---");
+              contextParts.push(`From: ${msg.from} | Date: ${date}`);
+              contextParts.push(msg.bodyPreview.slice(0, 500));
+            }
+            contextParts.push("---");
+            contextParts.push("");
+          }
         }
       }
     }
@@ -165,7 +220,7 @@ export async function POST(
     if (contextLevel === "thread_and_app") {
       // Fetch related Kanban cards (matching sender email or subject keywords)
       try {
-        const senderEmail = email.sender;
+        const senderEmail = emailData.sender;
         const recentCards = await db
           .select({
             title: cards.title,
@@ -186,7 +241,7 @@ export async function POST(
           .limit(10);
 
         // Filter cards that mention the sender or subject keywords
-        const subjectWords = (email.subject || "")
+        const subjectWords = (emailData.subject)
           .toLowerCase()
           .split(/\s+/)
           .filter((w) => w.length > 3);
@@ -216,7 +271,7 @@ export async function POST(
 
       // Fetch page knowledge for matched pages
       try {
-        const pageKnowledge = await fetchPageKnowledge(String(emailId), userId);
+        const pageKnowledge = await fetchPageKnowledge(id, userId);
         if (pageKnowledge.length > 0) {
           contextParts.push("PAGE KNOWLEDGE (from your organized pages):");
           let charBudget = 3000;
@@ -239,12 +294,12 @@ export async function POST(
 
     // Always include the current email
     contextParts.push("CURRENT EMAIL:");
-    contextParts.push(`From: ${email.sender}`);
-    contextParts.push(`To: ${email.recipients.join(", ")}`);
-    if (email.cc.length) contextParts.push(`CC: ${email.cc.join(", ")}`);
-    contextParts.push(`Subject: ${email.subject || "(No subject)"}`);
-    contextParts.push(`Date: ${email.received_at}`);
-    contextParts.push(`Body: ${bodyText.slice(0, 2000)}`);
+    contextParts.push(`From: ${emailData.sender}`);
+    contextParts.push(`To: ${emailData.recipients.join(", ")}`);
+    if (emailData.cc.length) contextParts.push(`CC: ${emailData.cc.join(", ")}`);
+    contextParts.push(`Subject: ${emailData.subject || "(No subject)"}`);
+    contextParts.push(`Date: ${emailData.receivedAt}`);
+    contextParts.push(`Body: ${emailData.bodyText.slice(0, 2000)}`);
 
     if (action === "forward") {
       contextParts.push("");

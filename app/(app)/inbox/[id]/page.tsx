@@ -165,8 +165,10 @@ export default function EmailDetailPage() {
   const [sendToPageSelectedText, setSendToPageSelectedText] = useState<string | undefined>();
   const emailBodyRef = useRef<HTMLDivElement>(null);
 
-  // Determine if this is an Outlook email (compose only for Outlook)
+  // Determine if this is an Outlook or Gmail email
   const isOutlookEmail = email ? !isNaN(Number(email.id)) : false;
+  const isGmailEmail = email ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(email.id)) : false;
+  const canCompose = isOutlookEmail || isGmailEmail;
 
   // Compute default recipients for compose pane
   const getDefaultRecipients = useCallback(
@@ -186,11 +188,11 @@ export default function EmailDetailPage() {
 
   const openCompose = useCallback(
     (action: ComposeAction, aiMode: boolean) => {
-      if (!isOutlookEmail) return;
+      if (!canCompose) return;
       setComposeAction(action);
       setComposeAiMode(aiMode);
     },
-    [isOutlookEmail]
+    [canCompose]
   );
 
   const closeCompose = useCallback(() => {
@@ -406,7 +408,7 @@ export default function EmailDetailPage() {
               <span className="hidden md:inline">Open in Outlook</span>
             </a>
           )}
-          {isOutlookEmail && (
+          {canCompose && (
             <>
               <SplitButton
                 label="Reply"
