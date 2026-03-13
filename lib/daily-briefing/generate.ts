@@ -10,8 +10,10 @@ import {
   boards,
   emails,
   actionItems,
+  dailyThemes,
+  weeklyPlans,
 } from "@/lib/db/schema";
-import { eq, and, gte, lte, isNull, desc, sql } from "drizzle-orm";
+import { eq, and, gte, lte, isNull, desc, sql, inArray } from "drizzle-orm";
 import {
   encryptFields,
   decryptRows,
@@ -127,6 +129,59 @@ async function gatherBriefingData(userId: string) {
         .limit(20),
     ]);
 
+  // Today's daily theme from active weekly plan
+  let todayTheme: {
+    theme: string;
+    suggestedCardIds: string[];
+    aiRationale: string | null;
+  } | null = null;
+  let themeCards: { id: string; title: string }[] = [];
+
+  try {
+    const themeResults = await db
+      .select({
+        theme: dailyThemes.theme,
+        suggestedCardIds: dailyThemes.suggestedCardIds,
+        aiRationale: dailyThemes.aiRationale,
+      })
+      .from(dailyThemes)
+      .innerJoin(weeklyPlans, eq(dailyThemes.weeklyPlanId, weeklyPlans.id))
+      .where(
+        and(
+          eq(dailyThemes.userId, userId),
+          eq(dailyThemes.date, todayStr),
+          eq(weeklyPlans.status, "active"),
+          isNull(weeklyPlans.deletedAt)
+        )
+      );
+
+    if (themeResults.length > 0) {
+      const row = decryptRows(
+        [themeResults[0]] as Record<string, unknown>[],
+        ["aiRationale"]
+      )[0] as typeof themeResults[0];
+      todayTheme = {
+        theme: row.theme,
+        suggestedCardIds: row.suggestedCardIds ?? [],
+        aiRationale: row.aiRationale,
+      };
+
+      // Fetch curated card titles
+      if (todayTheme.suggestedCardIds.length > 0) {
+        const curatedCards = await db
+          .select({ id: cards.id, title: cards.title })
+          .from(cards)
+          .where(inArray(cards.id, todayTheme.suggestedCardIds));
+        themeCards = decryptRows(
+          curatedCards as Record<string, unknown>[],
+          CARD_ENCRYPTED_FIELDS
+        ) as typeof curatedCards;
+      }
+    }
+  } catch {
+    // daily_themes table may not exist yet
+  }
+
   return {
     overdueCards: decryptRows(
       overdueCards as Record<string, unknown>[],
@@ -144,6 +199,8 @@ async function gatherBriefingData(userId: string) {
       openActions as Record<string, unknown>[],
       ACTION_ITEM_ENCRYPTED_FIELDS
     ) as typeof openActions,
+    todayTheme,
+    themeCards,
   };
 }
 
@@ -194,10 +251,30 @@ async function generateBriefingContent(
 
   const instructions = await resolvePrompt(PROMPT_DAILY_BRIEFING, userId);
 
+  const themeSection = data.todayTheme
+    ? `
+## Today's Theme: ${data.todayTheme.theme}
+${data.todayTheme.aiRationale || ""}
+${
+  data.themeCards.length > 0
+    ? `Suggested tasks for today (${data.themeCards.length} curated items):
+${data.themeCards.map((c) => `- "${c.title}"`).join("\n")}`
+    : ""
+}
+
+IMPORTANT: Include a "Today's Theme" section prominently in the HTML output (before the schedule section). Use this HTML structure:
+<div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 12px 16px; margin-bottom: 16px;">
+  <h3 style="margin: 0 0 4px;">Today's Theme: ${data.todayTheme.theme}</h3>
+  <p style="margin: 0; color: #64748b; font-size: 14px;">${data.todayTheme.aiRationale || "Focus area for today"}</p>
+  ${data.themeCards.length > 0 ? `<p style="margin: 8px 0 0; color: #475569; font-size: 13px;">Curated tasks: ${data.themeCards.map((c) => c.title).join(", ")}</p>` : ""}
+</div>
+`
+    : "";
+
   const prompt = `${instructions}
 
 Today's Date: ${todayStr}
-
+${themeSection}
 ## Overdue Kanban Cards (${data.overdueCards.length})
 ${overdueSection || "None."}
 
