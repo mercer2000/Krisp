@@ -1127,7 +1127,7 @@ export const weeklyPlans = pgTable(
   ]
 );
 
-export const weeklyPlansRelations = relations(weeklyPlans, ({ one }) => ({
+export const weeklyPlansRelations = relations(weeklyPlans, ({ one, many }) => ({
   user: one(users, {
     fields: [weeklyPlans.userId],
     references: [users.id],
@@ -1135,6 +1135,50 @@ export const weeklyPlansRelations = relations(weeklyPlans, ({ one }) => ({
   weeklyReview: one(weeklyReviews, {
     fields: [weeklyPlans.weeklyReviewId],
     references: [weeklyReviews.id],
+  }),
+  dailyThemes: many(dailyThemes),
+}));
+
+// ── Daily Themes ────────────────────────────────────
+
+export const dailyThemes = pgTable(
+  "daily_themes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    weeklyPlanId: uuid("weekly_plan_id")
+      .notNull()
+      .references(() => weeklyPlans.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    theme: text("theme").notNull(),
+    aiRationale: text("ai_rationale"),
+    suggestedCardIds: jsonb("suggested_card_ids").$type<string[]>().notNull().default([]),
+    isOverridden: boolean("is_overridden").default(false).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.userId),
+      modify: authUid(table.userId),
+    }),
+    index("daily_themes_plan_id_idx").on(table.weeklyPlanId),
+    index("daily_themes_user_date_idx").on(table.userId, table.date),
+  ]
+);
+
+export const dailyThemesRelations = relations(dailyThemes, ({ one }) => ({
+  weeklyPlan: one(weeklyPlans, {
+    fields: [dailyThemes.weeklyPlanId],
+    references: [weeklyPlans.id],
+  }),
+  user: one(users, {
+    fields: [dailyThemes.userId],
+    references: [users.id],
   }),
 }));
 

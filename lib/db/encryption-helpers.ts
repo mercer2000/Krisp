@@ -93,6 +93,9 @@ export const WEEKLY_PLAN_ENCRYPTED_FIELDS = [
   "userReflection",
 ] as const;
 
+/** daily_themes columns that store sensitive plaintext */
+export const DAILY_THEME_ENCRYPTED_FIELDS = ["aiRationale"] as const;
+
 /** email_contacts columns that store sensitive plaintext (email stored plaintext for dedup) */
 export const EMAIL_CONTACT_ENCRYPTED_FIELDS = ["displayName"] as const;
 
