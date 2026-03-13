@@ -1082,6 +1082,62 @@ export const weeklyReviews = pgTable(
   ]
 );
 
+// ── Weekly Plans ────────────────────────────────────
+
+export const weeklyPlanStatusEnum = pgEnum("weekly_plan_status", [
+  "planning",
+  "active",
+  "assessed",
+]);
+
+export const weeklyPlans = pgTable(
+  "weekly_plans",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    weekStart: date("week_start").notNull(),
+    weekEnd: date("week_end").notNull(),
+    weeklyReviewId: uuid("weekly_review_id").references(() => weeklyReviews.id, {
+      onDelete: "set null",
+    }),
+    bigThreeCardIds: jsonb("big_three_card_ids").$type<string[]>().notNull().default([]),
+    aiAssessment: text("ai_assessment"),
+    userReflection: text("user_reflection"),
+    assessmentScore: integer("assessment_score"),
+    assessmentEmailSentAt: timestamp("assessment_email_sent_at", { withTimezone: true }),
+    status: weeklyPlanStatusEnum("status").default("planning").notNull(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.userId),
+      modify: authUid(table.userId),
+    }),
+    index("weekly_plans_user_id_idx").on(table.userId),
+    index("weekly_plans_user_week_idx").on(table.userId, table.weekStart),
+  ]
+);
+
+export const weeklyPlansRelations = relations(weeklyPlans, ({ one }) => ({
+  user: one(users, {
+    fields: [weeklyPlans.userId],
+    references: [users.id],
+  }),
+  weeklyReview: one(weeklyReviews, {
+    fields: [weeklyPlans.weeklyReviewId],
+    references: [weeklyReviews.id],
+  }),
+}));
+
 // ── Workspaces (Pages feature) ──────────────────────
 export const workspaces = pgTable("workspaces", {
   id: uuid("id").defaultRandom().primaryKey(),

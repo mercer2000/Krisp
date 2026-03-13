@@ -87,6 +87,12 @@ export const BRAIN_THOUGHT_ENCRYPTED_FIELDS = ["content"] as const;
 /** daily_briefings columns that store sensitive plaintext */
 export const DAILY_BRIEFING_ENCRYPTED_FIELDS = ["briefingHtml"] as const;
 
+/** weekly_plans columns that store sensitive plaintext */
+export const WEEKLY_PLAN_ENCRYPTED_FIELDS = [
+  "aiAssessment",
+  "userReflection",
+] as const;
+
 /** email_contacts columns that store sensitive plaintext (email stored plaintext for dedup) */
 export const EMAIL_CONTACT_ENCRYPTED_FIELDS = ["displayName"] as const;
 
