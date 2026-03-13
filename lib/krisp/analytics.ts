@@ -195,7 +195,7 @@ function computeEngagement(
 // Main analytics function
 // ---------------------------------------------------------------------------
 
-function analyzeOneMeeting(row: WebhookKeyPointsRow): MeetingAnalytics {
+export function analyzeOneMeeting(row: WebhookKeyPointsRow): MeetingAnalytics {
   const rawText = row.raw_content || "";
   const sentiment = analyzeSentiment(rawText);
   const talkTime = computeTalkTime(rawText, row.speakers || []);
