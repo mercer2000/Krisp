@@ -19,6 +19,47 @@ function formatWeekLabel(start: string, end: string): string {
   return `${formatDate(start)} — ${formatDate(end)}`;
 }
 
+function ScoreSparkline({ scores }: { scores: Array<{ week: string; score: number }> }) {
+  if (scores.length < 2) return null;
+
+  const width = 200;
+  const height = 40;
+  const padding = 4;
+  const maxScore = 10;
+
+  const points = scores.map((s, i) => ({
+    x: padding + (i / (scores.length - 1)) * (width - 2 * padding),
+    y: height - padding - (s.score / maxScore) * (height - 2 * padding),
+  }));
+
+  const pathD = points
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
+    .join(" ");
+
+  const lastScore = scores[scores.length - 1];
+  const scoreColor = lastScore.score >= 8 ? "#22c55e" : lastScore.score >= 5 ? "#eab308" : "#ef4444";
+
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--card)] px-4 py-2">
+      <div className="flex flex-col items-center justify-center mr-1">
+        <span className="text-xl font-bold" style={{ color: scoreColor }}>
+          {lastScore.score}
+        </span>
+        <span className="text-[10px] text-[var(--muted-foreground)]">latest</span>
+      </div>
+      <svg width={width} height={height} className="shrink-0">
+        <path d={pathD} fill="none" stroke={scoreColor} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        {points.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r={2.5} fill={scoreColor} />
+        ))}
+      </svg>
+      <span className="text-xs text-[var(--muted-foreground)] whitespace-nowrap">
+        Last {scores.length} weeks
+      </span>
+    </div>
+  );
+}
+
 const STATUS_COLORS: Record<string, string> = {
   completed:
     "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
@@ -69,6 +110,7 @@ export default function WeeklyReviewsPage() {
   );
   const [generating, setGenerating] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [scoreHistory, setScoreHistory] = useState<Array<{ week: string; score: number }>>([]);
 
   const fetchReviews = useCallback(async () => {
     setLoading(true);
@@ -88,6 +130,29 @@ export default function WeeklyReviewsPage() {
   useEffect(() => {
     fetchReviews();
   }, [fetchReviews]);
+
+  // Fetch score history from weekly plans
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/weekly-plans");
+        if (!res.ok) return;
+        const data = await res.json();
+        const plans = Array.isArray(data.plans) ? data.plans : Array.isArray(data) ? data : [];
+        const scored = plans
+          .filter((p: { assessmentScore?: number | null; weekStart?: string }) => p.assessmentScore != null && p.weekStart)
+          .map((p: { assessmentScore: number; weekStart: string }) => ({
+            week: p.weekStart,
+            score: p.assessmentScore,
+          }))
+          .sort((a: { week: string }, b: { week: string }) => a.week.localeCompare(b.week))
+          .slice(-8);
+        setScoreHistory(scored);
+      } catch {
+        // silently ignore — sparkline is optional
+      }
+    })();
+  }, []);
 
   const handleGenerate = async () => {
     setGenerating(true);
@@ -179,6 +244,15 @@ export default function WeeklyReviewsPage() {
   // Review list panel
   const reviewList = (
     <div className="space-y-2">
+      {scoreHistory.length >= 2 && (
+        <div className="mb-3">
+          <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+            Weekly Score Trend
+          </h3>
+          <ScoreSparkline scores={scoreHistory} />
+        </div>
+      )}
+
       {error && (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
           {error}
