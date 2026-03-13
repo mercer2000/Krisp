@@ -164,7 +164,9 @@ export function Card({ card, onClick, onDelete, onMove, onSnooze, columns, curre
           ? "opacity-50 shadow-lg ring-2 ring-[var(--primary)] border-[var(--primary)]"
           : isSelected
             ? "border-blue-500 ring-2 ring-blue-400 shadow-md bg-blue-50/50 dark:bg-blue-900/20"
-            : "border-transparent hover:border-blue-500 hover:shadow-md"
+            : card.isBigThree
+              ? "border-amber-300 ring-2 ring-amber-400 hover:shadow-md"
+              : "border-transparent hover:border-blue-500 hover:shadow-md"
       }`}
     >
       {/* Selection checkbox (visible on hover or when any card is selected) */}
@@ -189,6 +191,18 @@ export function Card({ card, onClick, onDelete, onMove, onSnooze, columns, curre
             </svg>
           )}
         </button>
+      )}
+
+      {/* Big 3 star badge */}
+      {card.isBigThree && (
+        <span
+          className="absolute top-1 right-1 z-[5] flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400"
+          title="Big 3 priority"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          </svg>
+        </span>
       )}
 
       {/* Inline delete confirmation (top-right) */}

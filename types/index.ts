@@ -25,6 +25,7 @@ export interface Column {
   title: string;
   position: number;
   color: string | null;
+  isFocusColumn: boolean;
   createdAt: Date;
 }
 

@@ -189,11 +189,16 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
     [localColumns]
   );
 
-  // Apply filters to display columns
-  const displayColumns = useMemo(
-    () => applyFilters(localColumns, filters),
-    [localColumns, filters]
-  );
+  // Apply filters to display columns, with Focus column always first
+  const displayColumns = useMemo(() => {
+    const filtered = applyFilters(localColumns, filters);
+    // Sort so Focus column comes first
+    return [...filtered].sort((a, b) => {
+      if (a.isFocusColumn && !b.isFocusColumn) return -1;
+      if (!a.isFocusColumn && b.isFocusColumn) return 1;
+      return 0;
+    });
+  }, [localColumns, filters]);
 
   const findColumnByCardId = useCallback(
     (cardId: string): ColumnWithCards | undefined => {
@@ -400,8 +405,9 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
     }
 
     if (!activeCard) {
-      // Column drag
-      if (isColumnId(activeId) && isColumnId(overId) && activeId !== overId) {
+      // Column drag (prevent Focus column from being reordered)
+      const activeCol = localColumns.find((c) => c.id === activeId);
+      if (isColumnId(activeId) && isColumnId(overId) && activeId !== overId && !activeCol?.isFocusColumn) {
         const oldIndex = columnIds.indexOf(activeId);
         const newIndex = columnIds.indexOf(overId);
         if (oldIndex !== -1 && newIndex !== -1) {

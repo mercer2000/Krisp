@@ -72,7 +72,7 @@ export function Column({ column, boardId, onCardClick, onDeleteCard, onMoveCard,
   const updateColumn = useUpdateColumn(boardId);
   const deleteColumn = useDeleteColumn(boardId);
 
-  // Sortable for the column itself (drag by header)
+  // Sortable for the column itself (drag by header, disabled for Focus column)
   const {
     attributes,
     listeners,
@@ -82,6 +82,7 @@ export function Column({ column, boardId, onCardClick, onDeleteCard, onMoveCard,
     isDragging,
   } = useSortable({
     id: column.id,
+    disabled: column.isFocusColumn,
     data: {
       type: "column",
       column,
@@ -178,8 +179,9 @@ export function Column({ column, boardId, onCardClick, onDeleteCard, onMoveCard,
     .filter((c) => !c.archived)
     .sort((a, b) => a.position - b.position);
 
-  const accentClass = getAccentClass(column.title);
+  const accentClass = column.isFocusColumn ? "bg-indigo-500" : getAccentClass(column.title);
   const isSnoozed = isSnoozeColumn(column.title);
+  const isFocus = column.isFocusColumn;
 
   // Collapsed state — show minimal icon-width column
   if (isCollapsed) {
@@ -232,7 +234,11 @@ export function Column({ column, boardId, onCardClick, onDeleteCard, onMoveCard,
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex w-80 min-w-[320px] shrink-0 flex-col min-h-0 rounded-xl bg-slate-100 dark:bg-slate-800/50 transition-all ${
+      className={`group flex w-80 min-w-[320px] shrink-0 flex-col min-h-0 rounded-xl transition-all ${
+        isFocus
+          ? "bg-blue-50 dark:bg-blue-900/20"
+          : "bg-slate-100 dark:bg-slate-800/50"
+      } ${
         isDragging ? "opacity-50 ring-2 ring-[var(--primary)]" : ""
       } ${isOver ? "ring-2 ring-blue-400" : ""}`}
     >
@@ -241,12 +247,16 @@ export function Column({ column, boardId, onCardClick, onDeleteCard, onMoveCard,
 
       {/* Column Header */}
       <div className="flex items-center gap-1.5 px-3 py-2.5">
-        {/* Drag handle (visible on hover) */}
+        {/* Drag handle (visible on hover, disabled for Focus column) */}
         <div
-          {...attributes}
-          {...listeners}
-          className="shrink-0 cursor-grab rounded p-0.5 text-transparent transition-colors group-hover:text-[var(--muted-foreground)] hover:!text-[var(--foreground)] hover:bg-[var(--accent)] active:cursor-grabbing"
-          style={{ cursor: "grab" }}
+          {...(isFocus ? {} : attributes)}
+          {...(isFocus ? {} : listeners)}
+          className={`shrink-0 rounded p-0.5 transition-colors ${
+            isFocus
+              ? "text-transparent cursor-default"
+              : "cursor-grab text-transparent group-hover:text-[var(--muted-foreground)] hover:!text-[var(--foreground)] hover:bg-[var(--accent)] active:cursor-grabbing"
+          }`}
+          style={isFocus ? undefined : { cursor: "grab" }}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -264,8 +274,25 @@ export function Column({ column, boardId, onCardClick, onDeleteCard, onMoveCard,
           </svg>
         </div>
 
-        {/* Color indicator or snooze clock icon */}
-        {isSnoozed ? (
+        {/* Color indicator, focus icon, or snooze clock icon */}
+        {isFocus ? (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="shrink-0 text-indigo-500"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <circle cx="12" cy="12" r="6" />
+            <circle cx="12" cy="12" r="2" />
+          </svg>
+        ) : isSnoozed ? (
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="14"
@@ -312,6 +339,13 @@ export function Column({ column, boardId, onCardClick, onDeleteCard, onMoveCard,
           </button>
         )}
 
+        {/* Focus badge */}
+        {isFocus && (
+          <span className="shrink-0 rounded-full bg-indigo-100 dark:bg-indigo-900/40 px-2 py-0.5 text-xs font-medium text-indigo-600 dark:text-indigo-400">
+            Focus
+          </span>
+        )}
+
         {/* Card count */}
         <span className="shrink-0 rounded-full bg-[var(--muted)] px-2 py-0.5 text-xs font-medium text-[var(--muted-foreground)]">
           {activeCards.length}
@@ -342,8 +376,8 @@ export function Column({ column, boardId, onCardClick, onDeleteCard, onMoveCard,
           </svg>
         </button>
 
-        {/* Delete button */}
-        <button
+        {/* Delete button (hidden for Focus column) */}
+        {!isFocus && <button
           onClick={(e) => {
             e.stopPropagation();
             handleDelete();
@@ -366,7 +400,7 @@ export function Column({ column, boardId, onCardClick, onDeleteCard, onMoveCard,
             <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
             <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
           </svg>
-        </button>
+        </button>}
       </div>
 
       {/* Add card at TOP (below header) */}

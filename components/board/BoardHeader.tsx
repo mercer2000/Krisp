@@ -7,6 +7,35 @@ import { SearchBar } from "./SearchBar";
 import type { Board, Priority } from "@/types";
 
 // ---------------------------------------------------------------------------
+// Daily Theme Types & Hook
+// ---------------------------------------------------------------------------
+
+interface DailyTheme {
+  id: string;
+  theme: string;
+  date: string;
+  aiRationale: string | null;
+  suggestedCardIds: string[];
+}
+
+function useTodayTheme() {
+  const [theme, setTheme] = useState<DailyTheme | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/daily-themes/today")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && data && data.id) setTheme(data);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  return theme;
+}
+
+// ---------------------------------------------------------------------------
 // Filter Types
 // ---------------------------------------------------------------------------
 
@@ -33,6 +62,8 @@ interface BoardHeaderProps {
 
 export function BoardHeader({ board, filters, onFiltersChange, availableTags = [] }: BoardHeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [themeExpanded, setThemeExpanded] = useState(false);
+  const todayTheme = useTodayTheme();
   const [editTitle, setEditTitle] = useState(board.title);
   const inputRef = useRef<HTMLInputElement>(null);
   const updateBoard = useUpdateBoard(board.id);
@@ -214,6 +245,88 @@ export function BoardHeader({ board, filters, onFiltersChange, availableTags = [
           </button>
         )}
       </div>
+
+      {/* Daily theme banner */}
+      {todayTheme && (
+        <div className="border-t border-[var(--border)]/50">
+          <button
+            onClick={() => setThemeExpanded(!themeExpanded)}
+            className="flex w-full items-center gap-2 border-l-4 border-blue-500 bg-blue-50 px-4 py-2 text-left transition-colors hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30"
+          >
+            {/* Target icon */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="shrink-0 text-blue-500"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <circle cx="12" cy="12" r="6" />
+              <circle cx="12" cy="12" r="2" />
+            </svg>
+            <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+              Today&apos;s Theme:
+            </span>
+            <span className="text-xs font-semibold text-blue-900 dark:text-blue-100">
+              {todayTheme.theme}
+            </span>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`ml-auto shrink-0 text-blue-400 transition-transform ${themeExpanded ? "rotate-180" : ""}`}
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+          {themeExpanded && (
+            <div className="border-l-4 border-blue-500 bg-blue-50/50 px-4 py-2 dark:bg-blue-900/10">
+              {todayTheme.aiRationale && (
+                <p className="mb-2 text-xs text-[var(--muted-foreground)] italic">
+                  {todayTheme.aiRationale}
+                </p>
+              )}
+              {todayTheme.suggestedCardIds.length > 0 && (
+                <div className="space-y-1">
+                  <span className="text-xs font-medium text-[var(--muted-foreground)]">
+                    Suggested tasks ({todayTheme.suggestedCardIds.length}):
+                  </span>
+                  {todayTheme.suggestedCardIds.map((cardId) => (
+                    <div
+                      key={cardId}
+                      className="flex items-center gap-2 rounded-md bg-white/60 px-2 py-1 text-xs text-[var(--foreground)] dark:bg-slate-800/40"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
+                        <path d="m9 18 6-6-6-6" />
+                      </svg>
+                      <span className="truncate font-mono text-[10px] text-[var(--muted-foreground)]">
+                        {cardId.slice(0, 8)}...
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {todayTheme.suggestedCardIds.length === 0 && !todayTheme.aiRationale && (
+                <p className="text-xs text-[var(--muted-foreground)]">
+                  No additional details for today&apos;s theme.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </header>
   );
 }
