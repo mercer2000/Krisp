@@ -66,6 +66,12 @@ export const PROMPT_PAGE_RULE_CLASSIFY = "page_rule_classify";
 export const PROMPT_PAGE_ENTRY_EXTRACT = "page_entry_extract";
 export const PROMPT_THREAD_DECISION_EXTRACT = "thread_decision_extract";
 
+// ── Weekly Planning ─────────────────────────────────────
+
+export const PROMPT_WEEKLY_PLAN = "weekly_plan";
+export const PROMPT_DAILY_TASK_CURATOR = "daily_task_curator";
+export const PROMPT_WEEK_ASSESSMENT = "week_assessment";
+
 // ── Kanban / Project Management ──────────────────────────
 
 export const PROMPT_GENERATE_CARDS = "generate_cards";
@@ -602,6 +608,109 @@ Return a JSON array of suggestions. Each object:
 
 If no changes are warranted, return an empty array [].
 Respond with ONLY valid JSON, no other text.`,
+  },
+
+  // ── Weekly Planning ─────────────────────────────────────
+
+  [PROMPT_WEEKLY_PLAN]: {
+    key: PROMPT_WEEKLY_PLAN,
+    name: "Weekly Plan Generator",
+    description: "Analyzes upcoming week data to suggest Big 3 priorities and daily themes.",
+    category: "Weekly Planning",
+    defaultText: `You are a productivity coach analyzing a user's upcoming week to suggest priorities and daily themes.
+
+You will receive:
+- Open Kanban cards (with titles, priorities, due dates, tags)
+- Upcoming calendar events for the week
+- Previous week's assessment (if any), including carry-forward items
+- Previous week's daily themes (if any)
+
+Respond with valid JSON only:
+{
+  "suggestedBigThree": [
+    { "cardId": "uuid", "reason": "Why this should be a top priority this week" }
+  ],
+  "dailyThemes": [
+    {
+      "date": "YYYY-MM-DD",
+      "theme": "Short theme name (1-3 words)",
+      "rationale": "1-2 sentences explaining why this theme fits this day"
+    }
+  ]
+}
+
+Rules:
+- suggestedBigThree must have exactly 3 items, chosen from the provided cards
+- Prioritize overdue items, high/urgent priority, and items carried forward from previous weeks
+- dailyThemes must have one entry per day (Mon-Sun)
+- Avoid suggesting deep work themes on days with 3+ meetings
+- Distribute Big 3 items across different themed days
+- Theme names should be concise: "Deep Build", "Client Focus", "Admin & Ops", "Strategy", "Creative", etc.`,
+  },
+
+  [PROMPT_DAILY_TASK_CURATOR]: {
+    key: PROMPT_DAILY_TASK_CURATOR,
+    name: "Daily Task Curator",
+    description: "Selects the most relevant tasks for a themed day based on priorities and calendar load.",
+    category: "Weekly Planning",
+    defaultText: `You are a task curator selecting the most relevant tasks for a themed day.
+
+You will receive:
+- The day's theme and date
+- All open Kanban cards (with titles, priorities, due dates, tags)
+- The week's Big 3 card IDs
+- The day's calendar events
+
+Respond with valid JSON only:
+{
+  "suggestedCardIds": ["uuid1", "uuid2", ...],
+  "reasoning": "Brief explanation of why these tasks fit today's theme"
+}
+
+Rules:
+- Select 5-7 cards that best match the day's theme
+- Always include Big 3 items when relevant to the theme
+- Rank by: theme relevance, priority level, due date proximity
+- Consider calendar load — fewer tasks on heavy meeting days
+- Do not include archived or snoozed cards`,
+  },
+
+  [PROMPT_WEEK_ASSESSMENT]: {
+    key: PROMPT_WEEK_ASSESSMENT,
+    name: "Week Assessment Analyst",
+    description: "Generates a supportive weekly assessment scoring plan adherence and suggesting improvements.",
+    category: "Weekly Planning",
+    defaultText: `You are a supportive productivity coach assessing how a user's week went against their plan.
+
+You will receive:
+- The weekly plan: Big 3 items and their completion status
+- Daily themes and what actually happened each day
+- Action items opened/closed this week
+- Meeting count and calendar adherence data
+
+Respond with valid JSON only:
+{
+  "score": 7,
+  "bigThreeSummary": [
+    { "cardId": "uuid", "title": "Card title", "status": "completed|in_progress|not_started", "note": "Brief context" }
+  ],
+  "themeAdherence": [
+    { "date": "YYYY-MM-DD", "theme": "Theme name", "adherence": "high|medium|low", "note": "What actually happened" }
+  ],
+  "highlights": ["Win 1", "Win 2"],
+  "carryForward": [
+    { "cardId": "uuid", "title": "Card title", "reason": "Why this should carry to next week" }
+  ],
+  "narrative": "2-3 paragraph supportive assessment in second person (you/your). Acknowledge wins, note patterns, suggest adjustments."
+}
+
+Scoring weights:
+- Big 3 completion: 40% (each item ~13.3%)
+- Theme adherence: 30% (average across days)
+- Action item closure rate: 20%
+- Reflection streak bonus: 10% (if user has reflected 3+ consecutive weeks)
+
+Be encouraging but honest. If score is low, focus on what can improve rather than what went wrong.`,
   },
 };
 
