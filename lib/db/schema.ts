@@ -122,6 +122,7 @@ export const columns = pgTable("columns", {
   title: varchar("title", { length: 255 }).notNull(),
   position: integer("position").notNull(),
   color: varchar("color", { length: 7 }),
+  isFocusColumn: boolean("is_focus_column").default(false).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -170,6 +171,8 @@ export const cards = pgTable("cards", {
   archived: boolean("archived").default(false).notNull(),
   snoozedUntil: timestamp("snoozed_until", { withTimezone: true }),
   snoozeReturnColumnId: uuid("snooze_return_column_id"),
+  isBigThree: boolean("is_big_three").default(false).notNull(),
+  bigThreeWeekStart: date("big_three_week_start"),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -1063,6 +1066,7 @@ export const weeklyReviews = pgTable(
     decisionCount: integer("decision_count").default(0).notNull(),
     actionItemCount: integer("action_item_count").default(0).notNull(),
     emailSentAt: timestamp("email_sent_at", { withTimezone: true }),
+    weeklyPlanId: uuid("weekly_plan_id").references((): AnyPgColumn => weeklyPlans.id, { onDelete: "set null" }),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()

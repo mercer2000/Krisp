@@ -47,6 +47,8 @@ export interface Card {
   archived: boolean;
   snoozedUntil: string | null;
   snoozeReturnColumnId: string | null;
+  isBigThree: boolean;
+  bigThreeWeekStart: string | null;
   deletedAt: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -146,6 +148,38 @@ export interface Decision {
   createdAt: string;
   updatedAt: string;
   meetingTitle?: string | null;
+}
+
+// ── Weekly Plans ────────────────────────────────────
+export type WeeklyPlanStatus = "planning" | "active" | "assessed";
+
+export interface WeeklyPlan {
+  id: string;
+  userId: string;
+  weekStart: string;
+  weekEnd: string;
+  weeklyReviewId: string | null;
+  bigThreeCardIds: string[];
+  aiAssessment: string | null;
+  userReflection: string | null;
+  assessmentScore: number | null;
+  assessmentEmailSentAt: string | null;
+  status: WeeklyPlanStatus;
+  deletedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  dailyThemes?: DailyTheme[];
+}
+
+export interface DailyTheme {
+  id: string;
+  weeklyPlanId: string;
+  userId: string;
+  date: string;
+  theme: string;
+  aiRationale: string | null;
+  suggestedCardIds: string[];
+  isOverridden: boolean;
 }
 
 // ── Weekly Reviews ──────────────────────────────────
