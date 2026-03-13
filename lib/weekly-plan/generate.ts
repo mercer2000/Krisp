@@ -1,3 +1,4 @@
+import { rolloverWeek } from "./rollover";
 import { chatCompletion } from "@/lib/ai/client";
 import { resolvePrompt } from "@/lib/ai/resolvePrompt";
 import {
@@ -54,7 +55,7 @@ export function getUpcomingWeekRange(now = new Date()): WeekRange {
 export async function gatherPlanData(userId: string, week: WeekRange) {
   // Get user's boards
   const userBoards = await db.query.boards.findMany({
-    where: eq(boards.userId, userId),
+    where: and(eq(boards.userId, userId), isNull(boards.deletedAt)),
     with: {
       columns: {
         with: {
@@ -401,6 +402,9 @@ export async function activatePlan(
   userId: string,
   boardId: string
 ): Promise<void> {
+  // 0. Roll over previous week's Focus column cards before activating new plan
+  await rolloverWeek(userId);
+
   // 1. Load the plan
   const plan = await db.query.weeklyPlans.findFirst({
     where: and(eq(weeklyPlans.id, planId), eq(weeklyPlans.userId, userId)),

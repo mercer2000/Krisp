@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRequiredUser } from "@/lib/auth/getRequiredUser";
 import { db } from "@/lib/db";
 import { weeklyPlans } from "@/lib/db/schema";
-import { eq, isNull, desc } from "drizzle-orm";
+import { eq, and, isNull, desc } from "drizzle-orm";
 import {
   decryptRows,
   WEEKLY_PLAN_ENCRYPTED_FIELDS,
@@ -17,12 +17,11 @@ export async function GET() {
       .select()
       .from(weeklyPlans)
       .where(
-        eq(weeklyPlans.userId, user.id),
+        and(eq(weeklyPlans.userId, user.id), isNull(weeklyPlans.deletedAt)),
       )
       .orderBy(desc(weeklyPlans.weekStart));
 
-    const filtered = plans.filter((p) => !p.deletedAt);
-    const decrypted = decryptRows(filtered, WEEKLY_PLAN_ENCRYPTED_FIELDS);
+    const decrypted = decryptRows(plans, WEEKLY_PLAN_ENCRYPTED_FIELDS);
 
     return NextResponse.json(decrypted);
   } catch (error) {

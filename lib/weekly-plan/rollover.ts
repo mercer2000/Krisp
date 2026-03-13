@@ -7,8 +7,7 @@ import { eq, and, inArray } from "drizzle-orm";
  * Called when a new weekly plan is activated or on Monday midnight via cron.
  */
 export async function rolloverWeek(
-  userId: string,
-  boardId: string
+  userId: string
 ): Promise<void> {
   // Get all board IDs for this user
   const userBoards = await db

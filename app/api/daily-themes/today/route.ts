@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getRequiredUser } from "@/lib/auth/getRequiredUser";
 import { db } from "@/lib/db";
 import { dailyThemes, weeklyPlans } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import {
   decryptRows,
   DAILY_THEME_ENCRYPTED_FIELDS,
@@ -31,6 +31,7 @@ export async function GET() {
         and(
           eq(dailyThemes.userId, user.id),
           eq(dailyThemes.date, today),
+          isNull(weeklyPlans.deletedAt),
         ),
       )
       .limit(1);

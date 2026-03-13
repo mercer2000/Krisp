@@ -35,7 +35,8 @@ export async function GET(request: NextRequest) {
       .where(
         and(
           eq(weeklyPlans.status, "active"),
-          isNull(weeklyPlans.assessmentEmailSentAt)
+          isNull(weeklyPlans.assessmentEmailSentAt),
+          isNull(weeklyPlans.deletedAt)
         )
       );
 
