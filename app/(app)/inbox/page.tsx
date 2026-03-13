@@ -626,7 +626,11 @@ export default function InboxPage() {
         setTotal(data.total);
         setIsSemanticSearch(false);
         setEmbeddingStatus(null);
-        if (data.data.length > 0) setFocusedEmailId(data.data[0].id);
+        // Only set initial focus if nothing is focused yet
+        setFocusedEmailId((prev) => {
+          if (prev != null && data.data.some((e: { id: string | number }) => e.id === prev)) return prev;
+          return data.data.length > 0 ? data.data[0].id : null;
+        });
         cache.cacheListResponse(fetchParams, data);
       }
     } catch {
