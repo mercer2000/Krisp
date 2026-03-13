@@ -55,7 +55,7 @@ export function getUpcomingWeekRange(now = new Date()): WeekRange {
 export async function gatherPlanData(userId: string, week: WeekRange) {
   // Get user's boards
   const userBoards = await db.query.boards.findMany({
-    where: and(eq(boards.userId, userId), isNull(boards.deletedAt)),
+    where: eq(boards.userId, userId),
     with: {
       columns: {
         with: {

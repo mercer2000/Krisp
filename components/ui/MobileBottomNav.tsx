@@ -20,6 +20,7 @@ const MORE_ITEMS = [
   { key: "pages", label: "Pages", href: "/workspace", icon: PagesMoreIcon },
   { key: "contacts", label: "Contacts", href: "/contacts", icon: ContactsMoreIcon },
   { key: "activity", label: "Activity", href: "/activity", icon: ActivityMoreIcon },
+  { key: "help", label: "Help", href: "/help", icon: HelpMoreIcon },
   { key: "integrations", label: "Integrations", href: "/admin/integrations", icon: IntegrationsMoreIcon },
   { key: "prompts", label: "AI Prompts", href: "/admin/prompts", icon: PromptsMoreIcon },
   { key: "extensions", label: "Extensions", href: "/admin/extensions", icon: ExtensionsMoreIcon },
@@ -40,6 +41,7 @@ export function MobileBottomNav() {
     if (href === "/workspace") return pathname.startsWith("/workspace");
     if (href === "/contacts") return pathname.startsWith("/contacts");
     if (href === "/activity") return pathname === "/activity";
+    if (href === "/help") return pathname.startsWith("/help");
     if (href === "/admin/integrations") return pathname.startsWith("/admin/integrations");
     if (href === "/admin/prompts") return pathname.startsWith("/admin/prompts");
     if (href === "/admin/extensions") return pathname.startsWith("/admin/extensions");
@@ -208,6 +210,16 @@ function CloseTabIcon({ size = 16 }: { size?: number }) {
 }
 
 // ── More drawer icons ──────────────────────────────────
+
+function HelpMoreIcon({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <path d="M12 17h.01" />
+    </svg>
+  );
+}
 
 function DashboardMoreIcon({ size = 22 }: { size?: number }) {
   return (

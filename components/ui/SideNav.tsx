@@ -78,6 +78,12 @@ const NAV_ITEMS = [
     icon: ActivityFeedIcon,
   },
   {
+    key: "help",
+    label: "Help",
+    href: "/help",
+    icon: HelpIcon,
+  },
+  {
     key: "settings",
     label: "Settings",
     href: "/settings",
@@ -449,6 +455,26 @@ function AccountIcon({ size = 20 }: { size?: number }) {
   );
 }
 
+function HelpIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <path d="M12 17h.01" />
+    </svg>
+  );
+}
+
 function SettingsIcon({ size = 20 }: { size?: number }) {
   return (
     <svg
@@ -627,6 +653,7 @@ export function SideNav() {
     if (href === "/brain") return pathname.startsWith("/brain");
     if (href === "/weekly-reviews") return pathname.startsWith("/weekly-reviews");
     if (href === "/activity") return pathname === "/activity";
+    if (href === "/help") return pathname.startsWith("/help");
     if (href === "/settings") return pathname.startsWith("/settings");
     if (href === "/trash") return pathname === "/trash";
     if (href === "/admin/subscriptions") return pathname.startsWith("/admin");

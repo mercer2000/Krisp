@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         await db
           .update(weeklyPlans)
           .set({
-            status: "completed",
+            status: "assessed" as const,
             updatedAt: new Date(),
           })
           .where(eq(weeklyPlans.id, plan.id));
