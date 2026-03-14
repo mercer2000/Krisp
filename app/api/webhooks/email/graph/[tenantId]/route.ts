@@ -3,7 +3,7 @@ import { graphNotificationPayloadSchema } from "@/lib/validators/schemas";
 import { db } from "@/lib/db";
 import { users, graphSubscriptions } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { insertEmail, emailExists, updateEmailByMessageId } from "@/lib/email/emails";
+import { insertEmail, emailExists, updateEmailByMessageId, getEmailIdByMessageId } from "@/lib/email/emails";
 import {
   getGraphCredentialsByIdUnsafe,
   getGraphAccessTokenFromCreds,
@@ -11,13 +11,16 @@ import {
 import {
   fetchGraphMessage,
   extractUserFromResource,
+  fetchGraphMessageMe,
 } from "@/lib/graph/messages";
+import { getValidOutlookAccessToken, updateOutlookLastSync } from "@/lib/outlook/oauth";
 import { autoProcessEmailActions } from "@/lib/actions/autoProcessEmailActions";
 import { dispatchWebhooks } from "@/lib/webhooks/dispatch";
 import { classifyItem, buildEmailContent } from "@/lib/smartLabels/classify";
 import { classifyItemForPages } from "@/lib/pageRules/classify";
 import smartLabelSql from "@/lib/smartLabels/db";
 import { logActivity } from "@/lib/activity/log";
+import { logWebhook } from "@/lib/webhooks/log";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -61,6 +64,8 @@ export async function GET(
     return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
   }
 
+  logWebhook({ source: "graph", tenantId, status: "validation", method: "GET" });
+
   // Echo back the validation token as text/plain (required by Microsoft Graph)
   return new NextResponse(validationToken, {
     status: 200,
@@ -82,6 +87,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ tenantId: string }> }
 ) {
+  const startTime = Date.now();
   try {
     const { tenantId } = await params;
 
@@ -130,8 +136,9 @@ export async function POST(
     // Collect items that need async Graph API fetch after we respond
     const pendingFetches: {
       messageId: string;
-      credentialId: string;
       resource: string;
+      credentialId?: string;
+      outlookOauthTokenId?: string;
     }[] = [];
 
     // Process each notification: validate, dedup, insert stub
@@ -219,6 +226,12 @@ export async function POST(
           credentialId: subscription.credentialId,
           resource: subscription.resource,
         });
+      } else if (subscription.outlookOauthTokenId) {
+        pendingFetches.push({
+          messageId,
+          outlookOauthTokenId: subscription.outlookOauthTokenId,
+          resource: subscription.resource,
+        });
       }
     }
 
@@ -227,6 +240,7 @@ export async function POST(
       after(async () => {
         for (const item of pendingFetches) {
           try {
+            if (item.credentialId) {
             const creds = await getGraphCredentialsByIdUnsafe(item.credentialId);
             if (!creds) {
               console.warn(`[Graph] Credential ${item.credentialId} not found for async fetch`);
@@ -269,13 +283,14 @@ export async function POST(
             // Auto-extract action items and create Kanban cards
             let cardIds: string[] = [];
             try {
+              const emailDbId = await getEmailIdByMessageId(tenantId, item.messageId);
               const actionResult = await autoProcessEmailActions(tenantId, {
                 sender: fullEmail.from,
                 recipients: fullEmail.to,
                 subject: fullEmail.subject ?? null,
                 bodyPlainText: fullEmail.bodyPlainText ?? null,
                 receivedAt: fullEmail.receivedDateTime,
-              });
+              }, { emailId: emailDbId ?? undefined });
               cardIds = actionResult.cardIds;
             } catch (actionErr) {
               console.error(
@@ -321,6 +336,104 @@ export async function POST(
             } else {
               console.warn(`[Graph] Could not find email ID for message ${item.messageId} during classification`);
             }
+            } else if (item.outlookOauthTokenId) {
+            // Delegated token path — personal Outlook OAuth
+            let token: string;
+            try {
+              token = await getValidOutlookAccessToken(
+                item.outlookOauthTokenId,
+                tenantId
+              );
+            } catch (tokenErr) {
+              console.warn(
+                `[Graph] Outlook token ${item.outlookOauthTokenId} invalid for async fetch:`,
+                tokenErr instanceof Error ? tokenErr.message : tokenErr
+              );
+              continue;
+            }
+
+            const fullEmail = await fetchGraphMessageMe(item.messageId, token);
+            if (!fullEmail) {
+              console.warn(`[Graph] Could not fetch full email (me) for ${item.messageId}`);
+              continue;
+            }
+
+            await updateEmailByMessageId(tenantId, item.messageId, fullEmail);
+            console.log(`[Graph] Fetched full email (me) for message ${item.messageId}`);
+
+            // Update last_sync_at so the catch-up cron knows this account is active
+            await updateOutlookLastSync(item.outlookOauthTokenId);
+
+            // Fire outbound webhooks (non-blocking)
+            dispatchWebhooks(tenantId, "email.received", item.messageId, {
+              sender: fullEmail.from,
+              subject: fullEmail.subject || null,
+              messageId: item.messageId,
+            }).catch(() => {});
+
+            logActivity({
+              userId: tenantId,
+              eventType: "email.received",
+              title: `Email received: "${fullEmail.subject || "(No subject)"}"`,
+              description: `From ${fullEmail.from}`,
+              entityType: "email",
+              entityId: item.messageId,
+              metadata: { sender: fullEmail.from, subject: fullEmail.subject },
+            });
+
+            // Auto-extract action items and create Kanban cards
+            let cardIds: string[] = [];
+            try {
+              const emailDbId = await getEmailIdByMessageId(tenantId, item.messageId);
+              const actionResult = await autoProcessEmailActions(tenantId, {
+                sender: fullEmail.from,
+                recipients: fullEmail.to,
+                subject: fullEmail.subject ?? null,
+                bodyPlainText: fullEmail.bodyPlainText ?? null,
+                receivedAt: fullEmail.receivedDateTime,
+              }, { emailId: emailDbId ?? undefined });
+              cardIds = actionResult.cardIds;
+            } catch (actionErr) {
+              console.error(
+                `[Graph] Error auto-processing actions for message ${item.messageId}:`,
+                actionErr instanceof Error ? actionErr.message : actionErr
+              );
+            }
+
+            // Classify email
+            const content = buildEmailContent({
+              sender: fullEmail.from,
+              recipients: fullEmail.to,
+              subject: fullEmail.subject ?? null,
+              bodyPlainText: fullEmail.bodyPlainText ?? null,
+            });
+            const idRows = await smartLabelSql`
+              SELECT id FROM emails
+              WHERE tenant_id = ${tenantId} AND message_id = ${item.messageId}
+            `;
+
+            if (idRows[0]) {
+              const emailDbId = String(idRows[0].id);
+
+              try {
+                await classifyItem("email", emailDbId, tenantId, { content });
+              } catch (classifyErr) {
+                console.error(
+                  `[Graph] Smart label classification failed for message ${item.messageId}:`,
+                  classifyErr instanceof Error ? classifyErr.message : classifyErr
+                );
+              }
+
+              try {
+                await classifyItemForPages("email", emailDbId, tenantId, { content, cardIds });
+              } catch (pageRuleErr) {
+                console.error(
+                  `[Graph] Page rule classification failed for message ${item.messageId}:`,
+                  pageRuleErr instanceof Error ? pageRuleErr.message : pageRuleErr
+                );
+              }
+            }
+            }
           } catch (err) {
             console.error(
               `[Graph] Error in async fetch for message ${item.messageId}:`,
@@ -331,6 +444,15 @@ export async function POST(
       });
     }
 
+    logWebhook({
+      source: "graph",
+      tenantId,
+      status: "success",
+      method: "POST",
+      durationMs: Date.now() - startTime,
+      messageCount: pendingFetches.length,
+    });
+
     // Microsoft expects 202 Accepted — respond fast
     return NextResponse.json(
       { message: "Notifications processed" },
@@ -338,6 +460,13 @@ export async function POST(
     );
   } catch (error) {
     console.error("Error processing Graph webhook:", error);
+    logWebhook({
+      source: "graph",
+      status: "error",
+      method: "POST",
+      durationMs: Date.now() - startTime,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
