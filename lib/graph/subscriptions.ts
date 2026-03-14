@@ -4,7 +4,8 @@ import { eq, and, lt } from "drizzle-orm";
 
 export interface GraphSubscriptionInsert {
   tenantId: string;
-  credentialId: string;
+  credentialId?: string | null;
+  outlookOauthTokenId?: string | null;
   subscriptionId: string;
   resource: string;
   changeType: string;
@@ -21,7 +22,8 @@ export async function createGraphSubscription(data: GraphSubscriptionInsert) {
     .insert(graphSubscriptions)
     .values({
       tenantId: data.tenantId,
-      credentialId: data.credentialId,
+      credentialId: data.credentialId ?? null,
+      outlookOauthTokenId: data.outlookOauthTokenId ?? null,
       subscriptionId: data.subscriptionId,
       resource: data.resource,
       changeType: data.changeType,
