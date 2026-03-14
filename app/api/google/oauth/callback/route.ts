@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       console.error(`[Google OAuth] Auth error: ${error}`);
       return NextResponse.redirect(
         new URL(
-          `/admin/integrations?google_error=${encodeURIComponent(error)}`,
+          `/settings/integrations/google-calendar?error=${encodeURIComponent(error)}`,
           request.url
         )
       );
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     if (!code) {
       return NextResponse.redirect(
         new URL(
-          "/admin/integrations?google_error=missing_code",
+          "/settings/integrations/google-calendar?error=missing_code",
           request.url
         )
       );
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     ) {
       return NextResponse.redirect(
         new URL(
-          "/admin/integrations?google_error=invalid_state",
+          "/settings/integrations/google-calendar?error=invalid_state",
           request.url
         )
       );
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
       console.error("[Google OAuth] Failed to fetch user email:", err);
       return NextResponse.redirect(
         new URL(
-          "/admin/integrations?google_error=failed_to_fetch_email",
+          "/settings/integrations/google-calendar?error=failed_to_fetch_email",
           request.url
         )
       );
@@ -90,13 +90,13 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.redirect(
-      new URL("/admin/integrations?google_connected=true", request.url)
+      new URL("/settings/integrations/google-calendar?connected=true", request.url)
     );
   } catch (error) {
     console.error("[Google OAuth] Callback error:", error);
     return NextResponse.redirect(
       new URL(
-        `/admin/integrations?google_error=${encodeURIComponent(
+        `/settings/integrations/google-calendar?error=${encodeURIComponent(
           error instanceof Error ? error.message : "Unknown error"
         )}`,
         request.url

@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       console.error(`[Zoom OAuth] Auth error: ${error}`);
       return NextResponse.redirect(
         new URL(
-          `/admin/integrations?zoom_error=${encodeURIComponent(error)}`,
+          `/settings/integrations/zoom?error=${encodeURIComponent(error)}`,
           request.url
         )
       );
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     if (!code) {
       return NextResponse.redirect(
         new URL(
-          "/admin/integrations?zoom_error=missing_code",
+          "/settings/integrations/zoom?error=missing_code",
           request.url
         )
       );
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     if (stateUserId !== userId || !stateNonce || !uuidRegex.test(stateNonce)) {
       return NextResponse.redirect(
         new URL(
-          "/admin/integrations?zoom_error=invalid_state",
+          "/settings/integrations/zoom?error=invalid_state",
           request.url
         )
       );
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
       console.error("[Zoom OAuth] Failed to fetch user profile:", err);
       return NextResponse.redirect(
         new URL(
-          "/admin/integrations?zoom_error=failed_to_fetch_profile",
+          "/settings/integrations/zoom?error=failed_to_fetch_profile",
           request.url
         )
       );
@@ -86,13 +86,13 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.redirect(
-      new URL("/admin/integrations?zoom_connected=true", request.url)
+      new URL("/settings/integrations/zoom?connected=true", request.url)
     );
   } catch (error) {
     console.error("[Zoom OAuth] Callback error:", error);
     return NextResponse.redirect(
       new URL(
-        `/admin/integrations?zoom_error=${encodeURIComponent(
+        `/settings/integrations/zoom?error=${encodeURIComponent(
           error instanceof Error ? error.message : "Unknown error"
         )}`,
         request.url

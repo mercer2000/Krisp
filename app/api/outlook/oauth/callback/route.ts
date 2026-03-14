@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
       console.error(`[Outlook OAuth] Auth error: ${error} - ${errorDescription}`);
       return NextResponse.redirect(
         new URL(
-          `/admin/integrations?outlook_error=${encodeURIComponent(errorDescription || error)}`,
+          `/settings/integrations/outlook?error=${encodeURIComponent(errorDescription || error)}`,
           request.url
         )
       );
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     if (!code) {
       return NextResponse.redirect(
         new URL(
-          "/admin/integrations?outlook_error=missing_code",
+          "/settings/integrations/outlook?error=missing_code",
           request.url
         )
       );
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     if (stateUserId !== userId || !stateNonce || !uuidRegex.test(stateNonce)) {
       return NextResponse.redirect(
         new URL(
-          "/admin/integrations?outlook_error=invalid_state",
+          "/settings/integrations/outlook?error=invalid_state",
           request.url
         )
       );
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
       console.error("[Outlook OAuth] Failed to fetch user email:", err);
       return NextResponse.redirect(
         new URL(
-          "/admin/integrations?outlook_error=failed_to_fetch_email",
+          "/settings/integrations/outlook?error=failed_to_fetch_email",
           request.url
         )
       );
@@ -86,13 +86,13 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.redirect(
-      new URL("/admin/integrations?outlook_connected=true", request.url)
+      new URL("/settings/integrations/outlook?connected=true", request.url)
     );
   } catch (error) {
     console.error("[Outlook OAuth] Callback error:", error);
     return NextResponse.redirect(
       new URL(
-        `/admin/integrations?outlook_error=${encodeURIComponent(
+        `/settings/integrations/outlook?error=${encodeURIComponent(
           error instanceof Error ? error.message : "Unknown error"
         )}`,
         request.url

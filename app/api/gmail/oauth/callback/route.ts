@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
       );
       return NextResponse.redirect(
         new URL(
-          `/admin/integrations?gmail_error=${encodeURIComponent(errorDescription || error)}`,
+          `/settings/integrations/gmail?error=${encodeURIComponent(errorDescription || error)}`,
           request.url
         )
       );
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
 
     if (!code) {
       return NextResponse.redirect(
-        new URL("/admin/integrations?gmail_error=missing_code", request.url)
+        new URL("/settings/integrations/gmail?error=missing_code", request.url)
       );
     }
 
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
       !uuidRegex.test(stateNonce)
     ) {
       return NextResponse.redirect(
-        new URL("/admin/integrations?gmail_error=invalid_state", request.url)
+        new URL("/settings/integrations/gmail?error=invalid_state", request.url)
       );
     }
 
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
       console.error("[Gmail OAuth] Failed to fetch user email:", err);
       return NextResponse.redirect(
         new URL(
-          "/admin/integrations?gmail_error=failed_to_fetch_email",
+          "/settings/integrations/gmail?error=failed_to_fetch_email",
           request.url
         )
       );
@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
       );
       return NextResponse.redirect(
         new URL(
-          "/admin/integrations?gmail_error=pubsub_not_configured",
+          "/settings/integrations/gmail?error=pubsub_not_configured",
           request.url
         )
       );
@@ -140,13 +140,13 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.redirect(
-      new URL("/admin/integrations?gmail_connected=true", request.url)
+      new URL("/settings/integrations/gmail?connected=true", request.url)
     );
   } catch (error) {
     console.error("[Gmail OAuth] Callback error:", error);
     return NextResponse.redirect(
       new URL(
-        `/admin/integrations?gmail_error=${encodeURIComponent(
+        `/settings/integrations/gmail?error=${encodeURIComponent(
           error instanceof Error ? error.message : "Unknown error"
         )}`,
         request.url
