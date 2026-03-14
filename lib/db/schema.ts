@@ -2645,7 +2645,7 @@ export const webhookLogs = pgTable(
   ]
 );
 
-// ── Email Logs & Events ────────────────
+// ── Email Logs & Events (admin-only, no RLS) ────────────────
 export const emailLogs = pgTable(
   "email_logs",
   {
@@ -2692,3 +2692,21 @@ export const emailEvents = pgTable(
     index("idx_email_events_type").on(table.eventType),
   ]
 );
+
+export const emailLogsRelations = relations(emailLogs, ({ one, many }) => ({
+  user: one(users, { fields: [emailLogs.userId], references: [users.id] }),
+  events: many(emailEvents),
+  originalEmailLog: one(emailLogs, {
+    fields: [emailLogs.originalEmailLogId],
+    references: [emailLogs.id],
+    relationName: "resendOf",
+  }),
+  resends: many(emailLogs, { relationName: "resendOf" }),
+}));
+
+export const emailEventsRelations = relations(emailEvents, ({ one }) => ({
+  emailLog: one(emailLogs, {
+    fields: [emailEvents.emailLogId],
+    references: [emailLogs.id],
+  }),
+}));

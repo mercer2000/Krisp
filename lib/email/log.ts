@@ -24,6 +24,10 @@ export async function logAndSend(params: LogAndSendParams) {
     html: params.html,
   });
 
+  if (result.error) {
+    console.error("[email-log] Resend API error:", result.error);
+  }
+
   // Best-effort logging
   try {
     await db.insert(emailLogs).values({
@@ -34,7 +38,7 @@ export async function logAndSend(params: LogAndSendParams) {
       subject: params.subject,
       htmlBody: params.html,
       resendId: result.data?.id ?? null,
-      status: "sent",
+      status: result.error ? "failed" : "sent",
       originalEmailLogId: params.originalEmailLogId ?? null,
     });
   } catch (error) {
