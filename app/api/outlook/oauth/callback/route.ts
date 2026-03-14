@@ -5,6 +5,8 @@ import {
   upsertOutlookTokens,
 } from "@/lib/outlook/oauth";
 import { fetchOutlookUserEmail } from "@/lib/outlook/messages";
+import { createGraphSubscription } from "@/lib/graph/subscriptions";
+import { randomUUID } from "crypto";
 
 /**
  * GET /api/outlook/oauth/callback
@@ -77,13 +79,61 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    await upsertOutlookTokens({
+    const tokenRow = await upsertOutlookTokens({
       tenantId: userId,
       outlookEmail,
       accessToken: tokenResponse.access_token,
       refreshToken: tokenResponse.refresh_token,
       tokenExpiry: new Date(Date.now() + tokenResponse.expires_in * 1000),
     });
+
+    // Create a Microsoft Graph push subscription for real-time email notifications
+    try {
+      const clientState = randomUUID();
+      const notificationUrl = `${origin}/api/webhooks/email/graph/${userId}`;
+      const expirationDateTime = new Date(Date.now() + 4230 * 60 * 1000); // ~3 days max
+
+      const graphRes = await fetch(
+        "https://graph.microsoft.com/v1.0/subscriptions",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${tokenResponse.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            changeType: "created",
+            notificationUrl,
+            resource: "me/mailFolders/inbox/messages",
+            expirationDateTime: expirationDateTime.toISOString(),
+            clientState,
+          }),
+        }
+      );
+
+      if (graphRes.ok) {
+        const sub = await graphRes.json();
+        await createGraphSubscription({
+          tenantId: userId,
+          outlookOauthTokenId: tokenRow.id,
+          subscriptionId: sub.id,
+          resource: "me/mailFolders/inbox/messages",
+          changeType: "created",
+          clientState,
+          expirationDateTime: new Date(sub.expirationDateTime),
+          notificationUrl,
+        });
+        console.log(`[Outlook OAuth] Graph subscription created for ${outlookEmail}`);
+      } else {
+        const errText = await graphRes.text().catch(() => "");
+        console.error(
+          `[Outlook OAuth] Failed to create Graph subscription (${graphRes.status}): ${errText}`
+        );
+      }
+    } catch (subErr) {
+      // Non-fatal: catch-up cron will handle email sync
+      console.error("[Outlook OAuth] Graph subscription creation error:", subErr);
+    }
 
     return NextResponse.redirect(
       new URL("/settings/integrations/outlook?connected=true", request.url)
