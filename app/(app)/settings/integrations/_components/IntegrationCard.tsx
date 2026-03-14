@@ -99,7 +99,7 @@ export function IntegrationCard({
   return (
     <Link
       href={`/settings/integrations/${integration.slug}`}
-      className="block rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm transition-colors hover:border-[var(--primary)] hover:shadow-md"
+      className="group block rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm transition-colors hover:border-[var(--primary)] hover:shadow-md"
     >
       {/* Top row: icon + connected badge */}
       <div className="flex items-start justify-between">
