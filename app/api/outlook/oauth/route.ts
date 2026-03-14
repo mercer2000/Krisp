@@ -4,7 +4,9 @@ import {
   buildOutlookAuthUrl,
   getOutlookTokensForTenant,
   deactivateOutlookToken,
+  getValidOutlookAccessToken,
 } from "@/lib/outlook/oauth";
+import { getActiveSubscriptions, deactivateSubscription } from "@/lib/graph/subscriptions";
 import { randomUUID } from "crypto";
 
 /**
@@ -80,6 +82,31 @@ export async function DELETE(request: NextRequest) {
         { error: "accountId query parameter is required" },
         { status: 400 }
       );
+    }
+
+    // Clean up any Graph subscriptions linked to this Outlook account
+    try {
+      const subs = await getActiveSubscriptions(userId);
+      const outlookSubs = subs.filter(
+        (s) => s.outlookOauthTokenId === accountId
+      );
+      for (const sub of outlookSubs) {
+        try {
+          const token = await getValidOutlookAccessToken(accountId, userId);
+          await fetch(
+            `https://graph.microsoft.com/v1.0/subscriptions/${sub.subscriptionId}`,
+            {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+        } catch {
+          // Token may already be invalid — that's fine
+        }
+        await deactivateSubscription(sub.subscriptionId);
+      }
+    } catch (err) {
+      console.warn("[Outlook OAuth] Error cleaning up subscriptions:", err);
     }
 
     await deactivateOutlookToken(accountId, userId);
