@@ -13,6 +13,8 @@ import { dispatchWebhooks } from "@/lib/webhooks/dispatch";
 import { classifyItem, buildEmailContent } from "@/lib/smartLabels/classify";
 import { classifyItemForPages } from "@/lib/pageRules/classify";
 
+import { logWebhook } from "@/lib/webhooks/log";
+
 const GMAIL_WEBHOOK_SECRET = process.env.GMAIL_WEBHOOK_SECRET;
 
 /**
@@ -68,9 +70,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ tenantId: string }> }
 ) {
+  const startTime = Date.now();
   try {
     // Validate auth
     if (!validateToken(request)) {
+      logWebhook({ source: "gmail", status: "error", method: "POST", durationMs: Date.now() - startTime, errorMessage: "Unauthorized" });
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -109,14 +113,14 @@ export async function POST(
     const pubSubResult = pubSubPushMessageSchema.safeParse(body);
 
     if (pubSubResult.success) {
-      return handlePubSubPush(pubSubResult.data, tenantId);
+      return handlePubSubPush(pubSubResult.data, tenantId, startTime);
     }
 
     // Try Apps Script payload
     const appsScriptResult = gmailAppsScriptPayloadSchema.safeParse(body);
 
     if (appsScriptResult.success) {
-      return handleAppsScriptPayload(appsScriptResult.data, tenantId);
+      return handleAppsScriptPayload(appsScriptResult.data, tenantId, startTime);
     }
 
     // Neither format matched
@@ -130,6 +134,13 @@ export async function POST(
     );
   } catch (error) {
     console.error("Error processing Gmail webhook:", error);
+    logWebhook({
+      source: "gmail",
+      status: "error",
+      method: "POST",
+      durationMs: Date.now() - startTime,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
 
     // Handle unique constraint violation (race condition on duplicate)
     if (
@@ -159,7 +170,8 @@ export async function POST(
  */
 async function handlePubSubPush(
   message: { message: { data: string; messageId: string; publishTime: string }; subscription: string },
-  tenantId: string
+  tenantId: string,
+  startTime: number
 ) {
   // Decode the base64 data field
   let decoded: { emailAddress?: string; historyId?: number };
@@ -245,7 +257,7 @@ async function handlePubSubPush(
                   emailData.received_at instanceof Date
                     ? emailData.received_at.toISOString()
                     : String(emailData.received_at),
-              });
+              }, { emailId: emailData._dbId ? parseInt(emailData._dbId, 10) : undefined });
               cardIds = actionResult.cardIds;
             } catch (actionErr) {
               console.error(
@@ -284,6 +296,16 @@ async function handlePubSubPush(
         });
       }
 
+      logWebhook({
+        source: "gmail_pubsub",
+        tenantId,
+        status: "success",
+        method: "POST",
+        durationMs: Date.now() - startTime,
+        messageCount: stored,
+        metadata: { historyId: decoded.historyId, emailAddress: decoded.emailAddress },
+      });
+
       return NextResponse.json(
         {
           message: "Emails fetched and stored",
@@ -294,6 +316,16 @@ async function handlePubSubPush(
         { status: 200 }
       );
     }
+
+    logWebhook({
+      source: "gmail_pubsub",
+      tenantId,
+      status: "skipped",
+      method: "POST",
+      durationMs: Date.now() - startTime,
+      messageCount: 0,
+      metadata: { historyId: decoded.historyId, emailAddress: decoded.emailAddress },
+    });
 
     return NextResponse.json(
       {
@@ -310,6 +342,15 @@ async function handlePubSubPush(
       `[Gmail Pub/Sub] Could not process notification for tenant ${tenantId}:`,
       err instanceof Error ? err.message : err
     );
+
+    logWebhook({
+      source: "gmail_pubsub",
+      tenantId,
+      status: "error",
+      method: "POST",
+      durationMs: Date.now() - startTime,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
 
     return NextResponse.json(
       {
@@ -338,7 +379,8 @@ async function handleAppsScriptPayload(
     bodyHtml?: string;
     receivedAt: string;
   },
-  tenantId: string
+  tenantId: string,
+  startTime: number
 ) {
   // Parse recipients string into array (comma-separated)
   const recipientsList = payload.recipients
@@ -360,6 +402,13 @@ async function handleAppsScriptPayload(
 
   // null means duplicate (ON CONFLICT DO NOTHING returned no rows)
   if (!result) {
+    logWebhook({
+      source: "gmail_apps_script",
+      tenantId,
+      status: "skipped",
+      method: "POST",
+      durationMs: Date.now() - startTime,
+    });
     return NextResponse.json(
       { message: "Email already processed", messageId: payload.messageId },
       { status: 200 }
@@ -383,7 +432,7 @@ async function handleAppsScriptPayload(
         subject: payload.subject ?? null,
         bodyPlainText: payload.bodyPlain ?? null,
         receivedAt: payload.receivedAt,
-      });
+      }, { emailId: parseInt(String(result.id), 10) });
       cardIds = actionResult.cardIds;
     } catch (err) {
       console.error(
@@ -418,6 +467,15 @@ async function handleAppsScriptPayload(
         pageRuleErr instanceof Error ? pageRuleErr.message : pageRuleErr
       );
     }
+  });
+
+  logWebhook({
+    source: "gmail_apps_script",
+    tenantId,
+    status: "success",
+    method: "POST",
+    durationMs: Date.now() - startTime,
+    messageCount: 1,
   });
 
   return NextResponse.json(

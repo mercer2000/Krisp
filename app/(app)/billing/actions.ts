@@ -149,6 +149,7 @@ export async function switchPlan(newPriceId: string) {
     success_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing?upgraded=1`,
     cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing`,
     subscription_data: {
+      trial_period_days: 14,
       metadata: { userId },
     },
   });

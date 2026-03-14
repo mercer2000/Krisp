@@ -413,10 +413,10 @@ export async function activatePlan(
 
   const bigThreeIds = plan.bigThreeCardIds;
   if (!bigThreeIds || bigThreeIds.length === 0) {
-    throw new Error("Plan has no Big 3 cards selected");
+    throw new Error("Plan has no hero priority cards selected");
   }
 
-  // 2. Clear old Big 3 flags on all cards for this user's boards
+  // 2. Clear old hero priority flags on all cards for this user's boards
   const userBoards = await db
     .select({ id: boards.id })
     .from(boards)
@@ -483,14 +483,23 @@ export async function activatePlan(
     focusColumn = created;
   }
 
-  // 4. Set Big 3 flags and move cards to Focus column
-  const bigThreeCards = await db
-    .select({
-      id: cards.id,
-      columnId: cards.columnId,
-    })
-    .from(cards)
-    .where(inArray(cards.id, bigThreeIds));
+  // 4. Set hero priority flags and move cards to Focus column
+  //    Only move cards that belong to the target board (prevent cross-board moves)
+  const targetBoardColumns = await db
+    .select({ id: columns.id })
+    .from(columns)
+    .where(eq(columns.boardId, boardId));
+  const targetColumnIds = targetBoardColumns.map((c) => c.id);
+
+  const bigThreeCards = targetColumnIds.length > 0
+    ? await db
+        .select({
+          id: cards.id,
+          columnId: cards.columnId,
+        })
+        .from(cards)
+        .where(and(inArray(cards.id, bigThreeIds), inArray(cards.columnId, targetColumnIds)))
+    : [];
 
   for (let i = 0; i < bigThreeCards.length; i++) {
     const card = bigThreeCards[i];

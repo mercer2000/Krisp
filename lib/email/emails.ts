@@ -138,6 +138,20 @@ export async function updateEmailAfterMove(
 }
 
 /**
+ * Get the numeric database ID for an email by its message_id
+ */
+export async function getEmailIdByMessageId(
+  tenantId: string,
+  messageId: string
+): Promise<number | null> {
+  const rows = await sql`
+    SELECT id FROM emails
+    WHERE tenant_id = ${tenantId} AND message_id = ${messageId}
+  `;
+  return rows.length > 0 ? (rows[0] as { id: number }).id : null;
+}
+
+/**
  * Check if an email already exists (for deduplication)
  */
 export async function emailExists(
@@ -282,6 +296,8 @@ export async function listEmails(
 
 /**
  * Soft-delete an email by ID (scoped to tenant). Sets deleted_at timestamp.
+ * Also cascades soft-delete to any action items, decisions, and linked cards
+ * that were auto-created from this email.
  * Returns the message_id so the caller can also remove it from the mailbox via Graph API.
  */
 export async function deleteEmail(
@@ -294,16 +310,59 @@ export async function deleteEmail(
     WHERE id = ${id} AND tenant_id = ${tenantId}
     RETURNING message_id
   `;
-  return (rows[0] as { message_id: string }) || null;
+  if (!rows[0]) return null;
+
+  // Cascade: soft-delete action items linked to this email + their cards
+  await sql`
+    UPDATE cards SET deleted_at = NOW()
+    WHERE id IN (
+      SELECT card_id FROM action_items
+      WHERE email_id = ${id} AND user_id = ${tenantId} AND card_id IS NOT NULL AND deleted_at IS NULL
+    ) AND deleted_at IS NULL
+  `;
+  await sql`
+    UPDATE action_items SET deleted_at = NOW()
+    WHERE email_id = ${id} AND user_id = ${tenantId} AND deleted_at IS NULL
+  `;
+
+  // Cascade: soft-delete decisions linked to this email
+  await sql`
+    UPDATE decisions SET deleted_at = NOW()
+    WHERE email_id = ${id} AND user_id = ${tenantId} AND deleted_at IS NULL
+  `;
+
+  return rows[0] as { message_id: string };
 }
 
 /**
- * Permanently delete an email (hard delete for trash purge)
+ * Permanently delete an email (hard delete for trash purge).
+ * Also hard-deletes associated action items, their linked cards, and decisions.
  */
 export async function permanentlyDeleteEmail(
   id: number,
   tenantId: string
 ): Promise<boolean> {
+  // Hard-delete linked cards first (FK on action_items.card_id is SET NULL)
+  await sql`
+    DELETE FROM cards
+    WHERE id IN (
+      SELECT card_id FROM action_items
+      WHERE email_id = ${id} AND user_id = ${tenantId} AND card_id IS NOT NULL
+    )
+  `;
+
+  // Hard-delete action items linked to this email
+  await sql`
+    DELETE FROM action_items
+    WHERE email_id = ${id} AND user_id = ${tenantId}
+  `;
+
+  // Hard-delete decisions linked to this email
+  await sql`
+    DELETE FROM decisions
+    WHERE email_id = ${id} AND user_id = ${tenantId}
+  `;
+
   const rows = await sql`
     DELETE FROM emails
     WHERE id = ${id} AND tenant_id = ${tenantId} AND deleted_at IS NOT NULL
@@ -313,7 +372,7 @@ export async function permanentlyDeleteEmail(
 }
 
 /**
- * Restore a soft-deleted email
+ * Restore a soft-deleted email and its cascaded action items, decisions, and cards.
  */
 export async function restoreEmail(
   id: number,
@@ -325,7 +384,26 @@ export async function restoreEmail(
     WHERE id = ${id} AND tenant_id = ${tenantId} AND deleted_at IS NOT NULL
     RETURNING id
   `;
-  return rows.length > 0;
+  if (rows.length === 0) return false;
+
+  // Restore cascaded action items and their cards
+  await sql`
+    UPDATE action_items SET deleted_at = NULL
+    WHERE email_id = ${id} AND user_id = ${tenantId} AND deleted_at IS NOT NULL
+  `;
+  await sql`
+    UPDATE cards SET deleted_at = NULL
+    WHERE id IN (
+      SELECT card_id FROM action_items
+      WHERE email_id = ${id} AND user_id = ${tenantId} AND card_id IS NOT NULL
+    ) AND deleted_at IS NOT NULL
+  `;
+  await sql`
+    UPDATE decisions SET deleted_at = NULL
+    WHERE email_id = ${id} AND user_id = ${tenantId} AND deleted_at IS NOT NULL
+  `;
+
+  return true;
 }
 
 /**

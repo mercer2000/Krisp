@@ -38,7 +38,7 @@ const SECTIONS: Section[] = [
           <StepCard
             number="3"
             title="Plan"
-            description="Choose your Big 3 priorities, set daily themes, and confirm your plan for the upcoming week."
+            description="Choose your hero priorities, set daily themes, and confirm your plan for the upcoming week."
             color="green"
           />
         </div>
@@ -51,15 +51,15 @@ const SECTIONS: Section[] = [
     ),
   },
   {
-    id: "big-three",
-    title: "Big 3 Priorities",
+    id: "hero-priorities",
+    title: "Hero Priorities",
     icon: "star",
     content: (
       <>
         <p className="mb-4 text-[var(--muted-foreground)]">
-          Each week you select exactly <strong>three</strong> tasks from your
-          Kanban board that would make the week a success. These are your
-          Big 3 — the items that move the needle most.
+          Each week you select the tasks from your Kanban board that would
+          make the week a success. These are your hero priorities — the
+          items that move the needle most.
         </p>
         <h4 className="text-sm font-semibold mb-2">How it works</h4>
         <ol className="list-decimal list-inside space-y-2 text-[var(--muted-foreground)] mb-4">
@@ -69,14 +69,14 @@ const SECTIONS: Section[] = [
           <li>
             Click <strong>Get AI Suggestions</strong>. The AI analyzes your
             open cards — considering priorities, due dates, and items that have
-            been carried forward — and pre-selects three.
+            been carried forward — and pre-selects the top priorities.
           </li>
           <li>
             Accept the suggestions or swap them for different cards. You can
-            select any three cards from your board.
+            select as many cards as you need from your board.
           </li>
           <li>
-            When you confirm the plan, the selected cards are tagged as Big 3
+            When you confirm the plan, the selected cards are tagged as hero priorities
             and moved into a dedicated <strong>Focus</strong> column at the
             front of your Kanban board.
           </li>
@@ -84,7 +84,7 @@ const SECTIONS: Section[] = [
         <h4 className="text-sm font-semibold mb-2">Visual cues</h4>
         <ul className="list-disc list-inside space-y-1 text-[var(--muted-foreground)]">
           <li>
-            Big 3 cards display a gold star badge and an amber glow border,
+            Hero priority cards display a gold star badge and an amber glow border,
             visible in every column — not just Focus.
           </li>
           <li>
@@ -92,7 +92,7 @@ const SECTIONS: Section[] = [
             be reordered or deleted while a plan is active.
           </li>
           <li>
-            When a Big 3 card is completed or the week rolls over, it
+            When a hero priority card is completed or the week rolls over, it
             automatically returns to its original column.
           </li>
         </ul>
@@ -113,7 +113,7 @@ const SECTIONS: Section[] = [
         <h4 className="text-sm font-semibold mb-2">AI-suggested themes</h4>
         <p className="mb-4 text-[var(--muted-foreground)]">
           When you plan your week, the AI examines your calendar events,
-          meeting schedule, Big 3 priorities, and open tasks to suggest a
+          meeting schedule, hero priorities, and open tasks to suggest a
           theme for each day (Monday through Sunday). For example:
         </p>
         <div className="grid grid-cols-7 gap-1 mb-4 text-center text-xs">
@@ -137,13 +137,13 @@ const SECTIONS: Section[] = [
         </div>
         <p className="mb-4 text-[var(--muted-foreground)]">
           The AI avoids scheduling deep-work themes on days packed with
-          meetings and distributes your Big 3 items across the week. You can
+          meetings and distributes your hero priorities across the week. You can
           override any theme by clicking on it in the Plan tab.
         </p>
         <h4 className="text-sm font-semibold mb-2">Curated task lists</h4>
         <p className="text-[var(--muted-foreground)]">
           For each themed day, the AI picks <strong>5-7 tasks</strong> from
-          your Kanban board that best match the theme. Big 3 items are always
+          your Kanban board that best match the theme. Hero priorities are always
           included on relevant days. You will see today&apos;s curated list in
           three places:
         </p>
@@ -168,7 +168,7 @@ const SECTIONS: Section[] = [
         <ul className="list-disc list-inside space-y-1 mb-4 text-[var(--muted-foreground)]">
           <li>
             <strong>Email</strong> — a summary lands in your inbox Friday
-            afternoon with your score, Big 3 status, highlights, and a link
+            afternoon with your score, hero priorities status, highlights, and a link
             to plan next week.
           </li>
           <li>
@@ -182,17 +182,17 @@ const SECTIONS: Section[] = [
           The score is a weighted composite of four factors:
         </p>
         <div className="space-y-3 mb-4">
-          <ScoreBar label="Big 3 completion" weight={40} color="blue" />
+          <ScoreBar label="Hero priorities completion" weight={40} color="blue" />
           <ScoreBar label="Theme adherence" weight={30} color="purple" />
           <ScoreBar label="Action item closure" weight={20} color="green" />
           <ScoreBar label="Reflection streak" weight={10} color="amber" />
         </div>
         <h4 className="text-sm font-semibold mb-2">What the assessment includes</h4>
         <ul className="list-disc list-inside space-y-1 text-[var(--muted-foreground)]">
-          <li>Status of each Big 3 item (completed, in progress, not started)</li>
+          <li>Status of each hero priority (completed, in progress, not started)</li>
           <li>Per-day theme adherence (high, medium, low)</li>
           <li>Highlights — your wins for the week</li>
-          <li>Carry-forward items — suggestions for next week&apos;s Big 3</li>
+          <li>Carry-forward items — suggestions for next week&apos;s priorities</li>
           <li>A supportive narrative reflecting on patterns and suggesting adjustments</li>
         </ul>
       </>
@@ -242,7 +242,7 @@ const SECTIONS: Section[] = [
         <h4 className="text-sm font-semibold mb-2">Focus column</h4>
         <p className="mb-4 text-[var(--muted-foreground)]">
           A special column appears at the front of your board containing your
-          Big 3 cards. This column has a blue accent background and a target
+          hero priority cards. This column has a blue accent background and a target
           icon. It cannot be reordered or deleted while a plan is active. When
           the week ends, cards return to their original columns automatically.
         </p>
@@ -256,8 +256,8 @@ const SECTIONS: Section[] = [
         <h4 className="text-sm font-semibold mb-2">Week rollover</h4>
         <p className="text-[var(--muted-foreground)]">
           When you confirm a new plan (or Monday arrives), the previous
-          week&apos;s Big 3 flags are cleared, cards in the Focus column return
-          to their original columns, and fresh Big 3 cards take their place.
+          week&apos;s hero priority flags are cleared, cards in the Focus column return
+          to their original columns, and fresh hero priority cards take their place.
           This happens automatically — no manual cleanup needed.
         </p>
       </>
@@ -282,7 +282,7 @@ const SECTIONS: Section[] = [
         <h4 className="text-sm font-semibold mb-2">Weekly assessment email</h4>
         <p className="mb-4 text-[var(--muted-foreground)]">
           Every Friday afternoon you receive an assessment email containing
-          your weekly score, Big 3 completion status, highlights, and items
+          your weekly score, hero priorities status, highlights, and items
           to carry forward. A &quot;Plan Next Week&quot; button links directly to the
           Reviews page so you can start your next planning session.
         </p>
@@ -351,11 +351,11 @@ const SECTIONS: Section[] = [
           />
           <ChecklistItem
             step={4}
-            text="Review the suggested Big 3 and daily themes. Adjust anything that doesn't feel right."
+            text="Review the suggested hero priorities and daily themes. Adjust anything that doesn't feel right."
           />
           <ChecklistItem
             step={5}
-            text='Click "Confirm Plan" to activate. Your Focus column and Big 3 badges will appear on the Kanban board immediately.'
+            text='Click "Confirm Plan" to activate. Your Focus column and hero priority badges will appear on the Kanban board immediately.'
           />
           <ChecklistItem
             step={6}

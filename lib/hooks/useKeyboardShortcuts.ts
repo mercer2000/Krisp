@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { isNativeMobile } from "@/lib/mobile/platform";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -123,6 +124,8 @@ export function useKeyboardShortcuts(shortcuts: ShortcutHandler[]) {
   const seqRef = useRef<{ key: string; time: number } | null>(null);
 
   useEffect(() => {
+    // Keyboard shortcuts are irrelevant on native mobile (no physical keyboard)
+    if (isNativeMobile()) return;
     function handleKeyDown(e: KeyboardEvent) {
       // Don't fire in editable contexts
       if (isEditableTarget(e)) return;

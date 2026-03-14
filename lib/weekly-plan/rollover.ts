@@ -3,7 +3,7 @@ import { cards, columns, boards } from "@/lib/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 
 /**
- * Clears Big 3 flags and returns Focus column cards to their origin columns.
+ * Clears hero priority flags and returns Focus column cards to their origin columns.
  * Called when a new weekly plan is activated or on Monday midnight via cron.
  */
 export async function rolloverWeek(
@@ -27,7 +27,7 @@ export async function rolloverWeek(
 
   if (colIds.length === 0) return;
 
-  // Get all Big 3 cards in those columns
+  // Get all hero priority cards in those columns
   const bigThreeCards = await db
     .select()
     .from(cards)
@@ -43,7 +43,7 @@ export async function rolloverWeek(
         .where(eq(columns.id, card.snoozeReturnColumnId));
 
       if (originColumn.length > 0) {
-        // Move card back to origin column and clear Big 3 fields
+        // Move card back to origin column and clear hero priority fields
         await db
           .update(cards)
           .set({
@@ -54,7 +54,7 @@ export async function rolloverWeek(
           })
           .where(eq(cards.id, card.id));
       } else {
-        // Origin column no longer exists — clear Big 3 fields, leave card in place
+        // Origin column no longer exists — clear hero priority fields, leave card in place
         await db
           .update(cards)
           .set({
@@ -65,7 +65,7 @@ export async function rolloverWeek(
           .where(eq(cards.id, card.id));
       }
     } else {
-      // No origin column — just clear Big 3 fields
+      // No origin column — just clear hero priority fields
       await db
         .update(cards)
         .set({

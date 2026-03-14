@@ -404,7 +404,7 @@ export function Column({ column, boardId, onCardClick, onDeleteCard, onMoveCard,
       </div>
 
       {/* Add card at TOP (below header) */}
-      <div className="px-2 pb-1">
+      <div className="px-2 pb-2">
         {isAddingCard ? (
           <div className="space-y-2">
             <input
@@ -460,7 +460,7 @@ export function Column({ column, boardId, onCardClick, onDeleteCard, onMoveCard,
       </div>
 
       {/* Cards area */}
-      <div className="flex min-h-[60px] flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
+      <div className="flex min-h-[60px] flex-1 flex-col gap-2 overflow-y-auto px-2 pt-3 pb-2">
         <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
           {activeCards.map((card) => (
             <Card

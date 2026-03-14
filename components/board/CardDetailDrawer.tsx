@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useUpdateCard, useDeleteCard, useAddTag, useDeleteTag, useCreateCard } from "@/lib/hooks/useCards";
 import { MeetingDetailDrawer } from "@/components/meeting/MeetingDetailDrawer";
 import type { Card, Priority, ChecklistItem } from "@/types";
+
+const MarkdownEditor = dynamic(() => import("@/components/card/MarkdownEditor"), { ssr: false });
 
 // ---------------------------------------------------------------------------
 // Meeting source type (returned by /api/v1/cards/[id]/meeting)
@@ -233,20 +236,15 @@ export function CardDetailDrawer({ card, boardId, onClose }: CardDetailDrawerPro
             />
           </div>
 
-          {/* Description */}
-          <div>
-            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">
-              Description
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              onBlur={handleSave}
-              rows={4}
-              placeholder="Add a description..."
-              className="w-full rounded-lg border border-[var(--input)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none focus:ring-2 focus:ring-[var(--ring)] transition-shadow resize-none"
-            />
-          </div>
+          {/* Description (Markdown) */}
+          <MarkdownEditor
+            value={description}
+            onChange={setDescription}
+            onBlur={handleSave}
+            isEditing={false}
+            height={200}
+            placeholder="Click to add a description..."
+          />
 
           {/* Checklist */}
           <div>

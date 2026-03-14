@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useUpdateBoard } from "@/lib/hooks/useBoard";
+import { useRouter } from "next/navigation";
+import { useUpdateBoard, useBoards } from "@/lib/hooks/useBoard";
 import { SearchBar } from "./SearchBar";
 import type { Board, Priority } from "@/types";
 
@@ -61,12 +62,16 @@ interface BoardHeaderProps {
 }
 
 export function BoardHeader({ board, filters, onFiltersChange, availableTags = [] }: BoardHeaderProps) {
+  const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
+  const [showBoardSwitcher, setShowBoardSwitcher] = useState(false);
   const [themeExpanded, setThemeExpanded] = useState(false);
   const todayTheme = useTodayTheme();
   const [editTitle, setEditTitle] = useState(board.title);
   const inputRef = useRef<HTMLInputElement>(null);
+  const switcherRef = useRef<HTMLDivElement>(null);
   const updateBoard = useUpdateBoard(board.id);
+  const { data: allBoards } = useBoards();
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -74,6 +79,18 @@ export function BoardHeader({ board, filters, onFiltersChange, availableTags = [
       inputRef.current.select();
     }
   }, [isEditing]);
+
+  // Close board switcher on click outside
+  useEffect(() => {
+    if (!showBoardSwitcher) return;
+    const handleClick = (e: MouseEvent) => {
+      if (switcherRef.current && !switcherRef.current.contains(e.target as Node)) {
+        setShowBoardSwitcher(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showBoardSwitcher]);
 
   const handleSave = () => {
     const trimmed = editTitle.trim();
@@ -121,26 +138,76 @@ export function BoardHeader({ board, filters, onFiltersChange, availableTags = [
           </svg>
         </Link>
 
-        {/* Board title (click to edit) */}
-        <div className="min-w-0 flex-1">
-          {isEditing ? (
-            <input
-              ref={inputRef}
-              type="text"
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              onBlur={handleSave}
-              onKeyDown={handleKeyDown}
-              className="w-full max-w-md rounded-lg border border-[var(--input)] bg-[var(--background)] px-2 py-1 text-lg font-semibold text-[var(--foreground)] outline-none focus:ring-2 focus:ring-[var(--ring)] transition-shadow"
-            />
-          ) : (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="max-w-md truncate rounded-lg px-2 py-1 text-lg font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--accent)]"
-              title="Click to edit board title"
-            >
-              {board.title}
-            </button>
+        {/* Board title (click to edit) + board switcher dropdown */}
+        <div className="relative min-w-0 flex-1" ref={switcherRef}>
+          <div className="flex items-center gap-1">
+            {isEditing ? (
+              <input
+                ref={inputRef}
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                onBlur={handleSave}
+                onKeyDown={handleKeyDown}
+                className="w-full max-w-md rounded-lg border border-[var(--input)] bg-[var(--background)] px-2 py-1 text-lg font-semibold text-[var(--foreground)] outline-none focus:ring-2 focus:ring-[var(--ring)] transition-shadow"
+              />
+            ) : (
+              <>
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="max-w-md truncate rounded-lg px-2 py-1 text-lg font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--accent)]"
+                  title="Click to edit board title"
+                >
+                  {board.title}
+                </button>
+                {/* Board switcher chevron */}
+                <button
+                  onClick={() => setShowBoardSwitcher(!showBoardSwitcher)}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--muted-foreground)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
+                  aria-label="Switch board"
+                  title="Switch board"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={`transition-transform ${showBoardSwitcher ? "rotate-180" : ""}`}
+                  >
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Board switcher dropdown */}
+          {showBoardSwitcher && allBoards && allBoards.length > 1 && (
+            <div className="absolute left-0 top-full z-50 mt-1 w-64 rounded-lg border border-[var(--border)] bg-[var(--card)] py-1 shadow-lg">
+              {allBoards
+                .filter((b) => b.id !== board.id)
+                .map((b) => (
+                  <button
+                    key={b.id}
+                    onClick={() => {
+                      setShowBoardSwitcher(false);
+                      router.push(`/boards/${b.id}`);
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[var(--foreground)] transition-colors hover:bg-[var(--accent)]"
+                  >
+                    <span
+                      className="h-3 w-3 shrink-0 rounded-full"
+                      style={{ backgroundColor: b.backgroundColor }}
+                    />
+                    <span className="truncate">{b.title}</span>
+                  </button>
+                ))}
+            </div>
           )}
         </div>
 

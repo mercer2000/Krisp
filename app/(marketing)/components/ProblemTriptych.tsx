@@ -50,6 +50,17 @@ export function ProblemTriptych() {
             </div>
           ))}
         </div>
+        <div className="mt-8 text-center">
+          <a
+            href="/research"
+            className="inline-flex items-center gap-2 text-sm text-amber-400/80 hover:text-amber-300 transition-colors group"
+          >
+            <span>Research shows email costs knowledge workers 28% of their week</span>
+            <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+            </svg>
+          </a>
+        </div>
       </div>
     </section>
   );

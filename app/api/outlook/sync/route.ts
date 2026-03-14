@@ -12,6 +12,7 @@ import { classifyItem, buildEmailContent } from "@/lib/smartLabels/classify";
 import { classifyItemForPages } from "@/lib/pageRules/classify";
 import { autoProcessEmailActions } from "@/lib/actions/autoProcessEmailActions";
 import { upsertContacts } from "@/lib/contacts/contacts";
+import { logWebhook } from "@/lib/webhooks/log";
 
 /**
  * POST /api/outlook/sync
@@ -24,6 +25,7 @@ import { upsertContacts } from "@/lib/contacts/contacts";
  * If omitted, syncs all connected Outlook accounts.
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
   try {
     const { data: session } = await auth.getSession();
     const userId = session?.user?.id;
@@ -163,7 +165,7 @@ export async function POST(request: NextRequest) {
               subject: email.subject,
               bodyPlainText: email.bodyPlainText,
               receivedAt: email.receivedAt,
-            }, { boardId: email.accountBoardId });
+            }, { boardId: email.accountBoardId, emailId: parseInt(email.id, 10) });
           } catch (err) {
             console.error(`[Outlook Sync] Auto-process actions failed for ${email.id}:`, err);
           }
@@ -179,6 +181,16 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    logWebhook({
+      source: "outlook_sync",
+      tenantId: userId,
+      status: "success",
+      method: "POST",
+      durationMs: Date.now() - startTime,
+      messageCount: totalInserted,
+      metadata: { totalMessages, totalSkipped, accountCount: accounts.length },
+    });
+
     return NextResponse.json({
       message: "Sync completed",
       total: totalMessages,
@@ -188,6 +200,13 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("[Outlook Sync] Error:", error);
+    logWebhook({
+      source: "outlook_sync",
+      status: "error",
+      method: "POST",
+      durationMs: Date.now() - startTime,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Sync failed" },
       { status: 500 }

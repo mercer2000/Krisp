@@ -271,6 +271,7 @@ export default function WeeklyReviewsPage() {
 
   // Plan tab state
   const [boardId, setBoardId] = useState<string | null>(null);
+  const [boardsList, setBoardsList] = useState<Array<{ id: string; title: string }>>([]);
   const [allCards, setAllCards] = useState<BoardCard[]>([]);
   const [suggestions, setSuggestions] = useState<PlanSuggestion | null>(null);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
@@ -370,25 +371,47 @@ export default function WeeklyReviewsPage() {
     return () => { cancelled = true; };
   }, [activeTab]);
 
-  // ── Fetch board + cards (for Plan tab) ──────────────────
+  // ── Fetch boards list (for Plan tab) ────────────────────
 
   useEffect(() => {
     if (activeTab !== "plan") return;
     let cancelled = false;
     (async () => {
       try {
-        // Fetch user's first board
         const boardRes = await fetch("/api/v1/boards");
         if (!boardRes.ok) return;
         const boardsData = await boardRes.json();
-        const firstBoard = boardsData[0];
-        if (!firstBoard || cancelled) return;
-        setBoardId(firstBoard.id);
+        if (boardsData.length === 0 || cancelled) return;
 
-        // Fetch cards from columns
-        const colRes = await fetch(`/api/v1/boards/${firstBoard.id}/columns`);
-        if (!colRes.ok || cancelled) return;
-        const columnsData = await colRes.json();
+        setBoardsList(boardsData.map((b: { id: string; title: string }) => ({ id: b.id, title: b.title })));
+
+        // Only set initial board if none selected yet
+        if (!boardId) {
+          let lastBoardId: string | null = null;
+          try { lastBoardId = localStorage.getItem("last-board-id"); } catch {}
+          const targetBoard = lastBoardId
+            ? boardsData.find((b: { id: string }) => b.id === lastBoardId) ?? boardsData[0]
+            : boardsData[0];
+          setBoardId(targetBoard.id);
+        }
+      } catch {
+        // Ignore errors
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Fetch cards for selected board ─────────────────────
+
+  useEffect(() => {
+    if (!boardId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const boardDetailRes = await fetch(`/api/v1/boards/${boardId}`);
+        if (!boardDetailRes.ok || cancelled) return;
+        const boardDetail = await boardDetailRes.json();
+        const columnsData = boardDetail.columns || [];
 
         const fetchedCards: BoardCard[] = [];
         for (const col of columnsData) {
@@ -413,13 +436,19 @@ export default function WeeklyReviewsPage() {
             (PRIORITY_ORDER[b.priority] ?? 3)
         );
 
-        if (!cancelled) setAllCards(fetchedCards);
+        if (!cancelled) {
+          setAllCards(fetchedCards);
+          // Clear selections when board changes
+          setSelectedBigThree([]);
+          setSuggestions(null);
+          setEditedThemes([]);
+        }
       } catch {
         // Ignore errors
       }
     })();
     return () => { cancelled = true; };
-  }, [activeTab]);
+  }, [boardId]);
 
   // ── Review actions ──────────────────────────────────────
 
@@ -556,13 +585,11 @@ export default function WeeklyReviewsPage() {
   };
 
   const handleToggleBigThree = (cardId: string) => {
-    setSelectedBigThree((prev) => {
-      if (prev.includes(cardId)) {
-        return prev.filter((id) => id !== cardId);
-      }
-      if (prev.length >= 3) return prev;
-      return [...prev, cardId];
-    });
+    setSelectedBigThree((prev) =>
+      prev.includes(cardId)
+        ? prev.filter((id) => id !== cardId)
+        : [...prev, cardId]
+    );
   };
 
   const handleThemeEdit = (index: number, newTheme: string) => {
@@ -757,10 +784,10 @@ export default function WeeklyReviewsPage() {
             </div>
           </div>
 
-          {/* Big 3 Summary */}
+          {/* Hero Priorities Summary */}
           <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-5">
             <h3 className="mb-3 text-sm font-semibold text-[var(--foreground)]">
-              Big 3 Summary
+              Hero Priorities Summary
             </h3>
             <div className="space-y-3">
               {assessmentData.bigThreeSummary.map((item) => {
@@ -1137,12 +1164,32 @@ export default function WeeklyReviewsPage() {
         Plan Activated!
       </h3>
       <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-        Your Big 3 cards have been moved to the Focus column and daily themes
+        Your hero priority cards have been moved to the Focus column and daily themes
         are set. Check your Kanban board to see the changes.
       </p>
     </div>
   ) : (
     <div className="max-w-3xl space-y-6">
+      {/* Board selector */}
+      {boardsList.length > 1 && (
+        <div className="flex items-center gap-3">
+          <label className="text-sm font-medium text-[var(--foreground)]">
+            Board:
+          </label>
+          <select
+            value={boardId ?? ""}
+            onChange={(e) => setBoardId(e.target.value)}
+            className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 text-sm text-[var(--foreground)] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            {boardsList.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.title}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Get Suggestions button */}
       {!suggestions && !suggestionsLoading && (
         <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-6 text-center">
@@ -1185,18 +1232,18 @@ export default function WeeklyReviewsPage() {
 
       {suggestions && (
         <>
-          {/* Big 3 Picker */}
+          {/* Hero Priorities Picker */}
           <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-5">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-[var(--foreground)]">
-                Big 3 Priorities
+                Hero Priorities
               </h3>
               <span className="text-xs text-[var(--muted-foreground)]">
-                {selectedBigThree.length}/3 selected
+                {selectedBigThree.length} selected
               </span>
             </div>
             <p className="mb-3 text-xs text-[var(--muted-foreground)]">
-              Select the 3 most important cards to focus on this week.
+              Select the priorities that would make this week a success.
               AI-suggested items are pre-selected.
             </p>
             <div className="space-y-2 max-h-[400px] overflow-auto">
@@ -1213,7 +1260,7 @@ export default function WeeklyReviewsPage() {
                   <button
                     key={card.id}
                     onClick={() => handleToggleBigThree(card.id)}
-                    disabled={!isSelected && selectedBigThree.length >= 3}
+                    disabled={false}
                     className={`w-full rounded-lg border p-3 text-left transition-colors ${
                       isSelected
                         ? "border-blue-400 bg-blue-50 dark:border-blue-600 dark:bg-blue-900/20"

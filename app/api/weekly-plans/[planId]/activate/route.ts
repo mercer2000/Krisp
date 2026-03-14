@@ -25,8 +25,9 @@ export async function POST(
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof Response) throw error;
+    console.error("[Weekly Plan Activate] Error:", error instanceof Error ? error.message : error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Internal server error", details: error instanceof Error ? error.message : String(error) },
       { status: 500 },
     );
   }

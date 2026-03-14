@@ -42,3 +42,8 @@ next-env.d.ts
 .worktrees/
 
 .vercel
+
+# Capacitor
+ios/App/Pods/
+android/.gradle/
+android/app/build/

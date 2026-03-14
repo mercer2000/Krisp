@@ -33,7 +33,7 @@ interface EmailData {
 export async function autoProcessEmailActions(
   tenantId: string,
   email: EmailData,
-  options?: { boardId?: string | null }
+  options?: { boardId?: string | null; emailId?: number }
 ): Promise<{ actionItemsCreated: number; cardsCreated: number; cardIds: string[] }> {
   // Skip emails with no body content
   if (!email.bodyPlainText?.trim()) {
@@ -117,6 +117,7 @@ export async function autoProcessEmailActions(
             description: action.description || null,
             assignee: action.assignee || null,
             extractionSource: "email",
+            emailId: options?.emailId ?? null,
             priority: action.priority || "medium",
             dueDate: action.dueDate || null,
           }, ACTION_ITEM_ENCRYPTED_FIELDS)

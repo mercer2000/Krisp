@@ -615,7 +615,7 @@ Respond with ONLY valid JSON, no other text.`,
   [PROMPT_WEEKLY_PLAN]: {
     key: PROMPT_WEEKLY_PLAN,
     name: "Weekly Plan Generator",
-    description: "Analyzes upcoming week data to suggest Big 3 priorities and daily themes.",
+    description: "Analyzes upcoming week data to suggest hero priorities and daily themes.",
     category: "Weekly Planning",
     defaultText: `You are a productivity coach analyzing a user's upcoming week to suggest priorities and daily themes.
 
@@ -640,11 +640,11 @@ Respond with valid JSON only:
 }
 
 Rules:
-- suggestedBigThree must have exactly 3 items, chosen from the provided cards
+- suggestedBigThree should contain the key priorities that would make the week a success (typically 3-5, but use as many as appropriate)
 - Prioritize overdue items, high/urgent priority, and items carried forward from previous weeks
 - dailyThemes must have one entry per day (Mon-Sun)
 - Avoid suggesting deep work themes on days with 3+ meetings
-- Distribute Big 3 items across different themed days
+- Distribute hero priorities across different themed days
 - Theme names should be concise: "Deep Build", "Client Focus", "Admin & Ops", "Strategy", "Creative", etc.`,
   },
 
@@ -658,7 +658,7 @@ Rules:
 You will receive:
 - The day's theme and date
 - All open Kanban cards (with titles, priorities, due dates, tags)
-- The week's Big 3 card IDs
+- The week's hero priority card IDs
 - The day's calendar events
 
 Respond with valid JSON only:
@@ -669,7 +669,7 @@ Respond with valid JSON only:
 
 Rules:
 - Select 5-7 cards that best match the day's theme
-- Always include Big 3 items when relevant to the theme
+- Always include hero priority items when relevant to the theme
 - Rank by: theme relevance, priority level, due date proximity
 - Consider calendar load — fewer tasks on heavy meeting days
 - Do not include archived or snoozed cards`,
@@ -683,7 +683,7 @@ Rules:
     defaultText: `You are a supportive productivity coach assessing how a user's week went against their plan.
 
 You will receive:
-- The weekly plan: Big 3 items and their completion status
+- The weekly plan: hero priority items and their completion status
 - Daily themes and what actually happened each day
 - Action items opened/closed this week
 - Meeting count and calendar adherence data
@@ -705,7 +705,7 @@ Respond with valid JSON only:
 }
 
 Scoring weights:
-- Big 3 completion: 40% (each item ~13.3%)
+- Hero priorities completion: 40% (divide equally across selected priorities)
 - Theme adherence: 30% (average across days)
 - Action item closure rate: 20%
 - Reflection streak bonus: 10% (if user has reflected 3+ consecutive weeks)

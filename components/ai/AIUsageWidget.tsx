@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useAppAwarePolling } from "@/lib/mobile/app-state";
+import { isNativeMobile } from "@/lib/mobile/platform";
 
 interface KeyData {
   label: string;
@@ -24,6 +26,19 @@ export function AIUsageWidget() {
   const [data, setData] = useState<KeyData | null>(null);
   const [error, setError] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Close on click outside
+  useEffect(() => {
+    if (!expanded) return;
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setExpanded(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [expanded]);
 
   const fetchUsage = useCallback(async () => {
     try {
@@ -40,12 +55,8 @@ export function AIUsageWidget() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchUsage();
-    // Refresh every 5 minutes
-    const interval = setInterval(fetchUsage, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [fetchUsage]);
+  // Poll AI usage — pauses when app is backgrounded on mobile
+  useAppAwarePolling(fetchUsage, isNativeMobile() ? 10 * 60 * 1000 : 5 * 60 * 1000);
 
   if (error || !data) {
     return null;
@@ -57,7 +68,7 @@ export function AIUsageWidget() {
     : null;
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <button
         onClick={() => setExpanded((p) => !p)}
         className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-[var(--muted-foreground)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
@@ -86,11 +97,6 @@ export function AIUsageWidget() {
       </button>
 
       {expanded && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setExpanded(false)}
-          />
           <div className="absolute right-0 top-full z-50 mt-1 w-64 rounded-lg border border-[var(--border)] bg-[var(--card)] p-3 shadow-lg">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-xs font-semibold text-[var(--foreground)]">
@@ -144,7 +150,6 @@ export function AIUsageWidget() {
               </p>
             )}
           </div>
-        </>
       )}
     </div>
   );

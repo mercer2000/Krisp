@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { Suspense, useState, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   useCalendarEventsInRange,
@@ -46,6 +46,14 @@ function parseDateParam(value: string | null): Date {
 // ── Page Component ───────────────────────────────────
 
 export default function CalendarPage() {
+  return (
+    <Suspense>
+      <CalendarContent />
+    </Suspense>
+  );
+}
+
+function CalendarContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -265,7 +273,9 @@ export default function CalendarPage() {
   // ── Render ─────────────────────────────────────────
 
   return (
-    <div className="flex h-full flex-col p-4">
+    <div className="flex h-full flex-col p-6">
+      <h1 className="mb-4 text-xl font-bold tracking-tight">Calendar</h1>
+
       <CalendarHeader
         currentDate={currentDate}
         activeView={activeView}

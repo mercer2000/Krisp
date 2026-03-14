@@ -1,11 +1,21 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { IntegrationDetailLayout } from "../IntegrationDetailLayout";
 import { getIntegration } from "../integrations";
+import type { IntegrationStatus } from "../IntegrationCard";
 import { CopyButton, CodeBlock, CRISP_EVENTS, DefaultBoardSelector, WebhookSecretManager } from "../shared";
 
 export function KrispIntegration({ tenantId }: { tenantId: string }) {
   const integration = getIntegration("krisp")!;
+
+  const [status, setStatus] = useState<IntegrationStatus | null>(null);
+  useEffect(() => {
+    fetch("/api/integrations/status")
+      .then((r) => r.json())
+      .then((data) => { if (data.krisp) setStatus(data.krisp); })
+      .catch(() => {});
+  }, []);
 
   const origin = typeof window !== "undefined" ? window.location.origin : "https://your-domain.com";
   const crispWebhookUrl = `${origin}/api/webhooks/key-points?user_id=${tenantId}`;
@@ -280,7 +290,8 @@ export function KrispIntegration({ tenantId }: { tenantId: string }) {
   return (
     <IntegrationDetailLayout
       integration={integration}
-      connected={false}
+      connected={status?.connected ?? false}
+      connectionSummary={status?.summary}
       connectionSection={connectionSection}
     />
   );

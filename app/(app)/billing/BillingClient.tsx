@@ -11,6 +11,7 @@ interface SubscriptionData {
   currentPeriodEnd: string;
   cancelAtPeriodEnd: boolean;
   monthlyAmount: number;
+  trialEnd: string | null;
 }
 
 interface InvoiceData {
@@ -27,6 +28,7 @@ interface PlanData {
   description: string;
   monthlyPrice: number;
   monthlyPriceId: string | null;
+  features: string[];
   featureMatrix: Record<string, string | boolean>;
   highlighted: boolean;
 }
@@ -40,19 +42,6 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }>
   incomplete: { bg: "bg-slate-500/10", text: "text-slate-400", label: "Incomplete" },
 };
 
-const FEATURE_MATRIX_ROWS = [
-  "Kanban boards",
-  "Kanban cards",
-  "Open Brain captures",
-  "Email integrations",
-  "MCP access",
-  "AI features",
-  "Meeting search",
-  "Weekly review",
-  "Priority support",
-  "Early access",
-];
-
 export function BillingClient({ userId }: { userId: string }) {
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [invoices, setInvoices] = useState<InvoiceData[]>([]);
@@ -60,7 +49,6 @@ export function BillingClient({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const [showPlanSelector, setShowPlanSelector] = useState(false);
   const [switchTarget, setSwitchTarget] = useState<PlanData | null>(null);
 
   const fetchBillingData = useCallback(async () => {
@@ -117,7 +105,6 @@ export function BillingClient({ userId }: { userId: string }) {
     startTransition(async () => {
       await switchPlan(switchTarget.monthlyPriceId!);
       setSwitchTarget(null);
-      setShowPlanSelector(false);
       fetchBillingData();
     });
   }
@@ -166,6 +153,25 @@ export function BillingClient({ userId }: { userId: string }) {
         </div>
       )}
 
+      {/* Trial banner */}
+      {subscription?.status === "trialing" && subscription.trialEnd && (() => {
+        const daysLeft = Math.max(0, Math.ceil((new Date(subscription.trialEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+        return (
+          <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-400">
+                  Free trial — {daysLeft} {daysLeft === 1 ? "day" : "days"} remaining
+                </p>
+                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                  Your trial ends on {new Date(subscription.trialEnd).toLocaleDateString()}. You won&apos;t be charged until then.
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Subscription status card */}
       <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-6 mb-6">
         <div className="flex items-start justify-between flex-wrap gap-4">
@@ -182,13 +188,17 @@ export function BillingClient({ userId }: { userId: string }) {
             </div>
             <p className="text-sm text-[var(--muted-foreground)]">
               {subscription
-                ? `$${(subscription.monthlyAmount / 100).toFixed(2)}/mo`
+                ? subscription.status === "trialing"
+                  ? `$${(subscription.monthlyAmount / 100).toFixed(2)}/mo after trial`
+                  : `$${(subscription.monthlyAmount / 100).toFixed(2)}/mo`
                 : "Free — no charge"}
             </p>
             {subscription && (
               <p className="text-sm text-[var(--muted-foreground)] mt-1">
                 {subscription.cancelAtPeriodEnd
                   ? `Access until ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`
+                  : subscription.status === "trialing"
+                  ? `First billing date: ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`
                   : `Next billing date: ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`}
               </p>
             )}
@@ -199,12 +209,6 @@ export function BillingClient({ userId }: { userId: string }) {
             )}
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={() => setShowPlanSelector(true)}
-              className="px-4 py-2 rounded-lg text-sm font-medium border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
-            >
-              Select plan
-            </button>
             {subscription && (
               <>
                 {subscription.cancelAtPeriodEnd ? (
@@ -254,15 +258,18 @@ export function BillingClient({ userId }: { userId: string }) {
               <ul className="space-y-1 ml-4">
                 {currentPlanKey === "pro" && (
                   <>
-                    <li>- AI features (Brain chat, daily briefing, etc.)</li>
+                    <li>- Brain Chat — AI search across everything</li>
+                    <li>- Decision Register</li>
                     <li>- Full MCP read/write access</li>
+                    <li>- AI-powered weekly & daily briefings</li>
                     <li>- Priority support</li>
                   </>
                 )}
                 {(currentPlanKey === "pro" || currentPlanKey === "standard") && (
                   <>
-                    <li>- Unlimited boards and cards</li>
-                    <li>- Extra email integrations</li>
+                    <li>- Meeting recording & transcription</li>
+                    <li>- Email classification & action items</li>
+                    <li>- Kanban boards</li>
                   </>
                 )}
               </ul>
@@ -287,127 +294,94 @@ export function BillingClient({ userId }: { userId: string }) {
         </div>
       )}
 
-      {/* Plan selector modal */}
-      {showPlanSelector && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="rounded-lg bg-[var(--card)] border border-[var(--border)] p-6 max-w-4xl w-full max-h-[85vh] overflow-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-[var(--foreground)]">
-                Select Plan
-              </h3>
-              <button
-                onClick={() => setShowPlanSelector(false)}
-                className="p-1 text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+      {/* Plans */}
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">Plans</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {planOrder.map((plan, idx) => {
+            const isCurrent = plan.key === currentPlanKey;
+            const isUpgrade = idx > currentPlanIndex;
+            const isDowngrade = idx < currentPlanIndex;
+            const price = plan.monthlyPrice
+              ? `$${(plan.monthlyPrice / 100).toFixed(0)}`
+              : "$0";
+
+            return (
+              <div
+                key={plan.key}
+                className={`relative rounded-xl border p-5 flex flex-col ${
+                  isCurrent
+                    ? "border-[var(--primary)] bg-[var(--primary)]/5"
+                    : plan.highlighted
+                    ? "border-[var(--primary)]/40 bg-[var(--card)]"
+                    : "border-[var(--border)] bg-[var(--card)]"
+                }`}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
+                {isCurrent && (
+                  <span className="absolute -top-2.5 left-4 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--primary)] text-[var(--primary-foreground)]">
+                    Current plan
+                  </span>
+                )}
+                <h4 className="text-base font-semibold text-[var(--foreground)] mb-1">
+                  {plan.name}
+                </h4>
+                <p className="text-xs text-[var(--muted-foreground)] mb-3">
+                  {plan.description}
+                </p>
+                <div className="mb-4">
+                  <span className="text-2xl font-bold text-[var(--foreground)]">
+                    {price}
+                  </span>
+                  <span className="text-sm text-[var(--muted-foreground)]">/mo</span>
+                </div>
 
-            {/* Plan columns */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              {planOrder.map((plan, idx) => {
-                const isCurrent = plan.key === currentPlanKey;
-                const isUpgrade = idx > currentPlanIndex;
-                const isDowngrade = idx < currentPlanIndex;
-                const price = plan.monthlyPrice
-                  ? `$${(plan.monthlyPrice / 100).toFixed(0)}`
-                  : "$0";
+                {/* Feature list */}
+                <ul className="flex-1 space-y-2 mb-5">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-2 text-xs">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400 shrink-0 mt-0.5">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      <span className="text-[var(--foreground)]">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
 
-                return (
-                  <div
-                    key={plan.key}
-                    className={`relative rounded-xl border p-5 flex flex-col ${
-                      isCurrent
-                        ? "border-[var(--primary)] bg-[var(--primary)]/5"
-                        : plan.highlighted
-                        ? "border-[var(--primary)]/40 bg-[var(--card)]"
-                        : "border-[var(--border)] bg-[var(--card)]"
+                {/* Action button */}
+                {isCurrent ? (
+                  <button
+                    disabled
+                    className="w-full py-2.5 rounded-lg text-sm font-medium border border-[var(--border)] text-[var(--muted-foreground)] cursor-default"
+                  >
+                    Current plan
+                  </button>
+                ) : plan.key === "free" ? (
+                  <button
+                    onClick={() => setShowCancelConfirm(true)}
+                    className="w-full py-2.5 rounded-lg text-sm font-medium border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
+                  >
+                    Downgrade to Free
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setSwitchTarget(plan)}
+                    disabled={isPending}
+                    className={`w-full py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
+                      isUpgrade
+                        ? "bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90"
+                        : "border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)]"
                     }`}
                   >
-                    {isCurrent && (
-                      <span className="absolute -top-2.5 left-4 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--primary)] text-[var(--primary-foreground)]">
-                        Current plan
-                      </span>
-                    )}
-                    <h4 className="text-base font-semibold text-[var(--foreground)] mb-1">
-                      {plan.name}
-                    </h4>
-                    <p className="text-xs text-[var(--muted-foreground)] mb-3">
-                      {plan.description}
-                    </p>
-                    <div className="mb-4">
-                      <span className="text-2xl font-bold text-[var(--foreground)]">
-                        {price}
-                      </span>
-                      <span className="text-sm text-[var(--muted-foreground)]">/mo</span>
-                    </div>
-
-                    {/* Feature list */}
-                    <ul className="flex-1 space-y-2 mb-5">
-                      {FEATURE_MATRIX_ROWS.map((feature) => {
-                        const val = plan.featureMatrix[feature];
-                        const enabled = val !== false;
-                        return (
-                          <li key={feature} className="flex items-start gap-2 text-xs">
-                            {enabled ? (
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400 shrink-0 mt-0.5">
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                            ) : (
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--muted-foreground)]/40 shrink-0 mt-0.5">
-                                <line x1="18" y1="6" x2="6" y2="18" />
-                                <line x1="6" y1="6" x2="18" y2="18" />
-                              </svg>
-                            )}
-                            <span className={enabled ? "text-[var(--foreground)]" : "text-[var(--muted-foreground)]"}>
-                              {typeof val === "string" ? `${feature}: ${val}` : feature}
-                            </span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-
-                    {/* Choose Plan button */}
-                    {isCurrent ? (
-                      <button
-                        disabled
-                        className="w-full py-2.5 rounded-lg text-sm font-medium border border-[var(--border)] text-[var(--muted-foreground)] cursor-default"
-                      >
-                        Current plan
-                      </button>
-                    ) : plan.key === "free" ? (
-                      <button
-                        onClick={() => {
-                          setShowPlanSelector(false);
-                          setShowCancelConfirm(true);
-                        }}
-                        className="w-full py-2.5 rounded-lg text-sm font-medium border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
-                      >
-                        Downgrade to Free
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => setSwitchTarget(plan)}
-                        disabled={isPending}
-                        className={`w-full py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
-                          isUpgrade
-                            ? "bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90"
-                            : "border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--accent)]"
-                        }`}
-                      >
-                        {isUpgrade ? `Upgrade to ${plan.name}` : isDowngrade ? `Switch to ${plan.name}` : `Choose ${plan.name}`}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+                    {!subscription && isUpgrade
+                      ? `Start free trial — ${plan.name}`
+                      : isUpgrade ? `Upgrade to ${plan.name}` : isDowngrade ? `Switch to ${plan.name}` : `Choose ${plan.name}`}
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
-      )}
+      </div>
 
       {/* Switch plan confirmation modal */}
       {switchTarget && (
@@ -465,7 +439,7 @@ export function BillingClient({ userId }: { userId: string }) {
         </h2>
         {invoices.length === 0 ? (
           <p className="text-sm text-[var(--muted-foreground)]">
-            {!subscription ? "No invoices — you\u2019re on the Free plan." : "No invoices yet."}
+            {!subscription ? "No invoices \u2014 start a trial to get full access." : "No invoices yet."}
           </p>
         ) : (
           <div className="overflow-x-auto">

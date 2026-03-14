@@ -9,8 +9,9 @@ import {
   emails,
   decisions,
   actionItems,
+  calendarEvents,
 } from "@/lib/db/schema";
-import { eq, desc, and, isNull } from "drizzle-orm";
+import { eq, desc, asc, and, isNull, gte } from "drizzle-orm";
 import { chatCompletion, TokenLimitError } from "@/lib/ai/client";
 import { dispatchWebhooks } from "@/lib/webhooks/dispatch";
 import {
@@ -24,6 +25,7 @@ import {
   BRAIN_CHAT_MESSAGE_ENCRYPTED_FIELDS,
   BRAIN_CHAT_SESSION_ENCRYPTED_FIELDS,
   BRAIN_THOUGHT_ENCRYPTED_FIELDS,
+  CALENDAR_EVENT_ENCRYPTED_FIELDS,
 } from "@/lib/db/encryption-helpers";
 import { classifyIntent } from "@/lib/brain/intentParser";
 import { resolvePrompt } from "@/lib/ai/resolvePrompt";
@@ -56,6 +58,7 @@ const MAX_CONTEXT_EMAILS = 10;
 const MAX_CONTEXT_DECISIONS = 10;
 const MAX_CONTEXT_ACTION_ITEMS = 10;
 const MAX_CONTEXT_BRAIN_THOUGHTS = 10;
+const MAX_CONTEXT_CALENDAR_EVENTS = 30;
 const MAX_HISTORY_MESSAGES = 50;
 const PENDING_ACTION_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -305,7 +308,10 @@ async function handleBrainQuery(
   message: string,
   history: Array<{ role: string; content: string }>
 ): Promise<{ answer: string; sourcesUsed: string[] }> {
-  const [meetings, userEmails, userDecisions, userActionItems, userThoughts] =
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const [meetings, userEmails, userDecisions, userActionItems, userThoughts, upcomingEvents] =
     await Promise.all([
       db
         .select({
@@ -393,6 +399,28 @@ async function handleBrainQuery(
         .where(eq(brainThoughts.userId, userId))
         .orderBy(desc(brainThoughts.createdAt))
         .limit(MAX_CONTEXT_BRAIN_THOUGHTS),
+
+      db
+        .select({
+          id: calendarEvents.id,
+          subject: calendarEvents.subject,
+          startDateTime: calendarEvents.startDateTime,
+          endDateTime: calendarEvents.endDateTime,
+          isAllDay: calendarEvents.isAllDay,
+          location: calendarEvents.location,
+          organizerName: calendarEvents.organizerName,
+          attendees: calendarEvents.attendees,
+        })
+        .from(calendarEvents)
+        .where(
+          and(
+            eq(calendarEvents.tenantId, userId),
+            gte(calendarEvents.startDateTime, startOfToday),
+            eq(calendarEvents.isCancelled, false)
+          )
+        )
+        .orderBy(asc(calendarEvents.startDateTime))
+        .limit(MAX_CONTEXT_CALENDAR_EVENTS),
     ]);
 
   // Decrypt sensitive fields from each data source
@@ -401,6 +429,7 @@ async function handleBrainQuery(
   const decDecisions = decryptRows(userDecisions as Record<string, unknown>[], DECISION_ENCRYPTED_FIELDS) as typeof userDecisions;
   const decActionItems = decryptRows(userActionItems as Record<string, unknown>[], ACTION_ITEM_ENCRYPTED_FIELDS) as typeof userActionItems;
   const decThoughts = decryptRows(userThoughts as Record<string, unknown>[], BRAIN_THOUGHT_ENCRYPTED_FIELDS) as typeof userThoughts;
+  const decCalendarEvents = decryptRows(upcomingEvents as Record<string, unknown>[], CALENDAR_EVENT_ENCRYPTED_FIELDS) as typeof upcomingEvents;
 
   // Build context string
   const contextParts: string[] = [];
@@ -509,6 +538,32 @@ Transcript: ${transcript}`;
       .join("\n---\n");
     contextParts.push(
       `## Brain Thoughts (${decThoughts.length} recent)\n${thoughtCtx}`
+    );
+  }
+
+  if (decCalendarEvents.length > 0) {
+    sourcesUsed.push("calendar");
+    const calendarCtx = decCalendarEvents
+      .map((e, i) => {
+        const start = new Date(e.startDateTime);
+        const end = new Date(e.endDateTime);
+        const dateStr = e.isAllDay
+          ? `${start.toLocaleDateString()}, All Day`
+          : `${start.toLocaleDateString()} ${start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} - ${end.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+        const locationLine = e.location ? `\nLocation: ${e.location}` : "";
+        const organizerLine = e.organizerName ? `\nOrganizer: ${e.organizerName}` : "";
+        const attendeeNames = Array.isArray(e.attendees)
+          ? (e.attendees as Array<{ name?: string }>)
+              .map((a) => a.name)
+              .filter(Boolean)
+              .join(", ")
+          : "";
+        const attendeeLine = attendeeNames ? `\nAttendees: ${attendeeNames}` : "";
+        return `Event ${i + 1}: "${e.subject || "Untitled"}" (${dateStr})${locationLine}${organizerLine}${attendeeLine}`;
+      })
+      .join("\n---\n");
+    contextParts.push(
+      `## Calendar Events (${decCalendarEvents.length} upcoming)\n${calendarCtx}`
     );
   }
 

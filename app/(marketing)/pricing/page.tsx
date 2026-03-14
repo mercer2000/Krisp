@@ -4,7 +4,7 @@ import { PricingClient } from "./PricingClient";
 
 export const metadata = {
   title: "Pricing — MyOpenBrain",
-  description: "Simple, transparent pricing for individuals and teams.",
+  description: "6 tools in one — meeting recorder, email manager, AI search, decision tracker, task board, and weekly briefings. Starting at $19/mo with a 14-day free trial.",
 };
 
 export default function PricingPage() {
@@ -15,10 +15,10 @@ export default function PricingPage() {
         <section className="px-6 py-16 sm:py-24">
           <div className="mx-auto max-w-6xl text-center">
             <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4">
-              Simple, transparent pricing
+              6 tools in one. One simple price.
             </h1>
             <p className="text-lg text-slate-400 max-w-2xl mx-auto mb-12">
-              No hidden fees. No surprises. Pick the plan that fits your workflow.
+              Everything you need to capture, organize, and search your work — for less than competitors charge for a single tool. 14-day free trial on every plan.
             </p>
             <PricingClient />
           </div>

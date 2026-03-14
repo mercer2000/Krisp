@@ -205,33 +205,6 @@ export function Card({ card, onClick, onDelete, onMove, onSnooze, columns, curre
         </span>
       )}
 
-      {/* Inline delete confirmation (top-right) */}
-      {confirmDelete && (
-        <div
-          className="absolute top-1 right-1 z-10 flex items-center gap-1 rounded-md bg-red-50 dark:bg-red-900/40 px-1.5 py-0.5 shadow-sm border border-red-200 dark:border-red-800"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <span className="text-[10px] text-red-600 dark:text-red-400 font-medium whitespace-nowrap">Delete?</span>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete?.(card.id);
-            }}
-            className="rounded px-1 py-0.5 text-[10px] font-medium bg-red-600 text-white hover:bg-red-700 transition-colors"
-          >
-            Yes
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setConfirmDelete(false);
-            }}
-            className="rounded px-1 py-0.5 text-[10px] font-medium bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 transition-colors"
-          >
-            No
-          </button>
-        </div>
-      )}
 
       {/* Move column picker dropdown */}
       {showMoveMenu && columns && (
@@ -592,7 +565,7 @@ export function Card({ card, onClick, onDelete, onMove, onSnooze, columns, curre
                 Snooze
               </button>
             )}
-            {onDelete && (
+            {onDelete && !confirmDelete && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -609,6 +582,29 @@ export function Card({ card, onClick, onDelete, onMove, onSnooze, columns, curre
                 </svg>
                 Delete
               </button>
+            )}
+            {onDelete && confirmDelete && (
+              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                <span className="text-xs text-red-600 dark:text-red-400 font-medium">Delete?</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(card.id);
+                  }}
+                  className="rounded-md px-2 py-1 text-xs font-medium bg-red-600 text-white hover:bg-red-700 transition-colors"
+                >
+                  Yes
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirmDelete(false);
+                  }}
+                  className="rounded-md px-2 py-1 text-xs text-[var(--muted-foreground)] hover:bg-[var(--accent)] transition-colors"
+                >
+                  No
+                </button>
+              </div>
             )}
           </div>
         )}

@@ -25,6 +25,7 @@ export interface SubscriptionInfo {
   cancelAtPeriodEnd: boolean;
   monthlyAmount: number;
   isActive: boolean;
+  trialEnd: string | null;
 }
 
 const DEFAULT_INFO: SubscriptionInfo = {
@@ -36,6 +37,7 @@ const DEFAULT_INFO: SubscriptionInfo = {
   cancelAtPeriodEnd: false,
   monthlyAmount: 0,
   isActive: true,
+  trialEnd: null,
 };
 
 export function useSubscription() {
@@ -59,6 +61,7 @@ export function useSubscription() {
           cancelAtPeriodEnd: json.subscription.cancelAtPeriodEnd ?? false,
           monthlyAmount: json.subscription.monthlyAmount ?? 0,
           isActive: true,
+          trialEnd: json.subscription.trialEnd ?? null,
         });
       } else {
         setData(DEFAULT_INFO);

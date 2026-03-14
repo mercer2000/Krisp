@@ -9,6 +9,8 @@ import { dispatchWebhooks } from "@/lib/webhooks/dispatch";
 import { classifyItem, buildEmailContent } from "@/lib/smartLabels/classify";
 import { classifyItemForPages } from "@/lib/pageRules/classify";
 
+import { logWebhook } from "@/lib/webhooks/log";
+
 const EMAIL_WEBHOOK_SECRET = process.env.EMAIL_WEBHOOK_SECRET;
 
 /**
@@ -41,9 +43,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ tenantId: string }> }
 ) {
+  const startTime = Date.now();
   try {
     // Validate API key
     if (!validateApiKey(request)) {
+      logWebhook({ source: "m365", status: "error", method: "POST", durationMs: Date.now() - startTime, errorMessage: "Unauthorized" });
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -101,6 +105,7 @@ export async function POST(
     // Check for duplicate (idempotency via tenant_id + message_id)
     const exists = await emailExists(tenantId, payload.messageId);
     if (exists) {
+      logWebhook({ source: "m365", tenantId, status: "skipped", method: "POST", durationMs: Date.now() - startTime });
       return NextResponse.json(
         { message: "Email already processed", messageId: payload.messageId },
         { status: 200 }
@@ -128,7 +133,7 @@ export async function POST(
           subject: payload.subject ?? null,
           bodyPlainText: payload.bodyPlainText ?? null,
           receivedAt: payload.receivedDateTime,
-        });
+        }, { emailId: result.id });
         cardIds = actionResult.cardIds;
       } catch (err) {
         console.error(
@@ -165,6 +170,15 @@ export async function POST(
       }
     });
 
+    logWebhook({
+      source: "m365",
+      tenantId,
+      status: "success",
+      method: "POST",
+      durationMs: Date.now() - startTime,
+      messageCount: 1,
+    });
+
     return NextResponse.json(
       {
         message: "Email received and stored successfully",
@@ -186,6 +200,14 @@ export async function POST(
         { status: 200 }
       );
     }
+
+    logWebhook({
+      source: "m365",
+      status: "error",
+      method: "POST",
+      durationMs: Date.now() - startTime,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
 
     return NextResponse.json(
       { error: "Internal server error" },

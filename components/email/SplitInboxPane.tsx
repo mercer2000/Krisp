@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { EmailListItem, EmailListResponse, EmailLabelChip } from "@/types/email";
 import type { InboxSection, InboxSectionFilterCriteria } from "@/types/inboxSection";
+import { useAppAwarePolling } from "@/lib/mobile/app-state";
+import { isNativeMobile } from "@/lib/mobile/platform";
 
-const PANE_POLL_INTERVAL = 20_000;
+const PANE_POLL_INTERVAL = isNativeMobile() ? 60_000 : 20_000;
 
 function formatRelativeTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -97,8 +99,6 @@ export function SplitInboxPane({
   const [showSectionPicker, setShowSectionPicker] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
   const hasFetched = useRef(false);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   const isDuplicate = section && otherSectionId === section.id;
 
   const fetchEmails = useCallback(async (silent = false) => {
@@ -157,16 +157,8 @@ export function SplitInboxPane({
     fetchEmails(false);
   }, [fetchEmails]);
 
-  // Polling
-  useEffect(() => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    if (section) {
-      pollRef.current = setInterval(() => fetchEmails(true), PANE_POLL_INTERVAL);
-    }
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, [section, fetchEmails]);
+  // Polling — pauses when app is backgrounded on mobile
+  useAppAwarePolling(() => fetchEmails(true), PANE_POLL_INTERVAL, !!section);
 
   // Close picker on outside click
   useEffect(() => {

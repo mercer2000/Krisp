@@ -15,6 +15,7 @@ import {
   sendSubscriptionCanceledEmail,
   sendTrialEndingSoonEmail,
   sendInvoicePaidEmail,
+  sendPlanChangedEmail,
 } from "@/lib/billing-emails";
 
 export async function POST(req: Request) {
@@ -186,11 +187,28 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     .where(eq(subscriptions.userId, userId))
     .limit(1);
 
+  const statusMap: Record<string, string> = {
+    active: "active",
+    trialing: "trialing",
+    past_due: "past_due",
+    canceled: "canceled",
+    unpaid: "unpaid",
+    incomplete: "incomplete",
+    incomplete_expired: "incomplete",
+    paused: "canceled",
+  };
+
+  // Use trial_end as period end when trialing so the UI can show trial expiry
+  const effectivePeriodEnd =
+    subscription.status === "trialing" && subscription.trial_end
+      ? new Date(subscription.trial_end * 1000)
+      : periodEnd;
+
   const subData = {
     stripeSubscriptionId: subscription.id,
     stripePriceId: priceId,
-    stripeCurrentPeriodEnd: periodEnd,
-    status: "active" as const,
+    stripeCurrentPeriodEnd: effectivePeriodEnd,
+    status: (statusMap[subscription.status] ?? "active") as "active",
     cancelAtPeriodEnd: subscription.cancel_at_period_end,
     updatedAt: new Date(),
   };
@@ -295,18 +313,47 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
     paused: "canceled",
   };
 
+  const newPriceId = sub.items.data[0].price.id;
+
+  // Check if the price changed (plan switch)
+  const [existingSub] = await db
+    .select({ stripePriceId: subscriptions.stripePriceId, userId: subscriptions.userId })
+    .from(subscriptions)
+    .where(eq(subscriptions.stripeSubscriptionId, sub.id))
+    .limit(1);
+
+  const priceChanged = existingSub && existingSub.stripePriceId !== newPriceId;
+
   const periodEnd = await getSubscriptionPeriodEnd(sub);
 
   await db
     .update(subscriptions)
     .set({
-      stripePriceId: sub.items.data[0].price.id,
+      stripePriceId: newPriceId,
       stripeCurrentPeriodEnd: periodEnd,
       status: (statusMap[sub.status] ?? "incomplete") as "active",
       cancelAtPeriodEnd: sub.cancel_at_period_end,
       updatedAt: new Date(),
     })
     .where(eq(subscriptions.stripeSubscriptionId, sub.id));
+
+  // Send plan changed email
+  if (priceChanged && existingSub) {
+    const email = await getUserEmailBySubscriptionId(sub.id);
+    if (email) {
+      const previousPlan = getPlanByPriceId(existingSub.stripePriceId);
+      const newPlan = getPlanByPriceId(newPriceId);
+      if (previousPlan && newPlan) {
+        await sendPlanChangedEmail(
+          email,
+          previousPlan.plan.name,
+          newPlan.plan.name,
+          newPlan.plan.features,
+          newPlan.plan.monthlyPrice
+        );
+      }
+    }
+  }
 }
 
 async function handleSubscriptionDeleted(sub: Stripe.Subscription) {

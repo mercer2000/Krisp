@@ -15,17 +15,28 @@ interface MarkdownEditorProps {
   value: string;
   onChange: (value: string) => void;
   isEditing: boolean;
+  onBlur?: () => void;
+  height?: number;
+  placeholder?: string;
 }
 
 export default function MarkdownEditor({
   value,
   onChange,
   isEditing: externalIsEditing,
+  onBlur,
+  height = 320,
+  placeholder = "Click to add a description...",
 }: MarkdownEditorProps) {
   const [isEditing, setIsEditing] = useState(externalIsEditing);
   const [isHovered, setIsHovered] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
   const { resolvedTheme } = useTheme();
+
+  const exitEditing = useCallback(() => {
+    setIsEditing(false);
+    onBlur?.();
+  }, [onBlur]);
 
   const handleClickOutside = useCallback(
     (e: MouseEvent) => {
@@ -33,17 +44,18 @@ export default function MarkdownEditor({
         editorRef.current &&
         !editorRef.current.contains(e.target as Node)
       ) {
-        setIsEditing(false);
+        exitEditing();
       }
     },
-    [],
+    [exitEditing],
   );
 
   const handleEscape = useCallback((e: KeyboardEvent) => {
     if (e.key === "Escape") {
-      setIsEditing(false);
+      e.stopPropagation();
+      exitEditing();
     }
-  }, []);
+  }, [exitEditing]);
 
   useEffect(() => {
     if (isEditing) {
@@ -71,7 +83,7 @@ export default function MarkdownEditor({
           <MDEditor
             value={value}
             onChange={(val) => onChange(val ?? "")}
-            height={320}
+            height={height}
             preview="edit"
           />
         ) : (
@@ -98,7 +110,7 @@ export default function MarkdownEditor({
                 <MDPreview source={value} style={{ background: "transparent" }} />
               ) : (
                 <p className="text-[var(--muted-foreground)]">
-                  Click to add a description...
+                  {placeholder}
                 </p>
               )}
             </div>

@@ -301,23 +301,10 @@ export function MeetingDetailDrawer({ meetingId, onClose }: MeetingDetailDrawerP
 
   const handleCopyTranscript = useCallback(async () => {
     if (!meeting?.raw_content) return;
-    try {
-      await navigator.clipboard.writeText(meeting.raw_content);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback for older browsers
-      const textarea = document.createElement("textarea");
-      textarea.value = meeting.raw_content;
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+    const { copyToClipboard } = await import("@/lib/mobile/clipboard");
+    await copyToClipboard(meeting.raw_content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }, [meeting?.raw_content]);
 
   // Load boards list and default board setting

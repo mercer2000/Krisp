@@ -65,6 +65,7 @@ export async function POST(
           description: description ?? null,
           assignee: assignee ?? null,
           extractionSource: "email",
+          emailId,
           priority: priority ?? "medium",
           dueDate: dueDate ?? null,
         }, ACTION_ITEM_ENCRYPTED_FIELDS)

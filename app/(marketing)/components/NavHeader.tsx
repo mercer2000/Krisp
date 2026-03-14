@@ -4,14 +4,20 @@ export function NavHeader() {
       <div className="mx-auto max-w-6xl flex items-center justify-between">
         <span className="text-xl font-bold text-white">MyOpenBrain</span>
         <div className="flex items-center gap-6">
+          <a href="/research" className="text-sm text-slate-400 hover:text-white transition-colors">
+            Research
+          </a>
+          <a href="/features/desktop-recorder" className="text-sm text-slate-400 hover:text-white transition-colors">
+            Desktop Recorder
+          </a>
           <a href="/auth/sign-in" className="text-sm text-slate-400 hover:text-white transition-colors">
             Sign in
           </a>
           <a
-            href="#book-demo"
+            href="/auth/sign-up"
             className="inline-flex items-center px-5 py-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium hover:bg-blue-500/20 transition-all"
           >
-            Book a Demo
+            Start Free Trial
           </a>
         </div>
       </div>

@@ -31,6 +31,7 @@ export async function generateAssessment(
   planId: string,
   userId: string
 ): Promise<AssessmentResult> {
+
   // 1. Fetch the plan
   const [plan] = await db
     .select()
@@ -134,7 +135,7 @@ export async function generateAssessment(
   const contextData = `
 ## Week: ${weekStart} to ${weekEnd}
 
-## Big 3 Items:
+## Hero Priorities:
 ${bigThreeData
   .map(
     (c) =>
@@ -182,7 +183,7 @@ ${decryptedThemes
     .update(weeklyPlans)
     .set({
       aiAssessment: encryptedValues.aiAssessment,
-      assessmentScore: assessment.score,
+      assessmentScore: Math.round(assessment.score),
       updatedAt: new Date(),
     })
     .where(and(eq(weeklyPlans.id, planId), eq(weeklyPlans.userId, userId)));
@@ -199,6 +200,7 @@ export async function saveReflection(
   userId: string,
   reflection: string
 ): Promise<void> {
+
   // 1. Encrypt the reflection
   const encryptedValues = encryptFields(
     { userReflection: reflection },

@@ -10,6 +10,7 @@ export async function GET() {
       description: plan.description,
       monthlyPrice: plan.monthlyPrice,
       monthlyPriceId: plan.monthlyPriceId || null,
+      features: plan.features,
       featureMatrix: plan.featureMatrix,
       highlighted: plan.highlighted ?? false,
     };

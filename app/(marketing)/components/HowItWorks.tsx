@@ -1,21 +1,21 @@
 const steps = [
   {
     number: "01",
-    title: "Connect your tools",
+    title: "Install the app, connect your email",
     description:
-      "Link your calendar, email, and Krisp in minutes. We integrate with Microsoft 365, Gmail, Zoom, and more.",
+      "Install the desktop recorder on your Windows PC and connect your Gmail or Outlook. Takes under 5 minutes.",
   },
   {
     number: "02",
-    title: "AI captures everything",
+    title: "Everything is captured automatically",
     description:
-      "Meetings are transcribed, emails are classified, decisions are extracted — automatically, in the background.",
+      "Every call is recorded and transcribed. Every email is classified and indexed. Decisions and action items are extracted \u2014 all in the background, zero effort.",
   },
   {
     number: "03",
-    title: "Ask, review, decide",
+    title: "Search, ask, and stay on top",
     description:
-      "Search across everything with AI. Get weekly briefings. Track decisions and action items in one place.",
+      "Search across all your calls, emails, and tasks with AI. Get weekly briefings. Track decisions and action items on your board.",
   },
 ];
 

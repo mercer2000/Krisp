@@ -33,6 +33,7 @@ export async function GET() {
       currentPeriodEnd: sub.stripeCurrentPeriodEnd.toISOString(),
       cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
       monthlyAmount: planInfo?.plan.monthlyPrice ?? 0,
+      trialEnd: sub.status === "trialing" ? sub.stripeCurrentPeriodEnd.toISOString() : null,
     },
   });
 }
