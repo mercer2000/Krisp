@@ -2644,3 +2644,51 @@ export const webhookLogs = pgTable(
     index("idx_webhook_logs_created").on(table.createdAt),
   ]
 );
+
+// ── Email Logs & Events ────────────────
+export const emailLogs = pgTable(
+  "email_logs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    recipientEmail: text("recipient_email").notNull(),
+    fromEmail: text("from_email").notNull(),
+    type: varchar("type", { length: 100 }).notNull(),
+    subject: text("subject").notNull(),
+    htmlBody: text("html_body").notNull(),
+    resendId: text("resend_id"),
+    status: varchar("status", { length: 20 }).notNull().default("sent"),
+    originalEmailLogId: uuid("original_email_log_id").references(
+      (): AnyPgColumn => emailLogs.id,
+      { onDelete: "set null" }
+    ),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_email_logs_recipient").on(table.recipientEmail),
+    index("idx_email_logs_type").on(table.type),
+    index("idx_email_logs_status").on(table.status),
+    index("idx_email_logs_resend_id").on(table.resendId),
+    index("idx_email_logs_created").on(table.createdAt),
+    index("idx_email_logs_user_created").on(table.userId, table.createdAt),
+  ]
+);
+
+export const emailEvents = pgTable(
+  "email_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    emailLogId: uuid("email_log_id")
+      .notNull()
+      .references(() => emailLogs.id, { onDelete: "cascade" }),
+    eventType: varchar("event_type", { length: 50 }).notNull(),
+    metadata: jsonb("metadata"),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_email_events_log").on(table.emailLogId),
+    index("idx_email_events_type").on(table.eventType),
+  ]
+);
