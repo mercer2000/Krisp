@@ -44,6 +44,36 @@ export async function deleteGraphMessage(
 }
 
 /**
+ * Delete a message using the delegated /me/ endpoint (for Outlook OAuth tokens).
+ * Returns true on success (204 No Content), false otherwise.
+ */
+export async function deleteGraphMessageMe(
+  messageId: string,
+  accessToken: string
+): Promise<boolean> {
+  const url = `https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(messageId)}`;
+
+  try {
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (res.status === 204 || res.status === 200) return true;
+
+    const body = await res.text().catch(() => "");
+    console.warn(
+      `[Graph] Failed to delete message (me) ${messageId}: ${res.status}`,
+      body
+    );
+    return false;
+  } catch (err) {
+    console.warn(`[Graph] Error deleting message (me) ${messageId}:`, err);
+    return false;
+  }
+}
+
+/**
  * Send a new email via Microsoft Graph API.
  * Used for forwarding emails to external recipients.
  * Requires Mail.Send permission.
@@ -160,6 +190,65 @@ export async function fetchGraphMessage(
     };
   } catch (err) {
     console.warn(`[Graph] Error fetching message ${messageId}:`, err);
+    return null;
+  }
+}
+
+/**
+ * Fetch a single message using the delegated /me/ endpoint (for Outlook OAuth tokens).
+ * Same as fetchGraphMessage but uses /me/ instead of /users/{mailbox}/.
+ */
+export async function fetchGraphMessageMe(
+  messageId: string,
+  accessToken: string
+): Promise<EmailWebhookPayload | null> {
+  const select = [
+    "from",
+    "toRecipients",
+    "ccRecipients",
+    "bccRecipients",
+    "subject",
+    "bodyPreview",
+    "body",
+    "receivedDateTime",
+    "hasAttachments",
+    "webLink",
+  ].join(",");
+
+  const url = `https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(messageId)}?$select=${select}`;
+
+  try {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!res.ok) {
+      console.warn(
+        `[Graph] Failed to fetch message (me) ${messageId}: ${res.status}`
+      );
+      return null;
+    }
+
+    const msg = await res.json();
+
+    const extractEmail = (r: { emailAddress?: { address?: string } }) =>
+      r?.emailAddress?.address || "";
+
+    return {
+      messageId,
+      from: msg.from?.emailAddress?.address || "",
+      to: (msg.toRecipients || []).map(extractEmail).filter(Boolean),
+      cc: (msg.ccRecipients || []).map(extractEmail).filter(Boolean),
+      bcc: (msg.bccRecipients || []).map(extractEmail).filter(Boolean),
+      subject: msg.subject || "",
+      bodyPlainText: msg.bodyPreview || "",
+      bodyHtml:
+        msg.body?.contentType === "html" ? msg.body.content || "" : "",
+      receivedDateTime: msg.receivedDateTime || new Date().toISOString(),
+      webLink: msg.webLink || undefined,
+    };
+  } catch (err) {
+    console.warn(`[Graph] Error fetching message (me) ${messageId}:`, err);
     return null;
   }
 }
