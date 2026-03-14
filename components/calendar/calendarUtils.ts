@@ -1,4 +1,34 @@
+import { useState, useEffect } from "react";
 import type { CalendarEvent } from "@/types";
+
+// ── Dark Mode Hook ──────────────────────────────────
+
+/**
+ * Returns true when the root `<html>` element has the "dark" class.
+ * Safe for SSR (defaults to false) and reacts to runtime theme changes
+ * via a MutationObserver on `document.documentElement`.
+ */
+export function useDarkMode(): boolean {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    setIsDark(root.classList.contains("dark"));
+
+    const observer = new MutationObserver(() => {
+      setIsDark(root.classList.contains("dark"));
+    });
+
+    observer.observe(root, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  return isDark;
+}
 
 // ── Color Palette ────────────────────────────────────
 
@@ -84,7 +114,7 @@ export interface CalendarAccount {
   id: string;
   email: string;
   provider: "google" | "outlook" | "graph";
-  lastSyncAt: string;
+  lastSyncAt?: string | null;
 }
 
 // ── Account Color Assignment ─────────────────────────
@@ -248,10 +278,10 @@ export function getViewDateRange(view: ViewType, date: Date): DateRange {
         end: endOfDay(date),
       };
     case "agenda":
-      // Agenda shows 14 days from today
+      // Agenda always shows 14 days from today, regardless of `date`
       return {
-        start: startOfDay(date),
-        end: endOfDay(addDays(date, 13)),
+        start: startOfDay(new Date()),
+        end: endOfDay(addDays(new Date(), 13)),
       };
   }
 }
@@ -260,16 +290,17 @@ export function getViewDateRange(view: ViewType, date: Date): DateRange {
 export function navigateDate(
   date: Date,
   view: ViewType,
-  direction: -1 | 1,
+  direction: "prev" | "next",
 ): Date {
+  const delta = direction === "next" ? 1 : -1;
   switch (view) {
     case "month":
-      return addMonths(date, direction);
+      return addMonths(date, delta);
     case "week":
-      return addDays(date, direction * 7);
+      return addDays(date, delta * 7);
     case "day":
     case "agenda":
-      return addDays(date, direction);
+      return addDays(date, delta);
   }
 }
 
@@ -372,8 +403,16 @@ export function getEventsForDay(
 ): CalendarEvent[] {
   const dayStartMs = startOfDay(day).getTime();
   const dayEndMs = endOfDay(day).getTime();
+  // Format day as YYYY-MM-DD using local date parts (avoids UTC conversion)
+  const dayStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
 
   return events.filter((event) => {
+    if (event.isAllDay) {
+      // Compare date-string portions to avoid timezone shift for all-day events
+      const eventDateStr = event.startDateTime.slice(0, 10);
+      const eventEndStr = event.endDateTime.slice(0, 10);
+      return eventDateStr <= dayStr && dayStr <= eventEndStr;
+    }
     const eventStart = new Date(event.startDateTime).getTime();
     const eventEnd = new Date(event.endDateTime).getTime();
     // Event overlaps the day if it starts before the day ends AND ends after the day starts
@@ -400,10 +439,10 @@ export function partitionEvents(events: CalendarEvent[]): {
   return { allDay, timed };
 }
 
-/** Group events by date string and sort within each group by start time. */
+/** Group events by date string, sorted by date key, with each group sorted by start time. */
 export function groupEventsByDate(
   events: CalendarEvent[],
-): Map<string, CalendarEvent[]> {
+): [string, CalendarEvent[]][] {
   const groups = new Map<string, CalendarEvent[]>();
 
   for (const event of events) {
@@ -425,7 +464,8 @@ export function groupEventsByDate(
     );
   }
 
-  return groups;
+  // Return entries sorted by date key
+  return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
 }
 
 /** Format a date string for the agenda view: "Today", "Tomorrow", or a full date. */

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef, useMemo, useState } from "react";
 import type { CalendarEvent } from "@/types";
 import { EventBlock } from "@/components/calendar/EventBlock";
 import {
@@ -107,8 +107,12 @@ export function TimeGrid({ columns, accounts, onEventClick }: TimeGridProps) {
     container.scrollTop = Math.max(0, currentTimeOffset - 200);
   }, []);
 
-  // Compute current time position for the red indicator
-  const now = useMemo(() => new Date(), []);
+  // Compute current time position for the red indicator, ticking every 60s
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(interval);
+  }, []);
   const currentTimeTop = useMemo(() => {
     const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
     return minutesSinceMidnight * (HOUR_HEIGHT / 60);

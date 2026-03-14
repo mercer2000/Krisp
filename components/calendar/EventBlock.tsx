@@ -6,6 +6,7 @@ import {
   formatTimeRange,
   getAccountColor,
   getEventAccountId,
+  useDarkMode,
   type CalendarAccount,
   type AccountColor,
 } from "@/components/calendar/calendarUtils";
@@ -53,9 +54,7 @@ export function EventBlock({
     [event, onClick],
   );
 
-  const isDark =
-    typeof document !== "undefined" &&
-    document.documentElement.classList.contains("dark");
+  const isDark = useDarkMode();
 
   const isCompact = height < 30;
   const isTall = height >= 50;

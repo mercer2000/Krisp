@@ -110,7 +110,7 @@ export default function CalendarPage() {
           id: a.id,
           email: a.googleEmail,
           provider: "google",
-          lastSyncAt: a.lastSyncAt ?? "",
+          lastSyncAt: a.lastSyncAt,
         });
       }
     }
@@ -121,7 +121,7 @@ export default function CalendarPage() {
           id: a.id,
           email: a.outlookEmail,
           provider: "outlook",
-          lastSyncAt: a.lastSyncAt ?? "",
+          lastSyncAt: a.lastSyncAt,
         });
       }
     }
@@ -132,7 +132,7 @@ export default function CalendarPage() {
           id: s.credentialId,
           email: s.mailbox,
           provider: "graph",
-          lastSyncAt: s.lastSyncAt ?? "",
+          lastSyncAt: s.lastSyncAt,
         });
       }
     }
@@ -172,8 +172,7 @@ export default function CalendarPage() {
 
   const handleNavigate = useCallback(
     (direction: "prev" | "next") => {
-      const dir = direction === "prev" ? -1 : 1;
-      const newDate = navigateDate(currentDate, activeView, dir);
+      const newDate = navigateDate(currentDate, activeView, direction);
       setCurrentDate(newDate);
       updateURL(activeView, newDate);
     },

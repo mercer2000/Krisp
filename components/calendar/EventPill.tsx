@@ -6,6 +6,7 @@ import {
   formatTime,
   getAccountColor,
   getEventAccountId,
+  useDarkMode,
   type CalendarAccount,
   type AccountColor,
 } from "@/components/calendar/calendarUtils";
@@ -39,9 +40,7 @@ export function EventPill({ event, accounts, onClick }: EventPillProps) {
     [event, onClick],
   );
 
-  const isDark =
-    typeof document !== "undefined" &&
-    document.documentElement.classList.contains("dark");
+  const isDark = useDarkMode();
 
   const timeLabel = !event.isAllDay
     ? formatTime(new Date(event.startDateTime))

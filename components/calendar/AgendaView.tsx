@@ -52,7 +52,7 @@ export function AgendaView({
     [onEventClick],
   );
 
-  if (groupedEvents.size === 0) {
+  if (groupedEvents.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center">
         <p className="text-muted-foreground text-sm">No upcoming events</p>
@@ -63,7 +63,7 @@ export function AgendaView({
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto max-w-2xl space-y-6 p-4">
-        {Array.from(groupedEvents.entries()).map(([dateStr, dateEvents]) => (
+        {groupedEvents.map(([dateStr, dateEvents]) => (
           <div key={dateStr}>
             {/* Date header */}
             <h3 className="text-muted-foreground mb-2 text-xs font-semibold tracking-widest uppercase">
