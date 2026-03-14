@@ -53,18 +53,18 @@ export function GoogleCalendarIntegration({ tenantId: _tenantId }: { tenantId: s
   // Check for OAuth callback result in URL params
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("google_connected") === "true") {
+    if (params.get("connected") === "true") {
       setSuccess("Google account connected successfully!");
       setTimeout(() => setSuccess(null), 5000);
       fetchStatus();
       const url = new URL(window.location.href);
-      url.searchParams.delete("google_connected");
+      url.searchParams.delete("connected");
       window.history.replaceState({}, "", url.toString());
     }
-    if (params.get("google_error")) {
-      setError(`Google connection failed: ${params.get("google_error")}`);
+    if (params.get("error")) {
+      setError(`Connection failed: ${params.get("error")}`);
       const url = new URL(window.location.href);
-      url.searchParams.delete("google_error");
+      url.searchParams.delete("error");
       window.history.replaceState({}, "", url.toString());
     }
   }, [fetchStatus]);

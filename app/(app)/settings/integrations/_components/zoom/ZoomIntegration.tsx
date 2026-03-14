@@ -58,18 +58,18 @@ export function ZoomIntegration({ tenantId: _tenantId }: { tenantId: string }) {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("zoom_connected") === "true") {
+    if (params.get("connected") === "true") {
       setSuccess("Zoom account connected successfully!");
       setTimeout(() => setSuccess(null), 5000);
       fetchStatus();
       const url = new URL(window.location.href);
-      url.searchParams.delete("zoom_connected");
+      url.searchParams.delete("connected");
       window.history.replaceState({}, "", url.toString());
     }
-    if (params.get("zoom_error")) {
-      setError(`Zoom connection failed: ${params.get("zoom_error")}`);
+    if (params.get("error")) {
+      setError(`Connection failed: ${params.get("error")}`);
       const url = new URL(window.location.href);
-      url.searchParams.delete("zoom_error");
+      url.searchParams.delete("error");
       window.history.replaceState({}, "", url.toString());
     }
   }, [fetchStatus]);

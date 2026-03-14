@@ -69,18 +69,18 @@ export function OutlookIntegration({ tenantId: _tenantId }: { tenantId: string }
   // Check for OAuth callback result in URL params
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("outlook_connected") === "true") {
+    if (params.get("connected") === "true") {
       setSuccess("Outlook account connected successfully!");
       setTimeout(() => setSuccess(null), 5000);
       fetchStatus();
       const url = new URL(window.location.href);
-      url.searchParams.delete("outlook_connected");
+      url.searchParams.delete("connected");
       window.history.replaceState({}, "", url.toString());
     }
-    if (params.get("outlook_error")) {
-      setError(`Outlook connection failed: ${params.get("outlook_error")}`);
+    if (params.get("error")) {
+      setError(`Connection failed: ${params.get("error")}`);
       const url = new URL(window.location.href);
-      url.searchParams.delete("outlook_error");
+      url.searchParams.delete("error");
       window.history.replaceState({}, "", url.toString());
     }
   }, [fetchStatus]);
