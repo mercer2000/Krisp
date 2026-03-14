@@ -2533,6 +2533,15 @@ export const supportKbChunks = pgTable(
   ]
 );
 
+// ── Support Session Status Enum ───────────────────────
+export const supportSessionStatusEnum = pgEnum("support_session_status", [
+  "ai_only",
+  "pending_agent",
+  "agent_active",
+  "agent_closed",
+  "ticket_created",
+]);
+
 // ── Support Chat Sessions (public, no auth needed) ───
 export const supportChatSessions = pgTable(
   "support_chat_sessions",
@@ -2542,6 +2551,12 @@ export const supportChatSessions = pgTable(
       () => supportWidgetConfig.id,
       { onDelete: "set null" }
     ),
+    status: supportSessionStatusEnum("status").default("ai_only").notNull(),
+    assignedAgentId: uuid("assigned_agent_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    escalatedAt: timestamp("escalated_at", { withTimezone: true }),
+    agentNotes: text("agent_notes"),
     metadata: jsonb("metadata"), // { pageUrl, userAgent, referrer }
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -2552,6 +2567,8 @@ export const supportChatSessions = pgTable(
   },
   (table) => [
     index("idx_support_chat_sessions_created").on(table.createdAt),
+    index("idx_support_sessions_status").on(table.status),
+    index("idx_support_sessions_agent").on(table.assignedAgentId),
   ]
 );
 
@@ -2559,6 +2576,8 @@ export const supportChatSessions = pgTable(
 export const supportChatRoleEnum = pgEnum("support_chat_role", [
   "user",
   "assistant",
+  "agent",
+  "system",
 ]);
 
 export const supportChatMessages = pgTable(
@@ -2571,6 +2590,9 @@ export const supportChatMessages = pgTable(
     role: supportChatRoleEnum("role").notNull(),
     content: text("content").notNull(),
     tokenCount: integer("token_count"),
+    agentId: uuid("agent_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -2584,11 +2606,103 @@ export const supportChatMessages = pgTable(
   ]
 );
 
+// ── Support Agent Presence ────────────────────────────
+export const supportAgentPresence = pgTable(
+  "support_agent_presence",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 20 }).default("online").notNull(),
+    lastPing: timestamp("last_ping", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    maxConcurrent: integer("max_concurrent").default(5).notNull(),
+    activeCount: integer("active_count").default(0).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("idx_support_agent_presence_user").on(table.userId),
+    index("idx_agent_presence_status").on(table.status),
+    index("idx_agent_presence_ping").on(table.lastPing),
+  ]
+);
+
+// ── Support Ticket Enums ─────────────────────────────
+export const supportTicketStatusEnum = pgEnum("support_ticket_status", [
+  "open",
+  "in_progress",
+  "resolved",
+  "closed",
+]);
+
+export const supportTicketPriorityEnum = pgEnum("support_ticket_priority", [
+  "low",
+  "medium",
+  "high",
+]);
+
+// ── Support Tickets ──────────────────────────────────
+export const supportTickets = pgTable(
+  "support_tickets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => supportChatSessions.id, { onDelete: "cascade" }),
+    subject: text("subject").notNull(),
+    status: supportTicketStatusEnum("status").default("open").notNull(),
+    priority: supportTicketPriorityEnum("priority").default("medium").notNull(),
+    assignedAgentId: uuid("assigned_agent_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_support_tickets_status").on(table.status),
+    index("idx_support_tickets_agent").on(table.assignedAgentId),
+    index("idx_support_tickets_created").on(table.createdAt),
+  ]
+);
+
+// ── Support Canned Responses ─────────────────────────
+export const supportCannedResponses = pgTable(
+  "support_canned_responses",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    title: varchar("title", { length: 100 }).notNull(),
+    content: text("content").notNull(),
+    category: varchar("category", { length: 50 }),
+    shortcut: varchar("shortcut", { length: 20 }),
+    sortOrder: integer("sort_order").default(0).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  }
+);
+
 // ── Support Chat Relations ───────────────────────────
 export const supportChatSessionsRelations = relations(
   supportChatSessions,
-  ({ many }) => ({
+  ({ one, many }) => ({
     messages: many(supportChatMessages),
+    assignedAgent: one(users, {
+      fields: [supportChatSessions.assignedAgentId],
+      references: [users.id],
+    }),
+    tickets: many(supportTickets),
   })
 );
 
@@ -2598,6 +2712,34 @@ export const supportChatMessagesRelations = relations(
     session: one(supportChatSessions, {
       fields: [supportChatMessages.sessionId],
       references: [supportChatSessions.id],
+    }),
+    agent: one(users, {
+      fields: [supportChatMessages.agentId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const supportAgentPresenceRelations = relations(
+  supportAgentPresence,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [supportAgentPresence.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const supportTicketsRelations = relations(
+  supportTickets,
+  ({ one }) => ({
+    session: one(supportChatSessions, {
+      fields: [supportTickets.sessionId],
+      references: [supportChatSessions.id],
+    }),
+    assignedAgent: one(users, {
+      fields: [supportTickets.assignedAgentId],
+      references: [users.id],
     }),
   })
 );
