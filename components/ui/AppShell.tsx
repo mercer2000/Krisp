@@ -9,6 +9,8 @@ import { ToastProvider } from "./Toast";
 import { CommandPalette } from "./CommandPalette";
 import { ShortcutReferenceSheet } from "./ShortcutReferenceSheet";
 import { AIUsageWidget } from "../ai/AIUsageWidget";
+import { TrialBanner } from "./TrialBanner";
+import { OutlookReconnectBanner } from "./OutlookReconnectBanner";
 import {
   useKeyboardShortcuts,
   type ShortcutHandler,
@@ -90,7 +92,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <ToastProvider>
-      <div className="flex h-screen overflow-hidden">
+      <div className="flex flex-col h-screen">
+      <TrialBanner />
+      <OutlookReconnectBanner />
+      <div className="flex flex-1 overflow-hidden">
         {/* Desktop sidebar — hidden on mobile */}
         <div className="hidden md:block">
           <SideNav />
@@ -103,6 +108,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           {children}
         </main>
+      </div>
       </div>
 
       {/* Mobile bottom navigation */}
