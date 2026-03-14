@@ -1,32 +1,6 @@
-import { Resend } from "resend";
+import { logAndSend } from "@/lib/email/log";
 
-let _resend: Resend | null = null;
-function getResend() {
-  if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY);
-  return _resend;
-}
-const resend = new Proxy({} as Resend, {
-  get(_, prop) { return (getResend() as any)[prop]; },
-});
 const FROM = "MyOpenBrain <noreply@myopenbrain.com>";
-
-interface SendEmailParams {
-  to: string;
-  subject: string;
-  html: string;
-}
-
-async function sendEmail({ to, subject, html }: SendEmailParams) {
-  if (!process.env.RESEND_API_KEY) {
-    console.log(`[billing-email] Skipping send (no RESEND_API_KEY): ${subject} -> ${to}`);
-    return;
-  }
-  try {
-    await resend.emails.send({ from: FROM, to, subject, html });
-  } catch (err) {
-    console.error(`[billing-email] Failed to send "${subject}" to ${to}:`, err);
-  }
-}
 
 export async function sendSubscriptionConfirmedEmail(
   to: string,
@@ -34,10 +8,12 @@ export async function sendSubscriptionConfirmedEmail(
   features: string[],
   nextBillingDate: Date
 ) {
-  await sendEmail({
-    to,
-    subject: `Welcome to MyOpenBrain ${planName}!`,
-    html: `
+  if (!process.env.RESEND_API_KEY) {
+    console.log("[billing-emails] RESEND_API_KEY not set, skipping email");
+    return;
+  }
+  const subject = `Welcome to MyOpenBrain ${planName}!`;
+  const html = `
       <div style="font-family: system-ui, sans-serif; max-width: 560px; margin: 0 auto;">
         <h2 style="color: #0f172a;">Your ${planName} plan is active</h2>
         <p style="color: #475569;">Thanks for upgrading! Here's what you've unlocked:</p>
@@ -52,8 +28,12 @@ export async function sendSubscriptionConfirmedEmail(
           <a href="${process.env.NEXT_PUBLIC_APP_URL}/billing" style="color: #2563eb;">Billing Settings</a>.
         </p>
       </div>
-    `,
-  });
+    `;
+  try {
+    await logAndSend({ from: FROM, to, subject, html, userId: undefined, type: "billing.subscription_confirmed" });
+  } catch (err) {
+    console.error("[billing-emails] Failed to send email:", err);
+  }
 }
 
 export async function sendPlanDowngradedEmail(
@@ -62,10 +42,12 @@ export async function sendPlanDowngradedEmail(
   newPlan: string,
   lostFeatures: string[]
 ) {
-  await sendEmail({
-    to,
-    subject: `Your MyOpenBrain plan has changed to ${newPlan}`,
-    html: `
+  if (!process.env.RESEND_API_KEY) {
+    console.log("[billing-emails] RESEND_API_KEY not set, skipping email");
+    return;
+  }
+  const subject = `Your MyOpenBrain plan has changed to ${newPlan}`;
+  const html = `
       <div style="font-family: system-ui, sans-serif; max-width: 560px; margin: 0 auto;">
         <h2 style="color: #0f172a;">Plan changed: ${previousPlan} → ${newPlan}</h2>
         <p style="color: #475569;">Your plan has been downgraded. The following features are no longer available:</p>
@@ -77,8 +59,12 @@ export async function sendPlanDowngradedEmail(
           <a href="${process.env.NEXT_PUBLIC_APP_URL}/billing" style="color: #2563eb;">Reactivate your plan</a>
         </p>
       </div>
-    `,
-  });
+    `;
+  try {
+    await logAndSend({ from: FROM, to, subject, html, userId: undefined, type: "billing.plan_downgraded" });
+  } catch (err) {
+    console.error("[billing-emails] Failed to send email:", err);
+  }
 }
 
 export async function sendPaymentFailedEmail(
@@ -86,11 +72,13 @@ export async function sendPaymentFailedEmail(
   amountDue: number,
   portalUrl?: string
 ) {
+  if (!process.env.RESEND_API_KEY) {
+    console.log("[billing-emails] RESEND_API_KEY not set, skipping email");
+    return;
+  }
   const amount = (amountDue / 100).toFixed(2);
-  await sendEmail({
-    to,
-    subject: "Payment failed — action required",
-    html: `
+  const subject = "Payment failed — action required";
+  const html = `
       <div style="font-family: system-ui, sans-serif; max-width: 560px; margin: 0 auto;">
         <h2 style="color: #dc2626;">Payment failed</h2>
         <p style="color: #475569;">
@@ -107,18 +95,24 @@ export async function sendPaymentFailedEmail(
           </a>
         </p>
       </div>
-    `,
-  });
+    `;
+  try {
+    await logAndSend({ from: FROM, to, subject, html, userId: undefined, type: "billing.payment_failed" });
+  } catch (err) {
+    console.error("[billing-emails] Failed to send email:", err);
+  }
 }
 
 export async function sendSubscriptionCanceledEmail(
   to: string,
   effectiveDate: Date
 ) {
-  await sendEmail({
-    to,
-    subject: "Your MyOpenBrain subscription has been canceled",
-    html: `
+  if (!process.env.RESEND_API_KEY) {
+    console.log("[billing-emails] RESEND_API_KEY not set, skipping email");
+    return;
+  }
+  const subject = "Your MyOpenBrain subscription has been canceled";
+  const html = `
       <div style="font-family: system-ui, sans-serif; max-width: 560px; margin: 0 auto;">
         <h2 style="color: #0f172a;">Subscription canceled</h2>
         <p style="color: #475569;">
@@ -135,18 +129,24 @@ export async function sendSubscriptionCanceledEmail(
           </a>
         </p>
       </div>
-    `,
-  });
+    `;
+  try {
+    await logAndSend({ from: FROM, to, subject, html, userId: undefined, type: "billing.subscription_canceled" });
+  } catch (err) {
+    console.error("[billing-emails] Failed to send email:", err);
+  }
 }
 
 export async function sendTrialEndingSoonEmail(
   to: string,
   daysRemaining: number
 ) {
-  await sendEmail({
-    to,
-    subject: `Your MyOpenBrain trial ends in ${daysRemaining} days`,
-    html: `
+  if (!process.env.RESEND_API_KEY) {
+    console.log("[billing-emails] RESEND_API_KEY not set, skipping email");
+    return;
+  }
+  const subject = `Your MyOpenBrain trial ends in ${daysRemaining} days`;
+  const html = `
       <div style="font-family: system-ui, sans-serif; max-width: 560px; margin: 0 auto;">
         <h2 style="color: #0f172a;">Trial ending soon</h2>
         <p style="color: #475569;">
@@ -160,8 +160,49 @@ export async function sendTrialEndingSoonEmail(
           </a>
         </p>
       </div>
-    `,
-  });
+    `;
+  try {
+    await logAndSend({ from: FROM, to, subject, html, userId: undefined, type: "billing.trial_ending_soon" });
+  } catch (err) {
+    console.error("[billing-emails] Failed to send email:", err);
+  }
+}
+
+export async function sendPlanChangedEmail(
+  to: string,
+  previousPlanName: string,
+  newPlanName: string,
+  newFeatures: string[],
+  monthlyAmount: number
+) {
+  if (!process.env.RESEND_API_KEY) {
+    console.log("[billing-emails] RESEND_API_KEY not set, skipping email");
+    return;
+  }
+  const amount = (monthlyAmount / 100).toFixed(2);
+  const subject = `Your MyOpenBrain plan has changed to ${newPlanName}`;
+  const html = `
+      <div style="font-family: system-ui, sans-serif; max-width: 560px; margin: 0 auto;">
+        <h2 style="color: #0f172a;">Plan updated: ${previousPlanName} → ${newPlanName}</h2>
+        <p style="color: #475569;">
+          Your plan has been changed to <strong>${newPlanName}</strong> at <strong>$${amount}/mo</strong>.
+          Any price difference will be prorated on your next invoice.
+        </p>
+        <p style="color: #475569;">Your plan includes:</p>
+        <ul style="color: #334155;">
+          ${newFeatures.map((f) => `<li>${f}</li>`).join("")}
+        </ul>
+        <p style="color: #475569;">
+          Manage your subscription anytime from
+          <a href="${process.env.NEXT_PUBLIC_APP_URL}/settings/billing" style="color: #2563eb;">Billing Settings</a>.
+        </p>
+      </div>
+    `;
+  try {
+    await logAndSend({ from: FROM, to, subject, html, userId: undefined, type: "billing.plan_changed" });
+  } catch (err) {
+    console.error("[billing-emails] Failed to send email:", err);
+  }
 }
 
 export async function sendInvoicePaidEmail(
@@ -171,11 +212,13 @@ export async function sendInvoicePaidEmail(
   periodEnd: Date,
   pdfUrl: string | null
 ) {
+  if (!process.env.RESEND_API_KEY) {
+    console.log("[billing-emails] RESEND_API_KEY not set, skipping email");
+    return;
+  }
   const formattedAmount = (amount / 100).toFixed(2);
-  await sendEmail({
-    to,
-    subject: `MyOpenBrain receipt — $${formattedAmount}`,
-    html: `
+  const subject = `MyOpenBrain receipt — $${formattedAmount}`;
+  const html = `
       <div style="font-family: system-ui, sans-serif; max-width: 560px; margin: 0 auto;">
         <h2 style="color: #0f172a;">Payment received</h2>
         <p style="color: #475569;">
@@ -184,6 +227,10 @@ export async function sendInvoicePaidEmail(
         </p>
         ${pdfUrl ? `<p><a href="${pdfUrl}" style="color: #2563eb;">Download PDF invoice</a></p>` : ""}
       </div>
-    `,
-  });
+    `;
+  try {
+    await logAndSend({ from: FROM, to, subject, html, userId: undefined, type: "billing.invoice_paid" });
+  } catch (err) {
+    console.error("[billing-emails] Failed to send email:", err);
+  }
 }
