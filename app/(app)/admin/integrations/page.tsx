@@ -1,7 +1,5 @@
-import { getRequiredUser } from "@/lib/auth/getRequiredUser";
-import { IntegrationsClient } from "./IntegrationsClient";
+import { redirect } from "next/navigation";
 
-export default async function IntegrationsPage() {
-  const user = await getRequiredUser();
-  return <IntegrationsClient tenantId={user.id} />;
+export default function AdminIntegrationsPage() {
+  redirect("/settings/integrations");
 }
