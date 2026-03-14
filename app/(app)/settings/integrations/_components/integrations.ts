@@ -101,7 +101,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
 ];
 
 export function getIntegration(
-  slug: IntegrationSlug,
+  slug: string,
 ): IntegrationDef | undefined {
   return INTEGRATIONS.find((i) => i.slug === slug);
 }
