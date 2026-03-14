@@ -49,6 +49,7 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   opened: { bg: "bg-green-500/20", text: "text-green-300" },
   bounced: { bg: "bg-yellow-500/20", text: "text-yellow-400" },
   complained: { bg: "bg-red-500/20", text: "text-red-400" },
+  failed: { bg: "bg-red-500/20", text: "text-red-400" },
 };
 
 const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
@@ -78,7 +79,7 @@ function relativeTime(dateStr: string) {
   return `${days}d ago`;
 }
 
-const RESENDABLE_STATUSES = ["bounced", "complained"];
+const RESENDABLE_STATUSES = ["bounced", "complained", "failed"];
 
 const EMAIL_TYPES = [
   { value: "", label: "All types" },
@@ -216,6 +217,7 @@ export function EmailsClient({ adminId }: { adminId: string }) {
             <option value="bounced">Bounced</option>
             <option value="opened">Opened</option>
             <option value="complained">Complained</option>
+            <option value="failed">Failed</option>
           </select>
           <div className="flex rounded-lg border border-[var(--border)] overflow-hidden">
             {["24h", "7d", "30d"].map((r) => (

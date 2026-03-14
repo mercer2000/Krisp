@@ -94,8 +94,8 @@ export async function GET(req: Request) {
   const [metrics] = await db
     .select({
       total: count(),
-      delivered: sql<number>`count(*) filter (where ${emailLogs.status} = 'delivered')`,
-      bounced: sql<number>`count(*) filter (where ${emailLogs.status} = 'bounced')`,
+      delivered: sql<number>`count(*) filter (where ${emailLogs.status} in ('delivered', 'opened'))`,
+      bounced: sql<number>`count(*) filter (where ${emailLogs.status} in ('bounced', 'complained'))`,
       opened: sql<number>`count(*) filter (where ${emailLogs.status} = 'opened')`,
       complained: sql<number>`count(*) filter (where ${emailLogs.status} = 'complained')`,
     })
