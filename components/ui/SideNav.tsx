@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { authClient } from "@/lib/auth/client";
@@ -11,6 +11,8 @@ import {
   formatShortcut,
 } from "@/lib/shortcuts/registry";
 import { useIsMac } from "@/lib/hooks/useKeyboardShortcuts";
+import { useAppAwarePolling } from "@/lib/mobile/app-state";
+import { isNativeMobile } from "@/lib/mobile/platform";
 
 // ---------------------------------------------------------------------------
 // Nav items configuration
@@ -82,12 +84,6 @@ const NAV_ITEMS = [
     label: "Help",
     href: "/help",
     icon: HelpIcon,
-  },
-  {
-    key: "settings",
-    label: "Settings",
-    href: "/settings",
-    icon: SettingsIcon,
   },
   {
     key: "trash",
@@ -436,6 +432,15 @@ function SubscriptionsIcon({ size = 20 }: { size?: number }) {
   );
 }
 
+function EmailsIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+    </svg>
+  );
+}
+
 function AccountIcon({ size = 20 }: { size?: number }) {
   return (
     <svg
@@ -533,6 +538,24 @@ function MenuIcon({ size = 20 }: { size?: number }) {
   );
 }
 
+function SupportChatIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z" />
+    </svg>
+  );
+}
+
 function AdminIcon({ size = 20 }: { size?: number }) {
   return (
     <svg
@@ -569,6 +592,144 @@ function ChevronLeftIcon({ size = 20 }: { size?: number }) {
   );
 }
 
+function ChevronDownIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
+const SETTINGS_ITEMS = [
+  { href: "/settings/account", label: "Account", icon: AccountIcon },
+  { href: "/settings/integrations", label: "Integrations", icon: IntegrationsIcon },
+  { href: "/settings/billing", label: "Billing", icon: BillingIcon },
+  { href: "/settings/prompts", label: "AI Prompts", icon: AIPromptsIcon },
+  { href: "/settings/smart-labels", label: "Smart Labels", icon: SmartLabelsIcon },
+  { href: "/settings/extensions", label: "Extensions", icon: ExtensionsIcon },
+  { href: "/settings/pages", label: "Pages", icon: PagesIcon },
+];
+
+function SettingsSubmenu({ collapsed, pathname }: { collapsed: boolean; pathname: string }) {
+  const isSettingsActive = pathname.startsWith("/settings");
+  const [open, setOpen] = useState(isSettingsActive);
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(!open)}
+        className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+          isSettingsActive
+            ? "bg-[var(--primary)]/10 text-[var(--primary)]"
+            : "text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
+        } ${collapsed ? "justify-center px-0" : ""}`}
+        title={collapsed ? "Settings" : undefined}
+      >
+        <SettingsIcon size={20} />
+        {!collapsed && (
+          <>
+            <span className="flex-1 text-left">Settings</span>
+            <span className={`transition-transform ${open ? "" : "-rotate-90"}`}>
+              <ChevronDownIcon />
+            </span>
+          </>
+        )}
+      </button>
+      {open && !collapsed && (
+        <div className="ml-5 flex flex-col gap-0.5 border-l border-[var(--border)] pl-2">
+          {SETTINGS_ITEMS.map((item) => {
+            const active = pathname.startsWith(item.href);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] transition-colors ${
+                  active
+                    ? "text-[var(--primary)] font-medium"
+                    : "text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                <Icon size={16} />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+}
+
+const ADMIN_ITEMS = [
+  { href: "/admin/subscriptions", label: "Subscriptions", icon: SubscriptionsIcon },
+  { href: "/admin/emails", label: "Emails", icon: EmailsIcon },
+  { href: "/admin/webhooks", label: "Webhooks", icon: ActivityFeedIcon },
+  { href: "/admin/support", label: "Support Chat", icon: SupportChatIcon },
+];
+
+function AdminSubmenu({ collapsed, pathname }: { collapsed: boolean; pathname: string }) {
+  const isAdminActive = pathname.startsWith("/admin");
+  const [open, setOpen] = useState(isAdminActive);
+
+  return (
+    <>
+      <div className={`my-1 border-t border-[var(--border)] ${collapsed ? "mx-1" : ""}`} />
+      <button
+        onClick={() => setOpen(!open)}
+        className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+          isAdminActive
+            ? "bg-[var(--primary)]/10 text-[var(--primary)]"
+            : "text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
+        } ${collapsed ? "justify-center px-0" : ""}`}
+        title={collapsed ? "Admin" : undefined}
+      >
+        <AdminIcon size={20} />
+        {!collapsed && (
+          <>
+            <span className="flex-1 text-left">Admin</span>
+            <span className={`transition-transform ${open ? "" : "-rotate-90"}`}>
+              <ChevronDownIcon />
+            </span>
+          </>
+        )}
+      </button>
+      {open && !collapsed && (
+        <div className="ml-5 flex flex-col gap-0.5 border-l border-[var(--border)] pl-2">
+          {ADMIN_ITEMS.map((item) => {
+            const active = pathname.startsWith(item.href);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] transition-colors ${
+                  active
+                    ? "text-[var(--primary)] font-medium"
+                    : "text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                <Icon size={16} />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+}
+
 function SignOutIcon({ size = 16 }: { size?: number }) {
   return (
     <svg
@@ -599,6 +760,20 @@ export function SideNav() {
   const [lastBoardId, setLastBoardId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const isMac = useIsMac();
+
+  // Unread inbox count
+  const [unreadCount, setUnreadCount] = useState(0);
+  const fetchUnread = useCallback(() => {
+    fetch("/api/emails/unread-count")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.count != null) setUnreadCount(data.count);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Poll unread count — pauses when app is backgrounded on mobile
+  useAppAwarePolling(fetchUnread, isNativeMobile() ? 120_000 : 60_000);
 
   // Build href → display shortcut map from registry
   const shortcutByHref = useMemo(() => {
@@ -704,38 +879,38 @@ export function SideNav() {
               } ${collapsed ? "justify-center px-0" : ""}`}
               title={collapsed ? `${item.label}${shortcut ? ` (${shortcut})` : ""}` : undefined}
             >
-              <Icon size={20} />
+              <span className="relative">
+                <Icon size={20} />
+                {item.key === "inbox" && unreadCount > 0 && collapsed && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-semibold text-white leading-none">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </span>
               {!collapsed && (
                 <>
                   <span className="flex-1">{item.label}</span>
-                  {shortcut && (
+                  {item.key === "inbox" && unreadCount > 0 ? (
+                    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-500 px-1.5 text-[11px] font-semibold text-white leading-none">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  ) : shortcut ? (
                     <kbd className="ml-auto rounded border border-[var(--border)] bg-[var(--background)] px-1.5 py-0.5 text-[10px] font-normal text-[var(--muted-foreground)]">
                       {shortcut}
                     </kbd>
-                  )}
+                  ) : null}
                 </>
               )}
             </Link>
           );
         })}
 
-        {/* Admin link — only visible to admin users */}
+        {/* Settings submenu */}
+        <SettingsSubmenu collapsed={collapsed} pathname={pathname} />
+
+        {/* Admin section — only visible to admin users */}
         {isAdmin && (
-          <>
-            <div className={`my-1 border-t border-[var(--border)] ${collapsed ? "mx-1" : ""}`} />
-            <Link
-              href="/admin/subscriptions"
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                isActive("/admin/subscriptions")
-                  ? "bg-[var(--primary)]/10 text-[var(--primary)]"
-                  : "text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
-              } ${collapsed ? "justify-center px-0" : ""}`}
-              title={collapsed ? "Admin" : undefined}
-            >
-              <AdminIcon size={20} />
-              {!collapsed && <span className="flex-1">Admin</span>}
-            </Link>
-          </>
+          <AdminSubmenu collapsed={collapsed} pathname={pathname} />
         )}
       </div>
 
