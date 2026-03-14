@@ -434,9 +434,10 @@ export function OutlookIntegration({ tenantId: _tenantId }: { tenantId: string }
         </h3>
         <div className="space-y-3">
           <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-[var(--foreground)]">
-            <span className="font-medium">Pull-based sync:</span> Unlike the Graph API
-            integration which uses push notifications, this integration requires manual or
-            scheduled syncs via the &quot;Sync Emails Now&quot; and &quot;Sync Calendar Now&quot; buttons.
+            <span className="font-medium">Push + pull sync:</span> New emails are
+            delivered automatically via Microsoft Graph push notifications. A background
+            sync also runs hourly as a safety net. You can still use the &quot;Sync Emails
+            Now&quot; button for an immediate pull.
           </div>
           <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-[var(--foreground)]">
             <span className="font-medium">Calendar scope:</span> Calendar sync
