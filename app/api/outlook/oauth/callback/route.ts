@@ -5,7 +5,7 @@ import {
   upsertOutlookTokens,
 } from "@/lib/outlook/oauth";
 import { fetchOutlookUserEmail } from "@/lib/outlook/messages";
-import { createGraphSubscription } from "@/lib/graph/subscriptions";
+import { createGraphSubscription, getActiveSubscriptions, deactivateSubscription } from "@/lib/graph/subscriptions";
 import { randomUUID } from "crypto";
 
 /**
@@ -86,6 +86,28 @@ export async function GET(request: NextRequest) {
       refreshToken: tokenResponse.refresh_token,
       tokenExpiry: new Date(Date.now() + tokenResponse.expires_in * 1000),
     });
+
+    // Deactivate any existing Graph subscriptions for this user's Outlook accounts
+    // to prevent duplicate notifications on reconnection
+    try {
+      const existingSubs = await getActiveSubscriptions(userId);
+      for (const sub of existingSubs.filter((s) => s.outlookOauthTokenId)) {
+        try {
+          await fetch(
+            `https://graph.microsoft.com/v1.0/subscriptions/${sub.subscriptionId}`,
+            {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+            }
+          );
+        } catch {
+          // Old subscription may already be expired — that's fine
+        }
+        await deactivateSubscription(sub.subscriptionId);
+      }
+    } catch (err) {
+      console.warn("[Outlook OAuth] Error cleaning up old subscriptions:", err);
+    }
 
     // Create a Microsoft Graph push subscription for real-time email notifications
     try {
