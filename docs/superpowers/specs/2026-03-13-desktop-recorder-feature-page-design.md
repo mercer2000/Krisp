@@ -64,7 +64,7 @@ Numbered steps (similar to HowItWorks on landing page):
 
 ### 4. What You Get — Four Feature Cards
 
-2x2 grid of feature cards (blue accent, similar to strategy cards on research page):
+2x2 grid of feature cards (cyan/teal accent, consistent with the page's visual identity). Stacks to single column on mobile:
 
 1. **"Searchable transcripts"**
    Body: "Full transcripts from every call, searchable by keyword or natural language query."
@@ -93,15 +93,20 @@ A small callout card linking to `/research`:
 ### 7. CTA
 
 Same pattern as research page bottom CTA:
-- Subtle blue background glow
+- Subtle blue background glow (intentional — matches the global CTA button color, not the page accent)
 - **Headline:** "Stop losing what was said"
 - **Body:** "Install once. Every call after that becomes part of your searchable knowledge."
 - **CTA:** "Start Your Free 14-Day Trial" → `/auth/sign-up`
 - **Sub-CTA:** "No credit card required. Set up in minutes."
 
+## Metadata / SEO
+
+- **Title:** "Desktop Recorder — Every Call Becomes Searchable Knowledge | MyOpenBrain"
+- **Description:** "MyOpenBrain's desktop recorder silently captures and transcribes every call on your Windows PC. Decisions, action items, and key points flow into a searchable knowledge graph."
+
 ## Navigation Changes
 
-- Add "Features" link to NavHeader (between "Research" and "Sign in"), linking to `/features/desktop-recorder`
+- Add "Desktop Recorder" link to NavHeader (between "Research" and "Sign in"), linking to `/features/desktop-recorder`. Named specifically rather than "Features" since this is currently the only feature page.
 
 ## Files to Create/Modify
 
@@ -112,5 +117,5 @@ Same pattern as research page bottom CTA:
 
 - No pricing information on this page
 - No comparison table with competitors
-- No video/animation of the recorder in action (screenshot placeholders only)
+- No video/animation of the recorder in action — page is text-only, no visual placeholders
 - No additional feature pages (single page scope)
