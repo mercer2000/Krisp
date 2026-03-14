@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -50,6 +50,153 @@ export const CRISP_EVENTS = [
   { event: "key_points_generated", description: "Fired when Crisp extracts key points from a completed meeting" },
   { event: "transcript_created", description: "Fired when a full meeting transcript becomes available" },
 ];
+
+export function WebhookSecretManager() {
+  const [maskedSecret, setMaskedSecret] = useState<string | null>(null);
+  const [inputValue, setInputValue] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const fetchSecret = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch("/api/webhook-secret");
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      setMaskedSecret(data.secret);
+    } catch {
+      setError("Failed to load webhook secret");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSecret();
+  }, [fetchSecret]);
+
+  const handleSave = async () => {
+    if (!inputValue.trim()) return;
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch("/api/webhook-secret", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ secret: inputValue.trim() }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setInputValue("");
+      setSuccess("Webhook secret saved");
+      setTimeout(() => setSuccess(null), 3000);
+      await fetchSecret();
+    } catch {
+      setError("Failed to save webhook secret");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch("/api/webhook-secret", { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to remove");
+      setMaskedSecret(null);
+      setSuccess("Webhook secret removed");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch {
+      setError("Failed to remove webhook secret");
+    }
+  };
+
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
+        Authentication
+      </h3>
+      <p className="text-sm text-[var(--muted-foreground)] mb-3">
+        Enter the{" "}
+        <code className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[var(--foreground)] text-xs">
+          Authorization
+        </code>{" "}
+        secret from your Krisp webhook configuration. Krisp sends this value
+        in the request header with every webhook call so the server can
+        authenticate it.
+      </p>
+
+      {error && (
+        <div className="mb-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-600">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="mb-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-sm text-green-600">
+          {success}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="p-4 rounded-lg bg-[var(--secondary)] border border-[var(--border)] text-sm text-[var(--muted-foreground)]">
+          Loading...
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {/* Current secret display */}
+          {maskedSecret && (
+            <div>
+              <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                Current Secret
+              </label>
+              <div className="mt-1 flex items-center gap-2 p-3 rounded-lg bg-[var(--secondary)] border border-[var(--border)]">
+                <code className="flex-1 text-sm text-[var(--foreground)] font-mono">
+                  {maskedSecret}
+                </code>
+                <button
+                  onClick={handleRemove}
+                  className="shrink-0 px-3 py-1.5 text-xs font-medium rounded-md border border-red-500/30 text-red-600 hover:bg-red-500/10 transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Secret input */}
+          <div>
+            <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+              {maskedSecret ? "Update Secret" : "Webhook Secret"}
+            </label>
+            <div className="mt-1 flex items-center gap-2">
+              <input
+                type="password"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder="Paste your Krisp Authorization secret here"
+                className="flex-1 px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSave();
+                }}
+              />
+              <button
+                onClick={handleSave}
+                disabled={saving || !inputValue.trim()}
+                className="shrink-0 px-4 py-2 text-sm font-medium rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface BoardOption {
   id: string;
