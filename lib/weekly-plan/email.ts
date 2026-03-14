@@ -1,4 +1,4 @@
-import { getResend, getSenderEmail } from "@/lib/email/resend";
+import { logAndSend } from "@/lib/email/log";
 import { db } from "@/lib/db";
 import { weeklyPlans, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -101,9 +101,9 @@ export function generateAssessmentEmail(
 
       ${
         assessment.bigThreeSummary.length > 0
-          ? `<!-- Big 3 Status -->
+          ? `<!-- Hero Priorities Status -->
       <div style="padding:24px 32px;border-bottom:1px solid #e5e7eb;">
-        <h2 style="margin:0 0 12px;font-size:16px;color:#111827;">Big 3</h2>
+        <h2 style="margin:0 0 12px;font-size:16px;color:#111827;">Hero Priorities</h2>
         <table style="width:100%;border-collapse:collapse;">${bigThreeRows}</table>
       </div>`
           : ""
@@ -193,12 +193,12 @@ export async function sendAssessmentEmail(
       day: "numeric",
     });
 
-  const resend = getResend();
-  await resend.emails.send({
-    from: getSenderEmail(),
+  await logAndSend({
     to: user.email,
     subject: `Your Week in Review: ${formatDate(decPlan.weekStart)} — ${formatDate(decPlan.weekEnd)}`,
     html,
+    userId,
+    type: "weekly_plan.assessment",
   });
 
   // 6. Mark as email sent

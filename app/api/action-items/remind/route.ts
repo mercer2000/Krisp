@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import { actionItems, users } from "@/lib/db/schema";
 import { eq, and, lte, isNull, inArray } from "drizzle-orm";
-import { getResend, getSenderEmail } from "@/lib/email/resend";
+import { logAndSend } from "@/lib/email/log";
 
 export async function POST() {
   try {
@@ -45,20 +45,7 @@ export async function POST() {
       });
     }
 
-    const resend = getResend();
-    const senderEmail = getSenderEmail();
-
-    // Build email content
-    const itemsList = dueItems
-      .map((item) => {
-        const overdue = item.dueDate && item.dueDate < today;
-        const label = overdue ? "OVERDUE" : "DUE TODAY";
-        return `- [${label}] ${item.title}${item.assignee ? ` (assigned to ${item.assignee})` : ""}${item.dueDate ? ` — due ${item.dueDate}` : ""}`;
-      })
-      .join("\n");
-
-    await resend.emails.send({
-      from: senderEmail,
+    await logAndSend({
       to: user.email,
       subject: `Action Items Reminder: ${dueItems.length} item${dueItems.length > 1 ? "s" : ""} need attention`,
       html: `
@@ -80,6 +67,8 @@ export async function POST() {
         </ul>
         <p>Log in to review and update your action items.</p>
       `,
+      userId: session.user.id,
+      type: "action_item.reminder",
     });
 
     // Mark items as reminded

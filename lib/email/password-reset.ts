@@ -1,22 +1,23 @@
-import { getResend, getSenderEmail } from "./resend";
+import { logAndSend } from "./log";
+import { getSenderEmail } from "./resend";
 
 export async function sendPasswordResetEmail(
   to: string,
   resetUrl: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const resend = getResend();
     const senderEmail = getSenderEmail();
 
-    const { error } = await resend.emails.send({
+    const result = await logAndSend({
       from: `Life Kanban <${senderEmail}>`,
       to,
       subject: "Reset your password",
       html: buildResetEmailHtml(resetUrl),
+      type: "password_reset",
     });
 
-    if (error) {
-      console.error("Resend API error:", error);
+    if (result.error) {
+      console.error("Resend API error:", result.error);
       return { success: false, error: "Failed to send reset email. Please try again later." };
     }
 

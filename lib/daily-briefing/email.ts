@@ -1,4 +1,4 @@
-import { getResend, getSenderEmail } from "@/lib/email/resend";
+import { logAndSend } from "@/lib/email/log";
 import { db } from "@/lib/db";
 import { dailyBriefings, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -113,12 +113,12 @@ export async function sendDailyBriefingEmail(
     actionItemCount: decBriefing.actionItemCount,
   });
 
-  const resend = getResend();
-  await resend.emails.send({
-    from: getSenderEmail(),
+  await logAndSend({
     to: user.email,
     subject: `Daily Briefing: ${formatDate(decBriefing.briefingDate)}`,
     html,
+    userId: briefing.userId,
+    type: "daily_briefing",
   });
 
   await db

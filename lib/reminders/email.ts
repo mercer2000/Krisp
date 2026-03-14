@@ -1,4 +1,4 @@
-import { getResend, getSenderEmail } from "@/lib/email/resend";
+import { logAndSend } from "@/lib/email/log";
 
 /**
  * Spaced repetition intervals (in days).
@@ -119,11 +119,10 @@ export async function sendReminderEmail(params: {
     appUrl,
   });
 
-  const resend = getResend();
-  await resend.emails.send({
-    from: getSenderEmail(),
+  await logAndSend({
     to: params.userEmail,
     subject: `Reminder: ${title}`,
     html,
+    type: "reminder",
   });
 }

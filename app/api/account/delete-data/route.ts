@@ -41,7 +41,7 @@ import {
   extensionDownloads,
 } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { getResend, getSenderEmail } from "@/lib/email/resend";
+import { logAndSend } from "@/lib/email/log";
 
 const CONFIRMATION_PHRASE = "DELETE MY DATA";
 
@@ -306,13 +306,11 @@ export async function POST(request: NextRequest) {
     // Send confirmation email via Resend
     if (userEmail) {
       try {
-        const resend = getResend();
         const now = new Date().toLocaleString("en-US", {
           dateStyle: "full",
           timeStyle: "short",
         });
-        await resend.emails.send({
-          from: getSenderEmail(),
+        await logAndSend({
           to: userEmail,
           subject: "MyOpenBrain — Your data has been deleted",
           html: `
@@ -337,6 +335,8 @@ export async function POST(request: NextRequest) {
   </div>
 </body>
 </html>`,
+          userId: session.user.id,
+          type: "account.deletion",
         });
       } catch (emailErr) {
         // Non-fatal: log but don't fail the request

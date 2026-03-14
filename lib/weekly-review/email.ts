@@ -1,4 +1,4 @@
-import { getResend, getSenderEmail } from "@/lib/email/resend";
+import { logAndSend } from "@/lib/email/log";
 import { db } from "@/lib/db";
 import { weeklyReviews, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -200,12 +200,12 @@ export async function sendWeeklyReviewEmail(reviewId: string): Promise<void> {
     actionItemCount: decReview.actionItemCount,
   });
 
-  const resend = getResend();
-  await resend.emails.send({
-    from: getSenderEmail(),
+  await logAndSend({
     to: user.email,
     subject: `Weekly Review: ${formatDate(decReview.weekStart)} — ${formatDate(decReview.weekEnd)}`,
     html,
+    userId: review.userId,
+    type: "weekly_review",
   });
 
   // Mark as email sent
