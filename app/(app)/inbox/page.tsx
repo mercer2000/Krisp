@@ -349,6 +349,9 @@ export default function InboxPage() {
   // Focused email for keyboard navigation
   const [focusedEmailId, setFocusedEmailId] = useState<string | number | null>(null);
 
+  // Remember focused email per tab so switching tabs preserves your place
+  const focusedPerTabRef = useRef<Record<string, string | number | null>>({});
+
   // Preview pane state
   const [previewEmail, setPreviewEmail] = useState<EmailDetail | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -1487,12 +1490,16 @@ export default function InboxPage() {
     return () => window.removeEventListener("resize", handleResize);
   }, [focusedEmailId]);
 
-  // Scroll focused email into view during keyboard navigation
+  // Scroll focused email into view (on focus change or after email list loads)
   useEffect(() => {
     if (focusedEmailId == null) return;
-    const el = document.querySelector(`[data-email-id="${focusedEmailId}"]`);
-    if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [focusedEmailId]);
+    // Use requestAnimationFrame so the DOM has time to render after a list update
+    const raf = requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-email-id="${focusedEmailId}"]`);
+      if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [focusedEmailId, emails]);
 
   return (
     <div className="flex h-full flex-col bg-[var(--background)]">
@@ -1834,6 +1841,9 @@ export default function InboxPage() {
               key={tab.key}
               onClick={() => {
                 if (activeFolder !== tab.key) {
+                  // Save focused email for the tab we're leaving
+                  focusedPerTabRef.current[activeFolder] = focusedEmailId;
+
                   hasFetchedOnce.current = false;
                   setFilterAccount(null);
                   setFilterProvider(null);
@@ -1843,6 +1853,10 @@ export default function InboxPage() {
                   setActiveFolder(tab.key);
                   setPage(1);
                   setTotal(0);
+
+                  // Restore focused email for the tab we're entering
+                  const saved = focusedPerTabRef.current[tab.key] ?? null;
+                  setFocusedEmailId(saved);
                 }
               }}
               className={`px-3 md:px-4 py-2 text-xs md:text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap ${
