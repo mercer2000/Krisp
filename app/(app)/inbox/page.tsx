@@ -710,6 +710,11 @@ export default function InboxPage() {
           setTotal(cached.response.total);
           setIsSemanticSearch(false);
           setEmbeddingStatus(null);
+          // Auto-select first email if nothing focused or focused email not in cached list
+          setFocusedEmailId((prev) => {
+            if (prev != null && cached.response.data.some((e: { id: string | number }) => e.id === prev)) return prev;
+            return cached.response.data.length > 0 ? cached.response.data[0].id : null;
+          });
         } else {
           setInitialLoading(true);
         }
