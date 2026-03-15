@@ -136,7 +136,7 @@ export async function DELETE(
             `https://gmail.googleapis.com/gmail/v1/users/me/messages/${gmailEmail.gmail_message_id}/trash`,
             { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } }
           );
-          if (!trashRes.ok) {
+          if (!trashRes.ok && trashRes.status !== 404) {
             const err = await trashRes.text();
             console.warn("[Delete Gmail] Trash API failed:", err);
             return NextResponse.json(

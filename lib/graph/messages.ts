@@ -29,7 +29,7 @@ export async function deleteGraphMessage(
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
-    if (res.status === 204 || res.status === 200) return true;
+    if (res.status === 204 || res.status === 200 || res.status === 404) return true;
 
     const body = await res.text().catch(() => "");
     console.warn(
@@ -59,7 +59,7 @@ export async function deleteGraphMessageMe(
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
-    if (res.status === 204 || res.status === 200) return true;
+    if (res.status === 204 || res.status === 200 || res.status === 404) return true;
 
     const body = await res.text().catch(() => "");
     console.warn(
