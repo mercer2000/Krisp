@@ -1849,6 +1849,10 @@ export default function InboxPage() {
                   // Save focused email for the tab we're leaving
                   focusedPerTabRef.current[activeFolder] = focusedEmailId;
 
+                  // Clear preview immediately — don't wait for effects
+                  setPreviewEmail(null);
+                  setPreviewLoading(false);
+
                   hasFetchedOnce.current = false;
                   setFilterAccount(null);
                   setFilterProvider(null);
@@ -1859,7 +1863,7 @@ export default function InboxPage() {
                   setPage(1);
                   setTotal(0);
 
-                  // Restore focused email for the tab we're entering
+                  // Restore focused email for the tab we're entering (null = auto-select first after fetch)
                   const saved = focusedPerTabRef.current[tab.key] ?? null;
                   setFocusedEmailId(saved);
                 }
