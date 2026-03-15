@@ -76,6 +76,7 @@ interface SplitInboxPaneProps {
   sections: InboxSection[];
   onSectionChange: (sectionId: string | null) => void;
   onEmailClick: (emailId: string | number) => void;
+  onEmailHover?: (emailId: string | number) => void;
   focusedEmailId: string | number | null;
   paneId: "left" | "right";
   onSwapPanes?: () => void;
@@ -87,6 +88,7 @@ export function SplitInboxPane({
   sections,
   onSectionChange,
   onEmailClick,
+  onEmailHover,
   focusedEmailId,
   paneId,
   onSwapPanes,
@@ -299,6 +301,7 @@ export function SplitInboxPane({
                 key={email.id}
                 data-email-id={email.id}
                 onClick={() => onEmailClick(email.id)}
+                onMouseEnter={() => onEmailHover?.(email.id)}
                 className={`px-3 py-2.5 cursor-pointer hover:bg-[var(--accent)]/50 transition-colors ${
                   !email.is_read ? "bg-[var(--primary)]/[0.03]" : ""
                 } ${
