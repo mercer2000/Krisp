@@ -225,9 +225,10 @@ export async function listEmails(
   const after = opts.after || null;
   const before = opts.before || null;
   const accountId = opts.accountId || null;
-  // folder filter: "inbox" = exclude spam+done, "spam" = only spam, "done" = only done, undefined = all
+  // folder filter: "inbox" = exclude spam+done+labeled, "spam" = only spam, "done" = only done, undefined = all
   const showSpam = opts.folder === "spam" ? true : opts.folder === "inbox" ? false : null;
   const showDone = opts.folder === "done" ? true : opts.folder === "inbox" ? false : null;
+  const excludeLabeled = opts.folder === "inbox";
 
   // Fetch all matching emails (date-filtered server-side)
   const allRows = await sql`
@@ -251,6 +252,10 @@ export async function listEmails(
       AND (${accountId}::uuid IS NULL OR outlook_account_id = ${accountId}::uuid)
       AND (${showSpam}::boolean IS NULL OR is_spam = ${showSpam}::boolean)
       AND (${showDone}::boolean IS NULL OR is_done = ${showDone}::boolean)
+      AND (NOT ${excludeLabeled}::boolean OR (
+        NOT EXISTS (SELECT 1 FROM email_label_assignments WHERE email_id = emails.id)
+        AND NOT EXISTS (SELECT 1 FROM smart_label_items WHERE item_type = 'email' AND item_id = emails.id::text)
+      ))
     ORDER BY received_at DESC
   `;
 
@@ -265,7 +270,7 @@ export async function listEmails(
       recipients: dr.recipients as string[],
       attachments_metadata: dr.attachments_metadata as EmailAttachmentMetadata[],
       preview: dr.body_plain_text
-        ? (dr.body_plain_text as string).slice(0, 200)
+        ? (dr.body_plain_text as string).slice(0, 600)
         : null,
       web_link: dr.web_link as string | null,
       outlook_account_id: dr.outlook_account_id as string | null,

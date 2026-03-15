@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Link from "next/link";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -182,11 +182,22 @@ function contrastText(hex: string): string {
   return luminance > 0.6 ? "#000000" : "#FFFFFF";
 }
 
-function LabelChips({ labels }: { labels?: EmailLabelChip[] }) {
-  if (!labels || labels.length === 0) return null;
+function AllLabelChips({ labels, smartLabels }: { labels?: EmailLabelChip[]; smartLabels?: SmartLabelChip[] }) {
+  const combined: { id: string | number; name: string; color: string; title: string }[] = [];
+  if (labels) {
+    for (const l of labels) {
+      combined.push({ id: l.id, name: l.name, color: l.color, title: l.confidence != null ? `${l.name} (${l.confidence}% confidence)` : l.name });
+    }
+  }
+  if (smartLabels) {
+    for (const l of smartLabels) {
+      combined.push({ id: `smart-${l.id}`, name: l.name, color: l.color, title: l.confidence != null ? `${l.name} (${l.confidence}% confidence, ${l.assigned_by})` : l.name });
+    }
+  }
+  if (combined.length === 0) return null;
   return (
     <span className="inline-flex items-center gap-1 flex-shrink-0" data-testid="email-label-chips">
-      {labels.slice(0, 3).map((label) => (
+      {combined.slice(0, 3).map((label) => (
         <span
           key={label.id}
           className="text-[10px] leading-tight px-1.5 py-0.5 rounded-full font-medium whitespace-nowrap"
@@ -195,41 +206,14 @@ function LabelChips({ labels }: { labels?: EmailLabelChip[] }) {
             color: label.color,
             border: `1px solid ${label.color}44`,
           }}
-          title={label.confidence != null ? `${label.name} (${label.confidence}% confidence)` : label.name}
+          title={label.title}
         >
           {label.name}
         </span>
       ))}
-      {labels.length > 3 && (
+      {combined.length > 3 && (
         <span className="text-[10px] text-[var(--muted-foreground)]">
-          +{labels.length - 3}
-        </span>
-      )}
-    </span>
-  );
-}
-
-function SmartLabelChips({ labels }: { labels?: SmartLabelChip[] }) {
-  if (!labels || labels.length === 0) return null;
-  return (
-    <span className="inline-flex items-center gap-1 flex-shrink-0">
-      {labels.slice(0, 3).map((label) => (
-        <span
-          key={label.id}
-          className="text-[10px] leading-tight px-1.5 py-0.5 rounded-full font-medium whitespace-nowrap"
-          style={{
-            backgroundColor: label.color + "22",
-            color: label.color,
-            border: `1px solid ${label.color}44`,
-          }}
-          title={label.confidence != null ? `${label.name} (${label.confidence}% confidence, ${label.assigned_by})` : label.name}
-        >
-          {label.name}
-        </span>
-      ))}
-      {labels.length > 3 && (
-        <span className="text-[10px] text-[var(--muted-foreground)]">
-          +{labels.length - 3}
+          +{combined.length - 3}
         </span>
       )}
     </span>
@@ -262,7 +246,10 @@ export default function InboxPage() {
 
   // Label state
   const [allLabels, setAllLabels] = useState<LabelDef[]>([]);
-  const [filterLabel, setFilterLabel] = useState<string | null>(null);
+  const [filterLabel, setFilterLabel] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return sessionStorage.getItem("inbox-filterLabel") || null;
+  });
   const [classifying, setClassifying] = useState(false);
   const [showLabelManager, setShowLabelManager] = useState(false);
   const [newLabelName, setNewLabelName] = useState("");
@@ -271,13 +258,22 @@ export default function InboxPage() {
 
   // Smart label state
   const [smartLabelMap, setSmartLabelMap] = useState<Record<string, SmartLabelChip[]>>({});
-  const [filterSmartLabel, setFilterSmartLabel] = useState<string | null>(null);
+  const [filterSmartLabel, setFilterSmartLabel] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return sessionStorage.getItem("inbox-filterSmartLabel") || null;
+  });
   const [allSmartLabels, setAllSmartLabels] = useState<{ id: string; name: string; color: string }[]>([]);
 
   // Smart rule pages state
   const [allSmartRulePages, setAllSmartRulePages] = useState<{ id: string; name: string; color: string }[]>([]);
-  const [filterSmartRulePage, setFilterSmartRulePage] = useState<string | null>(null);
+  const [filterSmartRulePage, setFilterSmartRulePage] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return sessionStorage.getItem("inbox-filterSmartRulePage") || null;
+  });
   const [smartRulePageMap, setSmartRulePageMap] = useState<Record<string, { pageId: string; pageName: string; pageColor: string }[]>>({});
+
+  // Unread counts (from server)
+  const [unreadCounts, setUnreadCounts] = useState<{ triage: number; byLabel: Record<string, number> }>({ triage: 0, byLabel: {} });
 
   // Classification tracking state — IDs of emails processed by the classifier
   const [classifiedIds, setClassifiedIds] = useState<Set<number | string>>(new Set());
@@ -345,10 +341,18 @@ export default function InboxPage() {
   }, [showForwardModal, forwardEmailId]);
 
   // Folder & Spam state
-  const [activeFolder, setActiveFolder] = useState<"inbox" | "spam" | "done" | "all">("inbox");
+  const [activeFolder, setActiveFolder] = useState<"inbox" | "spam" | "done" | "all">(() => {
+    if (typeof window === "undefined") return "inbox";
+    const saved = sessionStorage.getItem("inbox-activeFolder");
+    return (saved === "inbox" || saved === "spam" || saved === "done" || saved === "all") ? saved : "inbox";
+  });
 
   // View mode: "list" (default), "cards" (Pinterest-style newsletter), or "delve" (Delve-inspired discovery)
-  const [viewMode, setViewMode] = useState<"list" | "cards" | "delve">("list");
+  const [viewMode, setViewMode] = useState<"list" | "cards" | "delve">(() => {
+    if (typeof window === "undefined") return "list";
+    const saved = sessionStorage.getItem("inbox-viewMode");
+    return (saved === "list" || saved === "cards" || saved === "delve") ? saved : "list";
+  });
 
   // Focused email for keyboard navigation
   const [focusedEmailId, setFocusedEmailId] = useState<string | number | null>(null);
@@ -384,12 +388,15 @@ export default function InboxPage() {
   const resizeStartXRef = useRef(0);
   const resizeStartWidthRef = useRef(0);
 
-  // Fetch email detail when focused email changes
+  // Fetch email detail when focused email changes (desktop only — mobile uses selection for actions)
   useEffect(() => {
     if (focusedEmailId == null) {
       setPreviewEmail(null);
       return;
     }
+
+    // On mobile, don't fetch preview — focusedEmailId is just for selection
+    if (window.innerWidth < 768) return;
 
     // Abort any in-flight preview fetch
     previewAbortRef.current?.abort();
@@ -477,6 +484,39 @@ export default function InboxPage() {
     localStorage.setItem("inbox-pinned-labels", JSON.stringify(pinnedLabels));
   }, [pinnedLabels]);
 
+  // Save/restore scroll position for back-navigation
+  const saveScrollPosition = useCallback(() => {
+    const scrollTop = listColumnRef.current?.scrollTop ?? 0;
+    sessionStorage.setItem("inbox-scrollTop", String(scrollTop));
+  }, []);
+  useEffect(() => {
+    const saved = sessionStorage.getItem("inbox-scrollTop");
+    if (saved && listColumnRef.current) {
+      const pos = parseInt(saved, 10);
+      // Wait for content to render, then restore
+      requestAnimationFrame(() => {
+        if (listColumnRef.current) listColumnRef.current.scrollTop = pos;
+      });
+      sessionStorage.removeItem("inbox-scrollTop");
+    }
+  }, [initialLoading]); // Re-run when loading finishes
+
+  // Persist active tab/filter state to sessionStorage for back-navigation
+  useEffect(() => { sessionStorage.setItem("inbox-activeFolder", activeFolder); }, [activeFolder]);
+  useEffect(() => { sessionStorage.setItem("inbox-viewMode", viewMode); }, [viewMode]);
+  useEffect(() => {
+    if (filterLabel) sessionStorage.setItem("inbox-filterLabel", filterLabel);
+    else sessionStorage.removeItem("inbox-filterLabel");
+  }, [filterLabel]);
+  useEffect(() => {
+    if (filterSmartLabel) sessionStorage.setItem("inbox-filterSmartLabel", filterSmartLabel);
+    else sessionStorage.removeItem("inbox-filterSmartLabel");
+  }, [filterSmartLabel]);
+  useEffect(() => {
+    if (filterSmartRulePage) sessionStorage.setItem("inbox-filterSmartRulePage", filterSmartRulePage);
+    else sessionStorage.removeItem("inbox-filterSmartRulePage");
+  }, [filterSmartRulePage]);
+
   // Close dropdowns on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -506,7 +546,7 @@ export default function InboxPage() {
   const hasFetchedOnce = useRef(false);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const hasClientFilter = !!filterLabel || !!filterSmartLabel || !!filterSmartRulePage;
 
   // Fetch labels, smart labels, and connected accounts on mount
   // Load cached data instantly, then revalidate in the background
@@ -532,7 +572,23 @@ export default function InboxPage() {
       .catch(() => {});
     fetch("/api/smart-labels")
       .then((r) => r.json())
-      .then((d) => { if (d.data) { const mapped = d.data.map((l: { id: string; name: string; color: string }) => ({ id: l.id, name: l.name, color: l.color })); setAllSmartLabels(mapped); cache.cacheSmartLabels(mapped); } })
+      .then((d) => {
+        if (d.data) {
+          const mapped = d.data.map((l: { id: string; name: string; color: string }) => ({ id: l.id, name: l.name, color: l.color }));
+          setAllSmartLabels(mapped);
+          cache.cacheSmartLabels(mapped);
+          // Sync pinned state from server
+          const serverPinned = (d.data as { id: string; is_pinned: boolean }[]).filter((l) => l.is_pinned).map((l) => l.id);
+          const serverUnpinned = (d.data as { id: string; is_pinned: boolean }[]).filter((l) => !l.is_pinned).map((l) => l.id);
+          setPinnedLabels((prev) => {
+            const withPinned = new Set(prev);
+            for (const id of serverPinned) withPinned.add(id);
+            for (const id of serverUnpinned) withPinned.delete(id);
+            const updated = Array.from(withPinned);
+            return updated.length !== prev.length || updated.some((id, i) => id !== prev[i]) ? updated : prev;
+          });
+        }
+      })
       .catch(() => {});
     fetch("/api/pages/smart-rules")
       .then((r) => r.json())
@@ -543,6 +599,11 @@ export default function InboxPage() {
       .then((r) => r.json())
       .then((d) => { if (d.data) setInboxSections(d.data); })
       .catch(() => {});
+    // Fetch unread counts
+    fetch("/api/emails/unread-count")
+      .then((r) => r.json())
+      .then((d) => { if (typeof d.count === "number") setUnreadCounts({ triage: d.count, byLabel: d.byLabel || {} }); })
+      .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -551,8 +612,42 @@ export default function InboxPage() {
     localStorage.setItem("inbox-split-view", JSON.stringify(splitView));
   }, [splitView]);
 
+  const fetchUnreadCounts = useCallback(() => {
+    fetch("/api/emails/unread-count")
+      .then((r) => r.json())
+      .then((d) => { if (typeof d.count === "number") setUnreadCounts({ triage: d.count, byLabel: d.byLabel || {} }); })
+      .catch(() => {});
+  }, []);
+
   const fetchEmails = useCallback(async (silent = false) => {
-    const fetchParams = { page, limit, query, afterDate, beforeDate, filterAccount, filterProvider, activeFolder };
+    const fetchParams = { page, limit, query, afterDate, beforeDate, filterAccount, filterProvider, activeFolder, filterLabel, filterSmartLabel, filterSmartRulePage };
+
+    // === MOCK MODE INTERCEPT ===
+    if (!silent && typeof window !== "undefined" && window.location.search.includes("mock=true")) {
+      const mockClassified = new Set<string | number>(["m1", "m2", "m3"]);
+      setClassifiedIds(mockClassified);
+      
+      const mockLabels: Record<string, SmartLabelChip[]> = {
+        "m1": [{ id: "l1", name: "Client Proposal", color: "#8b5cf6", confidence: 95, assigned_by: "ai" }],
+        "m2": [{ id: "l2", name: "Weekly Update", color: "#10b981", confidence: 98, assigned_by: "ai" }],
+        "m3": [{ id: "l3", name: "Action Required", color: "#ef4444", confidence: 99, assigned_by: "ai" }]
+      };
+      setSmartLabelMap(mockLabels);
+
+      const mockEmails: EmailListItem[] = [
+        { id: "m1", thread_id: "t1", provider: "outlook", account_id: "acc1", date: new Date().toISOString(), sort_date: new Date().toISOString(), from_email: "jane.doe@example.com", from_name: "Jane Doe (Q3 Partner)", subject: "Strategic Partnership Q3 Proposal", snippet: "Hi team, attached is the revised proposal for our strategic partnership in Q3. Please review the highlighted sections regarding API access and let me know your thoughts by EOD Thursday.", labels: [], is_unread: true, has_attachments: true, metadata: {}, created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any,
+        { id: "m2", thread_id: "t2", provider: "gmail", account_id: "acc2", date: new Date(Date.now() - 3600000).toISOString(), sort_date: new Date(Date.now() - 3600000).toISOString(), from_email: "team@company.com", from_name: "Engineering Leadership", subject: "Weekly Project Status & Blockers", snippet: "Here is the summary of our progress this week. We have successfully completed the database migration. The only remaining blocker is the third-party authentication integration.", labels: [], is_unread: false, has_attachments: false, metadata: {}, created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any,
+        { id: "m3", thread_id: "t3", provider: "zoom", account_id: "acc3", date: new Date(Date.now() - 7200000).toISOString(), sort_date: new Date(Date.now() - 7200000).toISOString(), from_email: "billing@vendor.com", from_name: "Cloud Services Invoice", subject: "Invoice #INV-2026-004 - Action Required", snippet: "Your latest invoice for cloud hosting services is ready. Please ensure payment is processed by the 15th to avoid any service interruptions. You can view the full details via the portal.", labels: [], is_unread: true, has_attachments: true, metadata: {}, created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any,
+      ];
+      
+      setEmails(mockEmails);
+      setTotal(3);
+      setInitialLoading(false);
+      
+      // Prevent actual fetching
+      return;
+    }
+    // ===========================
 
     if (!silent) {
       setError(null);
@@ -617,7 +712,10 @@ export default function InboxPage() {
         if (beforeDate) params.set("before", new Date(beforeDate).toISOString());
         if (filterAccount) params.set("accountId", filterAccount);
         if (filterProvider) params.set("provider", filterProvider);
-        if (activeFolder !== "all") params.set("folder", activeFolder);
+        // When a label filter is active, don't apply folder-level exclusions
+        // (the triage filter excludes labeled emails, but we need them when filtering by label)
+        const effectiveFolder = (filterLabel || filterSmartLabel || filterSmartRulePage) ? "all" : activeFolder;
+        if (effectiveFolder !== "all") params.set("folder", effectiveFolder);
 
         const res = await fetch(`/api/emails?${params}`);
         if (!res.ok) throw new Error("Failed to fetch emails");
@@ -643,12 +741,22 @@ export default function InboxPage() {
         hasFetchedOnce.current = true;
       }
     }
-  }, [page, limit, query, afterDate, beforeDate, filterAccount, filterProvider, activeFolder, cache]);
+  }, [page, limit, query, afterDate, beforeDate, filterAccount, filterProvider, activeFolder, filterLabel, filterSmartLabel, filterSmartRulePage, cache]);
 
   // Initial fetch + fetch on filter/page changes
   useEffect(() => {
     fetchEmails(hasFetchedOnce.current);
-  }, [fetchEmails]);
+    fetchUnreadCounts();
+  }, [fetchEmails, fetchUnreadCounts]);
+
+  // Refresh unread counts after email mutations (debounced via emails state)
+  const unreadRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!hasFetchedOnce.current) return;
+    if (unreadRefreshTimer.current) clearTimeout(unreadRefreshTimer.current);
+    unreadRefreshTimer.current = setTimeout(fetchUnreadCounts, 500);
+    return () => { if (unreadRefreshTimer.current) clearTimeout(unreadRefreshTimer.current); };
+  }, [emails, fetchUnreadCounts]);
 
   // Fetch smart labels for displayed emails (split by provider)
   useEffect(() => {
@@ -1205,11 +1313,27 @@ export default function InboxPage() {
     }
   };
 
-  const hasActiveFilters = query || afterDate || beforeDate || filterLabel || filterAccount || filterSmartLabel || filterSmartRulePage;
-  const pageNumbers = getPageNumbers(page, totalPages);
+  // Deduplicate: exclude smart rule pages that have been migrated to smart labels (same name)
+  const dedupedSmartRulePages = useMemo(() => {
+    const smartLabelNames = new Set(allSmartLabels.map((l) => l.name.toLowerCase()));
+    return allSmartRulePages.filter((r) => !smartLabelNames.has(r.name.toLowerCase()));
+  }, [allSmartLabels, allSmartRulePages]);
 
-  // Unread count from loaded emails
-  const unreadCount = emails.filter((e) => !e.is_read).length;
+  // Deduplicate pinned labels: remove IDs for migrated smart rule pages
+  const dedupedPinnedLabels = useMemo(() => {
+    const migratedIds = new Set(
+      allSmartRulePages
+        .filter((r) => !dedupedSmartRulePages.some((d) => d.id === r.id))
+        .map((r) => r.id)
+    );
+    if (migratedIds.size === 0) return pinnedLabels;
+    return pinnedLabels.filter((id) => !migratedIds.has(id));
+  }, [pinnedLabels, allSmartRulePages, dedupedSmartRulePages]);
+
+  const hasActiveFilters = query || afterDate || beforeDate || filterLabel || filterAccount || filterSmartLabel || filterSmartRulePage;
+
+  // Unread count for triage tab (from server)
+  const unreadCount = unreadCounts.triage;
 
   // Filter emails by selected label or smart label (client-side)
   let filteredEmails = emails;
@@ -1226,6 +1350,11 @@ export default function InboxPage() {
       smartRulePageMap[String(e.id)]?.some((p) => p.pageId === filterSmartRulePage)
     );
   }
+
+  // When a client-side label filter is active, use the filtered count for pagination
+  const effectiveTotal = hasClientFilter ? filteredEmails.length : total;
+  const totalPages = Math.max(1, Math.ceil(effectiveTotal / limit));
+  const pageNumbers = getPageNumbers(page, totalPages);
 
   // Keyboard shortcuts: arrow navigation, E/Right=done, Ctrl+Shift+P=send to page
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1249,6 +1378,7 @@ export default function InboxPage() {
       // Enter → open focused email in full detail view
       if (e.key === "Enter" && focusedEmailId != null) {
         e.preventDefault();
+        saveScrollPosition();
         window.location.href = `/inbox/${focusedEmailId}`;
         return;
       }
@@ -1334,6 +1464,32 @@ export default function InboxPage() {
         return;
       }
 
+      // 1-9 → move focused email to the Nth pinned label tab
+      if (e.key >= "1" && e.key <= "9" && focusedEmailId != null) {
+        const idx = parseInt(e.key, 10) - 1;
+        const targetLabelId = dedupedPinnedLabels[idx];
+        if (targetLabelId) {
+          e.preventDefault();
+          const label = allLabels.find((l) => l.id === targetLabelId) || allSmartLabels.find((l) => l.id === targetLabelId) || dedupedSmartRulePages.find((p) => p.id === targetLabelId);
+          // Advance focus before removing
+          const emailIdx = filteredEmails.findIndex((em) => em.id === focusedEmailId);
+          const nextId = filteredEmails[emailIdx + 1]?.id ?? filteredEmails[emailIdx - 1]?.id ?? null;
+          setFocusedEmailId(nextId);
+          // Optimistically remove from current list
+          const movedId = focusedEmailId;
+          setEmails((prev) => prev.filter((em) => em.id !== movedId));
+          fetch(`/api/emails/${movedId}/labels`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ labelId: targetLabelId }),
+          }).then(() => {
+            cache.invalidateAll();
+            toast({ title: `Moved to ${label?.name ?? "label"}`, variant: "success" });
+          });
+        }
+        return;
+      }
+
       // 0 → remove all labels from focused email (misclassification correction)
       if (e.key === "0" && focusedEmailId != null) {
         e.preventDefault();
@@ -1343,13 +1499,13 @@ export default function InboxPage() {
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [emails, filteredEmails, bulkSelected, focusedEmailId, activeFolder]);
+  }, [emails, filteredEmails, bulkSelected, focusedEmailId, activeFolder, dedupedPinnedLabels, allLabels, allSmartLabels, dedupedSmartRulePages]);
 
-  // Clear focused email when resizing below md breakpoint (prevents blank screen)
+  // Clear focused email when resizing below md breakpoint (prevents blank preview pane)
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 768 && focusedEmailId != null) {
-        setFocusedEmailId(null);
+        setPreviewEmail(null);
       }
     };
     window.addEventListener("resize", handleResize);
@@ -1370,7 +1526,7 @@ export default function InboxPage() {
         <div className="flex items-center justify-between px-3 py-3 md:px-6 md:py-4">
           <div className="min-w-0">
             <h1 className="text-lg md:text-2xl font-bold text-[var(--foreground)]">
-              {activeFolder === "done" ? "Done" : activeFolder === "spam" ? "Spam" : activeFolder === "all" ? "All Mail" : "Inbox"}
+              {activeFolder === "done" ? "Done" : activeFolder === "spam" ? "Spam" : activeFolder === "all" ? "All Mail" : "Triage"}
             </h1>
             <p className="text-xs md:text-sm text-[var(--muted-foreground)] mt-0.5 md:mt-1 truncate">
               {total} {total === 1 ? "message" : "messages"}
@@ -1694,7 +1850,7 @@ export default function InboxPage() {
           <div className="flex items-center gap-0.5 md:gap-1 overflow-x-auto min-w-0 flex-1">
           {/* Folder tabs */}
           {([
-            { key: "inbox" as const, label: "Inbox" },
+            { key: "inbox" as const, label: "Triage" },
             { key: "done" as const, label: "Done" },
             { key: "spam" as const, label: "Spam" },
             { key: "all" as const, label: "All" },
@@ -1711,6 +1867,7 @@ export default function InboxPage() {
                   setFilterSmartRulePage(null);
                   setActiveFolder(tab.key);
                   setPage(1);
+                  setTotal(0);
                 }
               }}
               className={`px-3 md:px-4 py-2 text-xs md:text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap ${
@@ -1730,7 +1887,7 @@ export default function InboxPage() {
           ))}
 
           {/* Separator between folders and pinned items */}
-          {(pinnedAccounts.length > 0 || pinnedLabels.length > 0) && (
+          {(pinnedAccounts.length > 0 || dedupedPinnedLabels.length > 0) && (
             <span className="mx-1 md:mx-2 h-4 w-px bg-[var(--border)] flex-shrink-0" />
           )}
 
@@ -1755,6 +1912,7 @@ export default function InboxPage() {
                     setFilterSmartRulePage(null);
                   }
                   setPage(1);
+                  setTotal(0);
                 }}
                 className={`group px-2.5 md:px-3 py-2 text-xs md:text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
                   isActive
@@ -1777,12 +1935,14 @@ export default function InboxPage() {
           })}
 
           {/* Pinned label tabs */}
-          {pinnedLabels.map((labelId) => {
-            const label = allLabels.find((l) => l.id === labelId) || allSmartLabels.find((l) => l.id === labelId) || allSmartRulePages.find((p) => p.id === labelId);
+          {dedupedPinnedLabels.slice(0, 9).map((labelId, pinIndex) => {
+            const label = allLabels.find((l) => l.id === labelId) || allSmartLabels.find((l) => l.id === labelId) || dedupedSmartRulePages.find((p) => p.id === labelId);
             if (!label) return null;
             const isSmartLabel = allSmartLabels.some((sl) => sl.id === labelId);
-            const isSmartRulePage = allSmartRulePages.some((p) => p.id === labelId);
+            const isSmartRulePage = dedupedSmartRulePages.some((p) => p.id === labelId);
             const isActive = isSmartRulePage ? filterSmartRulePage === labelId : isSmartLabel ? filterSmartLabel === labelId : filterLabel === labelId;
+            const shortcutNum = pinIndex + 1;
+            const labelUnread = unreadCounts.byLabel[labelId] ?? 0;
             return (
               <button
                 key={`pinned-label-${labelId}`}
@@ -1817,9 +1977,15 @@ export default function InboxPage() {
                   borderColor: isActive ? label.color : "transparent",
                 }}
                 data-testid={`pinned-label-tab-${label.name}`}
+                title={`${label.name} (press ${shortcutNum} to move selected email here)`}
               >
-                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: label.color }} />
+                <kbd className="w-4 h-4 rounded-sm flex-shrink-0 text-[9px] font-mono flex items-center justify-center border opacity-40 group-hover:opacity-70 transition-opacity" style={{ borderColor: "currentColor" }}>{shortcutNum}</kbd>
                 {label.name}
+                {labelUnread > 0 && (
+                  <span className="text-[10px] min-w-[18px] text-center px-1 py-0.5 rounded-full font-semibold" style={{ backgroundColor: label.color + "22", color: label.color }}>
+                    {labelUnread > 99 ? "99+" : labelUnread}
+                  </span>
+                )}
                 <span
                   onClick={(e) => { e.stopPropagation(); togglePinLabel(labelId); }}
                   className="ml-0.5 opacity-0 group-hover:opacity-100 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-opacity cursor-pointer"
@@ -1912,7 +2078,7 @@ export default function InboxPage() {
           )}
 
           {/* Label dropdown */}
-          {(allLabels.length > 0 || allSmartLabels.length > 0 || allSmartRulePages.length > 0) && (
+          {(allLabels.length > 0 || allSmartLabels.length > 0 || dedupedSmartRulePages.length > 0) && (
             <div className="relative flex-shrink-0 hidden md:block" ref={labelDropdownRef}>
               <button
                 onClick={() => { setShowLabelDropdown(!showLabelDropdown); setShowAccountDropdown(false); }}
@@ -1949,7 +2115,7 @@ export default function InboxPage() {
                     </div>
                   )}
                   {allLabels.map((label) => {
-                    const isPinned = pinnedLabels.includes(label.id);
+                    const isPinned = dedupedPinnedLabels.includes(label.id);
                     return (
                       <div key={label.id} className="flex items-center group">
                         <button
@@ -1985,13 +2151,13 @@ export default function InboxPage() {
                       </div>
                     );
                   })}
-                  {allSmartLabels.length > 0 && (
+                  {(allSmartLabels.length > 0 || dedupedSmartRulePages.length > 0) && (
                     <div className="px-3 pt-2 pb-1">
                       <span className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Smart Labels</span>
                     </div>
                   )}
                   {allSmartLabels.map((sl) => {
-                    const isPinned = pinnedLabels.includes(sl.id);
+                    const isPinned = dedupedPinnedLabels.includes(sl.id);
                     return (
                       <div key={sl.id} className="flex items-center group">
                         <button
@@ -2027,13 +2193,8 @@ export default function InboxPage() {
                       </div>
                     );
                   })}
-                  {allSmartRulePages.length > 0 && (
-                    <div className="px-3 pt-2 pb-1">
-                      <span className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Smart Rules</span>
-                    </div>
-                  )}
-                  {allSmartRulePages.map((srp) => {
-                    const isPinned = pinnedLabels.includes(srp.id);
+                  {dedupedSmartRulePages.map((srp) => {
+                    const isPinned = dedupedPinnedLabels.includes(srp.id);
                     return (
                       <div key={srp.id} className="flex items-center group">
                         <button
@@ -2168,6 +2329,7 @@ export default function InboxPage() {
                   <div className="flex items-center gap-2">
                     <Link
                       href={`/inbox/${focusedEmailId}`}
+                      onClick={saveScrollPosition}
                       className="text-xs text-[var(--primary)] hover:underline"
                     >
                       Open full
@@ -2317,26 +2479,14 @@ export default function InboxPage() {
         ) : viewMode === "cards" ? (
           <NewsletterCardView
             emails={filteredEmails}
-            onEmailClick={(id) => {
-              if (window.innerWidth >= 768) {
-                setFocusedEmailId(id);
-              } else {
-                window.location.href = `/inbox/${id}`;
-              }
-            }}
+            onEmailClick={(id) => { saveScrollPosition(); window.location.href = `/inbox/${id}`; }}
             onMarkDone={handleMarkDone}
             onSwipeToBoard={handleSwipeToBoard}
           />
         ) : viewMode === "delve" ? (
           <DelveDiscovery
             emails={filteredEmails}
-            onEmailClick={(id) => {
-              if (window.innerWidth >= 768) {
-                setFocusedEmailId(id);
-              } else {
-                window.location.href = `/inbox/${id}`;
-              }
-            }}
+            onEmailClick={(id) => { saveScrollPosition(); window.location.href = `/inbox/${id}`; }}
             onMarkDone={handleMarkDone}
           />
         ) : (
@@ -2432,7 +2582,7 @@ export default function InboxPage() {
               <div
                 data-email-id={email.id}
                 onClick={() => { if (window.innerWidth >= 768) setFocusedEmailId(email.id); }}
-                className={`flex items-start gap-2 md:gap-4 md:relative px-3 md:px-6 py-3 md:py-4 hover:bg-[var(--accent)]/50 transition-colors group ${!email.is_read ? "bg-[var(--primary)]/[0.03]" : ""} ${focusedEmailId === email.id ? "border-l-[3px] border-[var(--primary)] pl-[9px] md:pl-[21px] bg-[var(--primary)]/10 shadow-[inset_0_0_0_1px_var(--primary)]" : "border-l-[3px] border-transparent"}`}
+                className={`flex items-start gap-2 md:gap-4 relative px-3 md:px-6 py-3 md:py-4 hover:bg-[var(--accent)]/50 transition-colors group ${!email.is_read ? "bg-[var(--primary)]/[0.03]" : ""} ${focusedEmailId === email.id ? "border-l-[3px] border-[var(--primary)] pl-[9px] md:pl-[21px] bg-[var(--primary)]/10 shadow-[inset_0_0_0_1px_var(--primary)]" : "border-l-[3px] border-transparent"}`}
               >
                 {/* Unread indicator dot */}
                 <div className="flex-shrink-0 pt-2 w-2 hidden md:flex items-start">
@@ -2540,10 +2690,19 @@ export default function InboxPage() {
                   href={`/inbox/${email.id}`}
                   className="flex-1 min-w-0"
                   onClick={(e) => {
-                    // On desktop (md+), prevent navigation — just focus for preview
                     if (window.innerWidth >= 768) {
+                      // Desktop: prevent navigation — just focus for preview
                       e.preventDefault();
                       setFocusedEmailId(email.id);
+                    } else {
+                      // Mobile: first tap selects, second tap opens
+                      if (focusedEmailId !== email.id) {
+                        e.preventDefault();
+                        setFocusedEmailId(email.id);
+                      } else {
+                        // Already selected — save scroll before navigating
+                        saveScrollPosition();
+                      }
                     }
                   }}
                 >
@@ -2573,8 +2732,7 @@ export default function InboxPage() {
                   {/* Mobile label chips */}
                   {((email.labels && email.labels.length > 0) || smartLabelMap[String(email.id)]?.length) && (
                     <div className="md:hidden flex items-center gap-1 mt-1 flex-wrap">
-                      <LabelChips labels={email.labels} />
-                      <SmartLabelChips labels={smartLabelMap[String(email.id)]} />
+                      <AllLabelChips labels={email.labels} smartLabels={smartLabelMap[String(email.id)]} />
                     </div>
                   )}
                   {/* Mobile preview */}
@@ -2602,8 +2760,7 @@ export default function InboxPage() {
                     </span>
 
                     {/* Label chips */}
-                    <LabelChips labels={email.labels} />
-                    <SmartLabelChips labels={smartLabelMap[String(email.id)]} />
+                    <AllLabelChips labels={email.labels} smartLabels={smartLabelMap[String(email.id)]} />
 
                     {/* Draft indicator badge */}
                     {emailDraft && (
@@ -2782,6 +2939,41 @@ export default function InboxPage() {
                     </svg>
                   </button>
                 </div>
+
+                {/* Mobile action buttons — visible when this email is selected */}
+                {focusedEmailId === email.id && (
+                  <div className="flex md:hidden items-center gap-1 absolute right-2 bottom-1.5 bg-[var(--background)] border border-[var(--border)] rounded-lg shadow-lg px-1 py-0.5 z-10">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleMarkDone(email.id, !!email.is_done); }}
+                      className={`p-2.5 rounded-md transition-colors ${email.is_done ? "text-[var(--primary)]" : "text-emerald-600"}`}
+                      title={email.is_done ? "Move to inbox" : "Done"}
+                    >
+                      {email.is_done ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+                          <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                          <polyline points="22 4 12 14.01 9 11.01" />
+                        </svg>
+                      )}
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleDelete(email.id); }}
+                      disabled={deletingId === email.id}
+                      className="p-2.5 rounded-md text-[var(--destructive)] transition-colors disabled:opacity-40"
+                      title="Delete"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 6h18" />
+                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Draft preview strip */}
@@ -2964,6 +3156,7 @@ export default function InboxPage() {
                     </h2>
                     <Link
                       href={`/inbox/${previewEmail.id}`}
+                      onClick={saveScrollPosition}
                       className="flex-shrink-0 text-xs text-[var(--primary)] hover:underline whitespace-nowrap"
                     >
                       Open full
@@ -3416,7 +3609,7 @@ export default function InboxPage() {
           allSmartLabels={allSmartLabels}
           filterSmartLabel={filterSmartLabel}
           setFilterSmartLabel={setFilterSmartLabel}
-          allSmartRulePages={allSmartRulePages}
+          allSmartRulePages={dedupedSmartRulePages}
           filterSmartRulePage={filterSmartRulePage}
           setFilterSmartRulePage={setFilterSmartRulePage}
           afterDate={afterDate}

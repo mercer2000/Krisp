@@ -213,8 +213,8 @@ export function InboxFilterDrawer({
           </section>
         )}
 
-        {/* Smart Labels section */}
-        {allSmartLabels.length > 0 && (
+        {/* Smart Labels section (includes both smart labels and smart rules) */}
+        {(allSmartLabels.length > 0 || allSmartRulePages.length > 0) && (
           <section>
             <h3 className="text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wider mb-3">
               Smart Labels
@@ -237,17 +237,6 @@ export function InboxFilterDrawer({
                   {sl.name}
                 </button>
               ))}
-            </div>
-          </section>
-        )}
-
-        {/* Smart Rules section */}
-        {allSmartRulePages.length > 0 && (
-          <section>
-            <h3 className="text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wider mb-3">
-              Smart Rules
-            </h3>
-            <div className="flex flex-wrap gap-2">
               {allSmartRulePages.map((srp) => (
                 <button
                   key={srp.id}

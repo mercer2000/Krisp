@@ -9,6 +9,7 @@ export async function getSmartLabels(tenantId: string): Promise<SmartLabel[]> {
     SELECT id, tenant_id, name, prompt, color, active,
            auto_draft_enabled, context_window_max,
            graph_folder_id, folder_sync_status, outlook_account_id,
+           extract_knowledge, clip_to_page_id, is_pinned,
            created_at, updated_at
     FROM smart_labels
     WHERE tenant_id = ${tenantId}
@@ -25,6 +26,7 @@ export async function getActiveSmartLabels(tenantId: string): Promise<SmartLabel
     SELECT id, tenant_id, name, prompt, color, active,
            auto_draft_enabled, context_window_max,
            graph_folder_id, folder_sync_status, outlook_account_id,
+           extract_knowledge, clip_to_page_id, is_pinned,
            created_at, updated_at
     FROM smart_labels
     WHERE tenant_id = ${tenantId} AND active = true
@@ -44,6 +46,7 @@ export async function getSmartLabelById(
     SELECT id, tenant_id, name, prompt, color, active,
            auto_draft_enabled, context_window_max,
            graph_folder_id, folder_sync_status, outlook_account_id,
+           extract_knowledge, clip_to_page_id, is_pinned,
            created_at, updated_at
     FROM smart_labels
     WHERE id = ${labelId} AND tenant_id = ${tenantId}
@@ -61,11 +64,12 @@ export async function createSmartLabel(
   color: string = "#6366F1"
 ): Promise<SmartLabel> {
   const rows = await sql`
-    INSERT INTO smart_labels (tenant_id, name, prompt, color)
-    VALUES (${tenantId}, ${name}, ${prompt}, ${color})
+    INSERT INTO smart_labels (tenant_id, name, prompt, color, is_pinned)
+    VALUES (${tenantId}, ${name}, ${prompt}, ${color}, true)
     RETURNING id, tenant_id, name, prompt, color, active,
               auto_draft_enabled, context_window_max,
               graph_folder_id, folder_sync_status, outlook_account_id,
+              extract_knowledge, clip_to_page_id, is_pinned,
               created_at, updated_at
   `;
   return rows[0] as SmartLabel;
@@ -77,7 +81,7 @@ export async function createSmartLabel(
 export async function updateSmartLabel(
   labelId: string,
   tenantId: string,
-  updates: { name?: string; prompt?: string; color?: string; active?: boolean; autoDraftEnabled?: boolean; contextWindowMax?: number }
+  updates: { name?: string; prompt?: string; color?: string; active?: boolean; autoDraftEnabled?: boolean; contextWindowMax?: number; extractKnowledge?: boolean; clipToPageId?: string | null; isPinned?: boolean }
 ): Promise<SmartLabel | null> {
   const setClauses: string[] = [];
   const values: unknown[] = [];
@@ -106,6 +110,18 @@ export async function updateSmartLabel(
     setClauses.push(`context_window_max = $${values.length + 1}`);
     values.push(updates.contextWindowMax);
   }
+  if (updates.extractKnowledge !== undefined) {
+    setClauses.push(`extract_knowledge = $${values.length + 1}`);
+    values.push(updates.extractKnowledge);
+  }
+  if (updates.clipToPageId !== undefined) {
+    setClauses.push(`clip_to_page_id = $${values.length + 1}`);
+    values.push(updates.clipToPageId);
+  }
+  if (updates.isPinned !== undefined) {
+    setClauses.push(`is_pinned = $${values.length + 1}`);
+    values.push(updates.isPinned);
+  }
 
   if (setClauses.length === 0) return getSmartLabelById(labelId, tenantId);
 
@@ -118,6 +134,7 @@ export async function updateSmartLabel(
     RETURNING id, tenant_id, name, prompt, color, active,
               auto_draft_enabled, context_window_max,
               graph_folder_id, folder_sync_status, outlook_account_id,
+              extract_knowledge, clip_to_page_id, is_pinned,
               created_at, updated_at
   `;
   values.push(labelId, tenantId);

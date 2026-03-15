@@ -102,6 +102,9 @@ export const updateSmartLabelSchema = z.object({
   active: z.boolean().optional(),
   autoDraftEnabled: z.boolean().optional(),
   contextWindowMax: z.number().int().min(1).max(10).optional(),
+  extractKnowledge: z.boolean().optional(),
+  clipToPageId: z.string().uuid().nullable().optional(),
+  isPinned: z.boolean().optional(),
 });
 
 export const classifySmartLabelsSchema = z.object({

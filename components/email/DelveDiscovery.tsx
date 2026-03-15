@@ -282,7 +282,7 @@ function DetailOverlay({
 
           {/* Snippet */}
           {email.preview && (
-            <p className="text-sm text-[var(--muted-foreground)] leading-relaxed mb-5">
+            <p className="text-sm text-[var(--muted-foreground)] leading-relaxed mb-5 line-clamp-[8]">
               {email.preview}
             </p>
           )}
@@ -428,10 +428,10 @@ function EmailCard({
         </h3>
 
         {/* Snippet */}
-        {showSnippet && email.preview && (
+        {email.preview && (
           <p
             className={`text-xs text-[var(--muted-foreground)] leading-relaxed ${
-              isHero ? "line-clamp-4" : "line-clamp-2"
+              isHero ? "line-clamp-[8]" : "line-clamp-[5]"
             }`}
           >
             {email.preview}

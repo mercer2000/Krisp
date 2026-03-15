@@ -244,7 +244,7 @@ export function NewsletterCardView({
 
                 {/* Preview */}
                 {email.preview && (
-                  <p className="text-xs text-[var(--muted-foreground)] line-clamp-2 mb-3">
+                  <p className="text-xs text-[var(--muted-foreground)] line-clamp-[6] mb-3 leading-relaxed">
                     {email.preview}
                   </p>
                 )}

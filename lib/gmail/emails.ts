@@ -212,6 +212,7 @@ export async function listGmailEmails(
   const before = opts.before || null;
   const showSpam = opts.folder === "spam" ? true : opts.folder === "inbox" ? false : null;
   const showDone = opts.folder === "done" ? true : opts.folder === "inbox" ? false : null;
+  const excludeLabeled = opts.folder === "inbox";
 
   const allRows = await sql`
     SELECT
@@ -224,6 +225,9 @@ export async function listGmailEmails(
       AND (${before}::timestamptz IS NULL OR received_at <= ${before}::timestamptz)
       AND (${showSpam}::boolean IS NULL OR is_spam = ${showSpam}::boolean)
       AND (${showDone}::boolean IS NULL OR is_done = ${showDone}::boolean)
+      AND (NOT ${excludeLabeled}::boolean OR NOT EXISTS (
+        SELECT 1 FROM smart_label_items WHERE item_type = 'gmail_email' AND item_id = gmail_emails.id::text
+      ))
     ORDER BY received_at DESC
   `;
 
@@ -239,7 +243,7 @@ export async function listGmailEmails(
       recipients: Array.isArray(dr.recipients) ? dr.recipients : [],
       has_attachments: hasAttachments,
       preview: dr.body_plain
-        ? (dr.body_plain as string).slice(0, 200)
+        ? (dr.body_plain as string).slice(0, 600)
         : null,
       web_link: null as string | null,
       gmail_account_id: opts.gmailAccountId ?? null,

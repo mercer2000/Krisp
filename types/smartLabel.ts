@@ -11,6 +11,9 @@ export interface SmartLabel {
   graph_folder_id: string | null;
   folder_sync_status: "none" | "pending" | "synced" | "failed" | "unlinked";
   outlook_account_id: string | null;
+  extract_knowledge: boolean;
+  clip_to_page_id: string | null;
+  is_pinned: boolean;
   created_at: string;
   updated_at: string;
 }

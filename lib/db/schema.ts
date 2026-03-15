@@ -1792,6 +1792,11 @@ export const smartLabels = pgTable(
       () => outlookOauthTokens.id,
       { onDelete: "set null" }
     ),
+    extractKnowledge: boolean("extract_knowledge").default(false).notNull(),
+    clipToPageId: uuid("clip_to_page_id").references(() => pages.id, {
+      onDelete: "set null",
+    }),
+    isPinned: boolean("is_pinned").default(true).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
