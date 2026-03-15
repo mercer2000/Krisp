@@ -64,7 +64,12 @@ ${recentHistory || "(new conversation)"}
 "${userMessage}"`;
 
   try {
-    const raw = await chatCompletion(prompt, { maxTokens: 500, ...(userId ? { userId } : {}) });
+    const raw = await chatCompletion(prompt, {
+      maxTokens: 500,
+      ...(userId ? { userId } : {}),
+      triggerType: "intent_classify",
+      promptKey: PROMPT_INTENT_CLASSIFIER,
+    });
 
     // Strip code fences if present
     const cleaned = raw

@@ -241,7 +241,12 @@ ${eventsSummary || "No calendar events."}
 ${previousContext}
 ${reviewContext}`;
 
-  const text = await chatCompletion(prompt, { maxTokens: 4096, userId });
+  const text = await chatCompletion(prompt, {
+    maxTokens: 4096,
+    userId,
+    triggerType: "weekly_plan",
+    promptKey: PROMPT_WEEKLY_PLAN,
+  });
 
   // Parse JSON from response
   const cleaned = text
@@ -323,7 +328,12 @@ ${cardsSummary || "No open cards."}
 ## Today's Calendar Events
 ${dayEvents || "No events today."}`;
 
-  const text = await chatCompletion(prompt, { maxTokens: 2000, userId });
+  const text = await chatCompletion(prompt, {
+    maxTokens: 2000,
+    userId,
+    triggerType: "weekly_plan",
+    promptKey: PROMPT_DAILY_TASK_CURATOR,
+  });
 
   const cleaned = text
     .replace(/^```(?:json)?\s*\n?/i, "")

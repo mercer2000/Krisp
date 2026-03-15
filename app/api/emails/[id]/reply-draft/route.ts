@@ -316,6 +316,10 @@ export async function POST(
     const raw = await chatCompletion(fullPrompt, {
       maxTokens: action === "forward" ? 300 : 500,
       userId,
+      triggerType: "email_reply_draft",
+      promptKey: promptKey,
+      entityType: "email",
+      entityId: id,
     });
 
     // Parse JSON response

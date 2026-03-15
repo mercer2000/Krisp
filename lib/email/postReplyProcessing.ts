@@ -144,7 +144,14 @@ ${threadSummary}
 USER'S LATEST REPLY:
 ${replyBody}${alreadyCaptured}`;
 
-      const text = await chatCompletion(prompt, { maxTokens: 1000, userId });
+      const text = await chatCompletion(prompt, {
+        maxTokens: 1000,
+        userId,
+        triggerType: "post_reply_processing",
+        promptKey: PROMPT_THREAD_DECISION_EXTRACT,
+        entityType: "email",
+        entityId: String(emailId),
+      });
 
       let entries: Array<{ entry_type: string; title: string; content: string }>;
       try {

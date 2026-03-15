@@ -33,7 +33,7 @@ const NAV_ITEMS = [
   },
   {
     key: "weekly-reviews",
-    label: "Reviews",
+    label: "Weekly Review",
     href: "/weekly-reviews",
     icon: WeeklyReviewIcon,
   },
@@ -556,6 +556,24 @@ function SupportChatIcon({ size = 20 }: { size?: number }) {
   );
 }
 
+function AiLogsIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+    </svg>
+  );
+}
+
 function AdminIcon({ size = 20 }: { size?: number }) {
   return (
     <svg
@@ -612,12 +630,11 @@ function ChevronDownIcon({ size = 14 }: { size?: number }) {
 
 const SETTINGS_ITEMS = [
   { href: "/settings/account", label: "Account", icon: AccountIcon },
-  { href: "/settings/integrations", label: "Integrations", icon: IntegrationsIcon },
-  { href: "/settings/billing", label: "Billing", icon: BillingIcon },
   { href: "/settings/prompts", label: "AI Prompts", icon: AIPromptsIcon },
-  { href: "/settings/smart-labels", label: "Smart Labels", icon: SmartLabelsIcon },
+  { href: "/settings/billing", label: "Billing", icon: BillingIcon },
   { href: "/settings/extensions", label: "Extensions", icon: ExtensionsIcon },
-  { href: "/settings/pages", label: "Pages", icon: PagesIcon },
+  { href: "/settings/integrations", label: "Integrations", icon: IntegrationsIcon },
+  { href: "/settings/smart-labels", label: "Smart Labels", icon: SmartLabelsIcon },
 ];
 
 function SettingsSubmenu({ collapsed, pathname }: { collapsed: boolean; pathname: string }) {
@@ -674,6 +691,7 @@ function SettingsSubmenu({ collapsed, pathname }: { collapsed: boolean; pathname
 const ADMIN_ITEMS = [
   { href: "/admin/subscriptions", label: "Subscriptions", icon: SubscriptionsIcon },
   { href: "/admin/emails", label: "Emails", icon: EmailsIcon },
+  { href: "/admin/ai-logs", label: "AI Logs", icon: AiLogsIcon },
   { href: "/admin/webhooks", label: "Webhooks", icon: ActivityFeedIcon },
   { href: "/admin/support", label: "Support Chat", icon: SupportChatIcon },
 ];
@@ -859,7 +877,7 @@ export function SideNav() {
       </div>
 
       {/* Nav links */}
-      <div className="flex flex-1 flex-col gap-1 p-2">
+      <div className="flex flex-1 flex-col gap-1 p-2 overflow-y-auto">
         {NAV_ITEMS.map((item) => {
           const active = isActive(item.href);
           const Icon = item.icon;

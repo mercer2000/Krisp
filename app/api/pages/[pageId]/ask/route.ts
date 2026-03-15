@@ -101,6 +101,9 @@ User question: ${question}`;
     const answer = await chatCompletion(prompt, {
       maxTokens: 1000,
       userId: user.id,
+      triggerType: "page_ask",
+      entityType: "page",
+      entityId: pageId,
     });
 
     return NextResponse.json({ answer });

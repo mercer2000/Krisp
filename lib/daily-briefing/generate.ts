@@ -287,7 +287,12 @@ ${emailsSection || "No recent emails."}
 ## Open Action Items (${data.openActions.length})
 ${actionsSection || "No open action items."}`;
 
-  return chatCompletion(prompt, { maxTokens: 3000, userId });
+  return chatCompletion(prompt, {
+    maxTokens: 3000,
+    userId,
+    triggerType: "daily_briefing",
+    promptKey: PROMPT_DAILY_BRIEFING,
+  });
 }
 
 /**

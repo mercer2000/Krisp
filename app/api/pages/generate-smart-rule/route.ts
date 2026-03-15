@@ -34,6 +34,7 @@ Return ONLY the smart rule text, nothing else. No quotes, no explanation, no pre
     const smartRule = await chatCompletion(prompt, {
       maxTokens: 300,
       userId: user.id,
+      triggerType: "generate_smart_rule",
     });
 
     return NextResponse.json({ smartRule });

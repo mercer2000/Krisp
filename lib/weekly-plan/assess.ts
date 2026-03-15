@@ -163,6 +163,8 @@ ${decryptedThemes
   const response = await chatCompletion(fullPrompt, {
     maxTokens: 2000,
     userId,
+    triggerType: "week_assessment",
+    promptKey: PROMPT_WEEK_ASSESSMENT,
   });
 
   // 8. Parse JSON response

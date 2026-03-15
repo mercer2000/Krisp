@@ -114,7 +114,14 @@ ${transcript.slice(0, 8000)}
 
 Today's date: ${today}`;
 
-  const text = await chatCompletion(prompt, { maxTokens: 2000, userId });
+  const text = await chatCompletion(prompt, {
+    maxTokens: 2000,
+    userId,
+    triggerType: "extract_action_items",
+    promptKey: PROMPT_ACTION_ITEMS_MEETING,
+    entityType: "meeting",
+    entityId: String(meetingId),
+  });
 
   let extracted: ExtractedActionItem[];
   try {

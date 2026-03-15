@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { decrypt, isEncrypted } from "@/lib/encryption";
+import { logAiCall } from "./logAiCall";
 
 export const openrouter = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
@@ -59,21 +60,48 @@ function getClientForKey(apiKey: string): OpenAI {
 
 export async function chatCompletion(
   prompt: string,
-  options?: { maxTokens?: number; model?: string; userId?: string }
+  options?: {
+    maxTokens?: number;
+    model?: string;
+    userId?: string;
+    triggerType?: string;
+    promptKey?: string;
+    entityType?: string;
+    entityId?: string;
+  }
 ): Promise<string> {
+  const startTime = Date.now();
   try {
     const apiKey = options?.userId
       ? await getUserApiKey(options.userId)
       : process.env.OPENROUTER_API_KEY || "";
 
     const client = getClientForKey(apiKey);
+    const model = options?.model ?? DEFAULT_MODEL;
 
     const response = await client.chat.completions.create({
-      model: options?.model ?? DEFAULT_MODEL,
+      model,
       max_tokens: options?.maxTokens ?? 2000,
       messages: [{ role: "user", content: prompt }],
     });
-    return response.choices[0]?.message?.content?.trim() ?? "";
+    const result = response.choices[0]?.message?.content?.trim() ?? "";
+
+    // Log AI call (fire-and-forget)
+    if (options?.userId && options?.triggerType) {
+      logAiCall({
+        userId: options.userId,
+        triggerType: options.triggerType,
+        promptKey: options.promptKey,
+        model,
+        prompt,
+        response: result,
+        entityType: options.entityType,
+        entityId: options.entityId,
+        durationMs: Date.now() - startTime,
+      });
+    }
+
+    return result;
   } catch (err: unknown) {
     if (
       err &&

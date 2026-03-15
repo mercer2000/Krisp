@@ -183,7 +183,14 @@ ${emailsContext}
 ## Open Action Items:
 ${actionItemsContext}`;
 
-    const text = await chatCompletion(prompt, { maxTokens: 2000, userId: user.id });
+    const text = await chatCompletion(prompt, {
+      maxTokens: 2000,
+      userId: user.id,
+      triggerType: "priority_review",
+      promptKey: PROMPT_PRIORITY_REVIEW,
+      entityType: "board",
+      entityId: boardId,
+    });
 
     let suggestions: PrioritySuggestion[];
     try {

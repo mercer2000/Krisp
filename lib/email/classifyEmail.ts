@@ -50,7 +50,14 @@ Subject: ${email.subject || "(No subject)"}
 Body:
 ${(email.bodyPlainText || "").slice(0, 3000)}`;
 
-  const text = await chatCompletion(prompt, { maxTokens: 500, userId: tenantId });
+  const text = await chatCompletion(prompt, {
+    maxTokens: 500,
+    userId: tenantId,
+    triggerType: "email_classify",
+    promptKey: PROMPT_EMAIL_CLASSIFY,
+    entityType: "email",
+    entityId: String(emailId),
+  });
 
   let result: ClassificationResult;
   try {

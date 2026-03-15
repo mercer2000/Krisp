@@ -2857,3 +2857,35 @@ export const emailEventsRelations = relations(emailEvents, ({ one }) => ({
     references: [emailLogs.id],
   }),
 }));
+
+// ── AI Call Logs ─────────────────────────────────────
+export const aiLogs = pgTable(
+  "ai_logs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    triggerType: varchar("trigger_type", { length: 100 }).notNull(),
+    promptKey: varchar("prompt_key", { length: 100 }),
+    model: varchar("model", { length: 100 }).notNull(),
+    prompt: text("prompt").notNull(),
+    response: text("response").notNull(),
+    entityType: varchar("entity_type", { length: 50 }),
+    entityId: varchar("entity_id", { length: 255 }),
+    durationMs: integer("duration_ms"),
+    tokenEstimate: integer("token_estimate"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_ai_logs_user_created").on(table.userId, table.createdAt),
+    index("idx_ai_logs_trigger_type").on(table.triggerType),
+    crudPolicy({
+      role: authenticatedRole,
+      read: authUid(table.userId),
+      modify: authUid(table.userId),
+    }),
+  ]
+);

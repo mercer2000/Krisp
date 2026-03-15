@@ -71,7 +71,12 @@ ${itemsSummary}
 
 Today's date: ${today}`;
 
-    const text = await chatCompletion(prompt, { maxTokens: 2000, userId });
+    const text = await chatCompletion(prompt, {
+      maxTokens: 2000,
+      userId,
+      triggerType: "generate_cards",
+      promptKey: PROMPT_GENERATE_CARDS,
+    });
 
     let parsed: Array<{
       index: number;

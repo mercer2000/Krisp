@@ -193,7 +193,14 @@ ${labelDescriptions}
 Item (${itemType}):
 ${content}`;
 
-  const text = await chatCompletion(prompt, { maxTokens: 500, userId: tenantId });
+  const text = await chatCompletion(prompt, {
+    maxTokens: 500,
+    userId: tenantId,
+    triggerType: "smart_label_classify",
+    promptKey: PROMPT_SMART_LABEL_CLASSIFY,
+    entityType: itemType,
+    entityId: itemId,
+  });
 
   let result: ClassificationResult;
   try {

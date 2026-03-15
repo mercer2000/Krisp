@@ -590,7 +590,12 @@ User: ${message}
 
 Provide a helpful, concise answer based on the available data:`;
 
-  const answer = await chatCompletion(prompt, { maxTokens: 1500, userId });
+  const answer = await chatCompletion(prompt, {
+    maxTokens: 1500,
+    userId,
+    triggerType: "brain_chat",
+    promptKey: PROMPT_BRAIN_CHAT_API,
+  });
 
   return { answer, sourcesUsed };
 }

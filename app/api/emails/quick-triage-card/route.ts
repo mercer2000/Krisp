@@ -97,6 +97,9 @@ Preview: ${(preview || "").slice(0, 500)}`;
       const aiText = await chatCompletion(prompt, {
         maxTokens: 150,
         userId,
+        triggerType: "email_triage_card",
+        entityType: "email",
+        entityId: emailId ? String(emailId) : undefined,
       });
       const jsonMatch = aiText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {

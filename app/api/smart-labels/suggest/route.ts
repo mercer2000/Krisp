@@ -55,7 +55,11 @@ Examples of good prompts:
 Keep the prompt concise (1-2 sentences) and focused.
 Respond with ONLY valid JSON, no markdown.`;
 
-    const result = await chatCompletion(prompt, { maxTokens: 300, userId });
+    const result = await chatCompletion(prompt, {
+      maxTokens: 300,
+      userId,
+      triggerType: "smart_label_suggest",
+    });
 
     // Parse the JSON response
     const cleaned = result.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();

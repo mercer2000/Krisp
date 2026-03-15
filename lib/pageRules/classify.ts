@@ -127,7 +127,14 @@ Page smart rule: ${page.smartRule}
 Item (${itemType}):
 ${content}`;
 
-  const text = await chatCompletion(prompt, { maxTokens: 1000, userId });
+  const text = await chatCompletion(prompt, {
+    maxTokens: 1000,
+    userId,
+    triggerType: "page_rule_classify",
+    promptKey: PROMPT_PAGE_ENTRY_EXTRACT,
+    entityType: itemType,
+    entityId: itemId,
+  });
 
   let entries: ExtractedEntry[];
   try {
@@ -273,7 +280,14 @@ ${pageDescriptions}
 Item (${itemType}):
 ${content}`;
 
-  const text = await chatCompletion(prompt, { maxTokens: 500, userId });
+  const text = await chatCompletion(prompt, {
+    maxTokens: 500,
+    userId,
+    triggerType: "page_rule_classify",
+    promptKey: PROMPT_PAGE_RULE_CLASSIFY,
+    entityType: itemType,
+    entityId: itemId,
+  });
 
   let matches: ClassifyMatch[];
   try {

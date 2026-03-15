@@ -242,7 +242,14 @@ export async function generateDraftReply(
     );
 
     const prompt = parts.join("\n");
-    const draftBody = await chatCompletion(prompt, { maxTokens: 800, userId: tenantId });
+    const draftBody = await chatCompletion(prompt, {
+      maxTokens: 800,
+      userId: tenantId,
+      triggerType: "smart_label_draft",
+      promptKey: PROMPT_SMART_LABEL_DRAFT_REPLY,
+      entityType: emailType,
+      entityId: emailId,
+    });
 
     if (!draftBody.trim()) return null;
 

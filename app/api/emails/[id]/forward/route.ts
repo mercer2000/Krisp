@@ -224,7 +224,14 @@ async function handleLegacyDraftGeneration(
     ].join("\n");
 
     const fullPrompt = `${promptTemplate}\n\n${emailContext}`;
-    const raw = await chatCompletion(fullPrompt, { maxTokens: 300, userId });
+    const raw = await chatCompletion(fullPrompt, {
+      maxTokens: 300,
+      userId,
+      triggerType: "email_forward_draft",
+      promptKey: PROMPT_EMAIL_FORWARD_DRAFT,
+      entityType: "email",
+      entityId: id,
+    });
 
     let draft = "";
     let intent: ForwardIntent = "fyi";
