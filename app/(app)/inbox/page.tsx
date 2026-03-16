@@ -227,6 +227,8 @@ export default function InboxPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [limit] = useState(50);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const infiniteScrollRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [afterDate, setAfterDate] = useState("");
@@ -780,6 +782,61 @@ export default function InboxPage() {
       }
     }
   }, [page, limit, query, afterDate, beforeDate, filterAccount, filterProvider, activeFolder, filterLabel, filterSmartLabel, cache]);
+
+  // Load more emails for infinite scroll (mobile)
+  const loadMoreEmails = useCallback(async () => {
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    if (page >= totalPages || loadingMore) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    try {
+      const params = new URLSearchParams();
+      params.set("page", String(nextPage));
+      params.set("limit", String(limit));
+      if (query) params.set("q", query);
+      if (afterDate) params.set("after", new Date(afterDate).toISOString());
+      if (beforeDate) params.set("before", new Date(beforeDate).toISOString());
+      if (filterAccount) params.set("accountId", filterAccount);
+      if (filterProvider) params.set("provider", filterProvider);
+      const effectiveFolder = (filterLabel || filterSmartLabel) ? "all" : activeFolder;
+      if (effectiveFolder !== "all") params.set("folder", effectiveFolder);
+
+      const res = await fetch(`/api/emails?${params}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data: EmailListResponse = await res.json();
+      if (data.data.length > 0) {
+        setEmails((prev) => {
+          const existingIds = new Set(prev.map((e) => e.id));
+          const newItems = data.data.filter((e: EmailListItem) => !existingIds.has(e.id));
+          return [...prev, ...newItems];
+        });
+        setPage(nextPage);
+      }
+    } catch {
+      // Silent fail — user can scroll again
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [page, total, limit, query, afterDate, beforeDate, filterAccount, filterProvider, filterLabel, filterSmartLabel, activeFolder, loadingMore]);
+
+  // Infinite scroll observer (mobile only)
+  useEffect(() => {
+    const sentinel = infiniteScrollRef.current;
+    if (!sentinel) return;
+    const isMobile = window.innerWidth < 768;
+    if (!isMobile) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          loadMoreEmails();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadMoreEmails]);
 
   // Initial fetch + fetch on filter/page changes
   useEffect(() => {
@@ -3108,6 +3165,16 @@ export default function InboxPage() {
               );
             })}
           </div>
+
+          {/* Infinite scroll sentinel (mobile) */}
+          <div ref={infiniteScrollRef} className="md:hidden py-4 flex justify-center">
+            {loadingMore && (
+              <svg className="animate-spin h-5 w-5 text-[var(--muted-foreground)]" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            )}
+          </div>
           </>
         )}
         </div>
@@ -3204,9 +3271,9 @@ export default function InboxPage() {
         )}
       </main>
 
-      {/* Pagination (hidden during semantic search — also hidden in split view) */}
+      {/* Pagination (desktop only — mobile uses infinite scroll) */}
       {totalPages > 1 && !initialLoading && !isSemanticSearch && !splitView.enabled && (
-        <footer className="border-t border-[var(--border)] px-3 md:px-6 py-3 flex items-center justify-between bg-[var(--background)]">
+        <footer className="hidden md:flex border-t border-[var(--border)] px-6 py-3 items-center justify-between bg-[var(--background)]">
           <span className="text-xs md:text-sm text-[var(--muted-foreground)]">
             {page}/{totalPages}
           </span>
