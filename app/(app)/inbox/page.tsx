@@ -1621,7 +1621,7 @@ export default function InboxPage() {
                 </button>
               </div>
               {showSyncDropdown && (
-                <div className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-lg border border-[var(--border)] bg-[var(--popover)] shadow-lg py-1">
+                <div className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-lg border border-[var(--border)] bg-[var(--card)] shadow-lg py-1">
                   {syncPeriodOptions.map((opt) => (
                     <button
                       key={opt.value}
@@ -1885,7 +1885,7 @@ export default function InboxPage() {
                 </svg>
               </button>
               {showSyncDropdown && (
-                <div className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-lg border border-[var(--border)] bg-[var(--popover)] shadow-lg py-1">
+                <div className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-lg border border-[var(--border)] bg-[var(--card)] shadow-lg py-1">
                   {syncPeriodOptions.map((opt) => (
                     <button
                       key={opt.value}
