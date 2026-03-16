@@ -585,7 +585,7 @@ export default function InboxPage() {
   const hasFetchedOnce = useRef(false);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const hasClientFilter = !!filterLabel || !!filterSmartLabel;
+  const hasClientFilter = !!filterLabel;
 
   // Fetch labels, smart labels, and connected accounts on mount
   // Load cached data instantly, then revalidate in the background
@@ -752,6 +752,7 @@ export default function InboxPage() {
         if (beforeDate) params.set("before", new Date(beforeDate).toISOString());
         if (filterAccount) params.set("accountId", filterAccount);
         if (filterProvider) params.set("provider", filterProvider);
+        if (filterSmartLabel) params.set("smartLabelId", filterSmartLabel);
         // When a label filter is active, don't apply folder-level exclusions
         // (the triage filter excludes labeled emails, but we need them when filtering by label)
         const effectiveFolder = (filterLabel || filterSmartLabel) ? "all" : activeFolder;
@@ -798,6 +799,7 @@ export default function InboxPage() {
       if (beforeDate) params.set("before", new Date(beforeDate).toISOString());
       if (filterAccount) params.set("accountId", filterAccount);
       if (filterProvider) params.set("provider", filterProvider);
+      if (filterSmartLabel) params.set("smartLabelId", filterSmartLabel);
       const effectiveFolder = (filterLabel || filterSmartLabel) ? "all" : activeFolder;
       if (effectiveFolder !== "all") params.set("folder", effectiveFolder);
 
@@ -1433,19 +1435,14 @@ export default function InboxPage() {
   // Unread count for triage tab (from server)
   const unreadCount = unreadCounts.triage;
 
-  // Filter emails by selected label or smart label (client-side)
+  // Filter emails by selected label (client-side — smart labels are now filtered server-side)
   let filteredEmails = emails;
   if (filterLabel) {
     filteredEmails = filteredEmails.filter((e) => e.labels?.some((l) => l.id === filterLabel));
   }
-  if (filterSmartLabel) {
-    filteredEmails = filteredEmails.filter((e) =>
-      smartLabelMap[String(e.id)]?.some((l) => l.id === filterSmartLabel)
-    );
-  }
 
   // When a client-side label filter is active, use the filtered count for pagination
-  const effectiveTotal = hasClientFilter ? filteredEmails.length : total;
+  const effectiveTotal = filterLabel ? filteredEmails.length : total;
   const totalPages = Math.max(1, Math.ceil(effectiveTotal / limit));
   const pageNumbers = getPageNumbers(page, totalPages);
 

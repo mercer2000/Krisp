@@ -5,6 +5,9 @@ import { listGmailEmails } from "@/lib/gmail/emails";
 import { listZoomMessages } from "@/lib/zoom/messages";
 import { getLabelsForEmails } from "@/lib/email/labels";
 import { emailListQuerySchema } from "@/lib/validators/schemas";
+import { db } from "@/lib/db";
+import { smartLabelItems } from "@/lib/db/schema";
+import { eq, and, inArray } from "drizzle-orm";
 import type { EmailListItem, EmailAttachmentMetadata } from "@/types/email";
 
 export async function GET(request: NextRequest) {
@@ -24,7 +27,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { page, limit, q, after, before, accountId, provider, folder } = parsed.data;
+    const { page, limit, q, after, before, accountId, provider, folder, smartLabelId } = parsed.data;
 
     // Determine which sources to query based on provider filter
     const fetchOutlook = !provider || provider === "outlook";
@@ -111,6 +114,16 @@ export async function GET(request: NextRequest) {
 
     // Sort merged results by received_at descending
     allItems.sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime());
+
+    // Filter by smart label (server-side) if requested
+    if (smartLabelId) {
+      const assigned = await db
+        .select({ itemId: smartLabelItems.itemId, itemType: smartLabelItems.itemType })
+        .from(smartLabelItems)
+        .where(eq(smartLabelItems.labelId, smartLabelId));
+      const matchSet = new Set(assigned.map((a) => String(a.itemId)));
+      allItems = allItems.filter((item) => matchSet.has(String(item.id)));
+    }
 
     // Paginate
     const total = allItems.length;
