@@ -1853,13 +1853,12 @@ export default function InboxPage() {
                 </svg>
               )}
             </button>
-            <div className="relative" ref={syncDropdownMobileRef}>
+            <div className="relative flex items-center" ref={syncDropdownMobileRef}>
               <button
                 onClick={() => handleSync()}
-                onContextMenu={(e) => { e.preventDefault(); setShowSyncDropdown((v) => !v); }}
                 disabled={syncing}
-                className="p-2 rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--accent)] transition-colors disabled:opacity-40"
-                title={`Sync${syncPeriod ? ` (${syncPeriodOptions.find((o) => o.value === syncPeriod)?.label})` : ""} — long press for options`}
+                className="p-2 rounded-l-lg text-[var(--muted-foreground)] hover:bg-[var(--accent)] transition-colors disabled:opacity-40"
+                title={`Sync${syncPeriod ? ` (${syncPeriodOptions.find((o) => o.value === syncPeriod)?.label})` : ""}`}
               >
                 {syncing ? (
                   <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
@@ -1874,6 +1873,16 @@ export default function InboxPage() {
                     <path d="M21 12a9 9 0 01-15 6.7L3 16" />
                   </svg>
                 )}
+              </button>
+              <button
+                onClick={() => setShowSyncDropdown((v) => !v)}
+                disabled={syncing}
+                className="p-2 -ml-1 rounded-r-lg text-[var(--muted-foreground)] hover:bg-[var(--accent)] transition-colors disabled:opacity-40"
+                title="Choose sync period"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
               </button>
               {showSyncDropdown && (
                 <div className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-lg border border-[var(--border)] bg-[var(--popover)] shadow-lg py-1">
