@@ -127,7 +127,7 @@ export async function DELETE(
         return NextResponse.json({ error: "Email not found" }, { status: 404 });
       }
 
-      // Trash the message in Gmail via the API (best-effort — always delete locally)
+      // Trash the message in Gmail via the API
       const watch = await getActiveWatch(userId);
       if (watch) {
         try {
@@ -137,11 +137,19 @@ export async function DELETE(
             { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } }
           );
           if (!trashRes.ok && trashRes.status !== 404) {
-            const err = await trashRes.text();
-            console.warn("[Delete Gmail] Trash API failed:", trashRes.status, err);
+            const errBody = await trashRes.text();
+            console.error("[Delete Gmail] Trash API failed:", trashRes.status, errBody);
+            return NextResponse.json(
+              { error: `Gmail trash failed (${trashRes.status}): ${errBody}` },
+              { status: 502 }
+            );
           }
         } catch (err) {
-          console.warn("[Delete Gmail] Token/API error:", err);
+          console.error("[Delete Gmail] Token/API error:", err);
+          return NextResponse.json(
+            { error: `Gmail API error: ${err instanceof Error ? err.message : String(err)}` },
+            { status: 502 }
+          );
         }
       }
 
