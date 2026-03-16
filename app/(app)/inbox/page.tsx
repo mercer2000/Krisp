@@ -983,13 +983,66 @@ export default function InboxPage() {
     }
   };
 
+  // Sync period options
+  const syncPeriodOptions = [
+    { label: "New only", value: "" },
+    { label: "Last 7 days", value: "7d" },
+    { label: "Last 30 days", value: "30d" },
+    { label: "Last 3 months", value: "3m" },
+    { label: "Last 6 months", value: "6m" },
+    { label: "Last 12 months", value: "12m" },
+  ] as const;
+
+  const [syncPeriod, setSyncPeriod] = useState("");
+  const [showSyncDropdown, setShowSyncDropdown] = useState(false);
+  const syncDropdownDesktopRef = useRef<HTMLDivElement>(null);
+  const syncDropdownMobileRef = useRef<HTMLDivElement>(null);
+
+  // Close sync dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        syncDropdownDesktopRef.current?.contains(target) ||
+        syncDropdownMobileRef.current?.contains(target)
+      ) return;
+      setShowSyncDropdown(false);
+    };
+    if (showSyncDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [showSyncDropdown]);
+
+  // Convert period code to ISO date string
+  const getSinceDate = (period: string): string | undefined => {
+    if (!period) return undefined;
+    const now = new Date();
+    switch (period) {
+      case "7d": now.setDate(now.getDate() - 7); break;
+      case "30d": now.setDate(now.getDate() - 30); break;
+      case "3m": now.setMonth(now.getMonth() - 3); break;
+      case "6m": now.setMonth(now.getMonth() - 6); break;
+      case "12m": now.setFullYear(now.getFullYear() - 1); break;
+      default: return undefined;
+    }
+    return now.toISOString();
+  };
+
   // Sync emails from all providers
-  const handleSync = async () => {
+  const handleSync = async (periodOverride?: string) => {
     setSyncing(true);
+    setShowSyncDropdown(false);
+    const period = periodOverride ?? syncPeriod;
+    const since = getSinceDate(period);
+    const fetchOpts: RequestInit = {
+      method: "POST",
+      ...(since ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ since }) } : {}),
+    };
     try {
       const results = await Promise.allSettled([
-        fetch("/api/outlook/sync", { method: "POST" }),
-        fetch("/api/gmail/sync", { method: "POST" }),
+        fetch("/api/outlook/sync", fetchOpts),
+        fetch("/api/gmail/sync", fetchOpts),
       ]);
 
       let totalInserted = 0;
@@ -1527,33 +1580,66 @@ export default function InboxPage() {
 
           {/* Desktop toolbar */}
           <div className="hidden md:flex items-center gap-3">
-            {/* Sync button */}
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className="px-3 py-2 text-sm font-medium rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors disabled:opacity-40"
-              title="Sync emails from all connected accounts"
-            >
-              {syncing ? (
-                <span className="flex items-center gap-1.5">
-                  <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            {/* Sync split button with period dropdown */}
+            <div className="relative" ref={syncDropdownDesktopRef}>
+              <div className="flex items-center rounded-lg border border-[var(--border)] overflow-hidden">
+                <button
+                  onClick={() => handleSync()}
+                  disabled={syncing}
+                  className="px-3 py-2 text-sm font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors disabled:opacity-40"
+                  title={`Sync emails${syncPeriod ? ` (${syncPeriodOptions.find((o) => o.value === syncPeriod)?.label})` : ""}`}
+                >
+                  {syncing ? (
+                    <span className="flex items-center gap-1.5">
+                      <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Syncing...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 2v6h-6" />
+                        <path d="M3 12a9 9 0 0115-6.7L21 8" />
+                        <path d="M3 22v-6h6" />
+                        <path d="M21 12a9 9 0 01-15 6.7L3 16" />
+                      </svg>
+                      Sync{syncPeriod ? ` (${syncPeriodOptions.find((o) => o.value === syncPeriod)?.label})` : ""}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setShowSyncDropdown((v) => !v)}
+                  disabled={syncing}
+                  className="px-1.5 py-2 border-l border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors disabled:opacity-40"
+                  title="Choose sync period"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 9l6 6 6-6" />
                   </svg>
-                  Syncing...
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 2v6h-6" />
-                    <path d="M3 12a9 9 0 0115-6.7L21 8" />
-                    <path d="M3 22v-6h6" />
-                    <path d="M21 12a9 9 0 01-15 6.7L3 16" />
-                  </svg>
-                  Sync
-                </span>
+                </button>
+              </div>
+              {showSyncDropdown && (
+                <div className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-lg border border-[var(--border)] bg-[var(--popover)] shadow-lg py-1">
+                  {syncPeriodOptions.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => {
+                        setSyncPeriod(opt.value);
+                        setShowSyncDropdown(false);
+                        handleSync(opt.value);
+                      }}
+                      className={`w-full text-left px-3 py-1.5 text-sm transition-colors hover:bg-[var(--accent)] ${
+                        syncPeriod === opt.value ? "text-[var(--primary)] font-medium" : "text-[var(--foreground)]"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               )}
-            </button>
+            </div>
 
             {/* Classify button */}
             <button
@@ -1767,26 +1853,48 @@ export default function InboxPage() {
                 </svg>
               )}
             </button>
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className="p-2 rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--accent)] transition-colors disabled:opacity-40"
-              title="Sync"
-            >
-              {syncing ? (
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 2v6h-6" />
-                  <path d="M3 12a9 9 0 0115-6.7L21 8" />
-                  <path d="M3 22v-6h6" />
-                  <path d="M21 12a9 9 0 01-15 6.7L3 16" />
-                </svg>
+            <div className="relative" ref={syncDropdownMobileRef}>
+              <button
+                onClick={() => handleSync()}
+                onContextMenu={(e) => { e.preventDefault(); setShowSyncDropdown((v) => !v); }}
+                disabled={syncing}
+                className="p-2 rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--accent)] transition-colors disabled:opacity-40"
+                title={`Sync${syncPeriod ? ` (${syncPeriodOptions.find((o) => o.value === syncPeriod)?.label})` : ""} — long press for options`}
+              >
+                {syncing ? (
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 2v6h-6" />
+                    <path d="M3 12a9 9 0 0115-6.7L21 8" />
+                    <path d="M3 22v-6h6" />
+                    <path d="M21 12a9 9 0 01-15 6.7L3 16" />
+                  </svg>
+                )}
+              </button>
+              {showSyncDropdown && (
+                <div className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-lg border border-[var(--border)] bg-[var(--popover)] shadow-lg py-1">
+                  {syncPeriodOptions.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => {
+                        setSyncPeriod(opt.value);
+                        setShowSyncDropdown(false);
+                        handleSync(opt.value);
+                      }}
+                      className={`w-full text-left px-3 py-1.5 text-sm transition-colors hover:bg-[var(--accent)] ${
+                        syncPeriod === opt.value ? "text-[var(--primary)] font-medium" : "text-[var(--foreground)]"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               )}
-            </button>
+            </div>
             <div className="relative">
               <button
                 onClick={() => setShowMobileFilters(true)}

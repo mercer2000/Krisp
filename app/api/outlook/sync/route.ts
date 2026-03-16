@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    let body: { accountId?: string };
+    let body: { accountId?: string; since?: string };
     try {
       body = await request.json();
     } catch {
@@ -72,9 +72,11 @@ export async function POST(request: NextRequest) {
       try {
         const accessToken = await getValidOutlookAccessToken(account.id, userId);
 
-        const afterDate = account.last_sync_at || undefined;
+        // If a `since` date is provided (historical sync), use it; otherwise fall back to last_sync_at
+        const afterDate = body.since || account.last_sync_at || undefined;
+        const isHistoricalSync = !!body.since;
         const { messages } = await fetchOutlookInboxMessages(accessToken, {
-          top: 50,
+          top: isHistoricalSync ? 200 : 50,
           after: afterDate || undefined,
         });
 

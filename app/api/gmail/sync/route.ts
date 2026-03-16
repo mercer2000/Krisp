@@ -35,20 +35,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let body: { maxResults?: number } = {};
+    let body: { maxResults?: number; since?: string } = {};
     try {
       body = await request.json();
     } catch {
       body = {};
     }
 
-    const maxResults = Math.min(body.maxResults ?? 50, 100);
+    const isHistoricalSync = !!body.since;
+    const maxResults = Math.min(body.maxResults ?? (isHistoricalSync ? 200 : 50), 500);
     const accessToken = await getValidAccessToken(watch);
 
     // List recent messages from inbox
     const listUrl = new URL(`${GMAIL_API_BASE}/messages`);
     listUrl.searchParams.set("maxResults", String(maxResults));
     listUrl.searchParams.set("labelIds", "INBOX");
+
+    // If a `since` date is provided, add Gmail search query filter
+    if (body.since) {
+      const sinceDate = new Date(body.since);
+      if (!isNaN(sinceDate.getTime())) {
+        const yyyy = sinceDate.getFullYear();
+        const mm = String(sinceDate.getMonth() + 1).padStart(2, "0");
+        const dd = String(sinceDate.getDate()).padStart(2, "0");
+        listUrl.searchParams.set("q", `after:${yyyy}/${mm}/${dd}`);
+      }
+    }
 
     const listRes = await fetch(listUrl.toString(), {
       headers: { Authorization: `Bearer ${accessToken}` },
