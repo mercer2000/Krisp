@@ -233,14 +233,15 @@ async function handleLegacyDraftGeneration(
       entityId: id,
     });
 
+    const cleaned = raw.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
     let draft = "";
     let intent: ForwardIntent = "fyi";
     try {
-      const parsed = JSON.parse(raw);
+      const parsed = JSON.parse(cleaned);
       if (parsed.message) draft = parsed.message;
       if (parsed.intent) intent = parsed.intent as ForwardIntent;
     } catch {
-      draft = raw;
+      draft = cleaned;
     }
 
     return NextResponse.json({ draft, intent });

@@ -322,15 +322,16 @@ export async function POST(
       entityId: id,
     });
 
-    // Parse JSON response
+    // Parse JSON response (strip markdown code fences if the model wraps them)
+    const cleaned = raw.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
     let draft = "";
     let intent = action === "forward" ? "fyi" : "acknowledgment";
     try {
-      const parsed = JSON.parse(raw);
+      const parsed = JSON.parse(cleaned);
       if (parsed.draft ?? parsed.message) draft = parsed.draft ?? parsed.message;
       if (parsed.intent) intent = parsed.intent;
     } catch {
-      draft = raw;
+      draft = cleaned;
     }
 
     return NextResponse.json({ draft, intent });
