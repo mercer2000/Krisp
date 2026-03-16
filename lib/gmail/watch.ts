@@ -58,8 +58,12 @@ export async function refreshAccessToken(
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
+    const missing = [
+      !clientId && "GOOGLE_CLIENT_ID",
+      !clientSecret && "GOOGLE_CLIENT_SECRET",
+    ].filter(Boolean).join(", ");
     throw new Error(
-      "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be configured"
+      `Missing env vars: ${missing}. Set them in your hosting provider's environment settings.`
     );
   }
 
