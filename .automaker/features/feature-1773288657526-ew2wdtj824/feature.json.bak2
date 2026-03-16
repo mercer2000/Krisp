@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "On the kanban board, add the notion of a snooze column.  Items parked here rest for a default period of time which can be adjusted, and then pop back the the TO DO column. \n",
+  "title": "Add snooze column to kanban board",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-12T04:10:57.526Z",
+  "id": "feature-1773288657526-ew2wdtj824",
+  "descriptionHistory": [
+    {
+      "description": "On the kanban board, add the notion of a snooze column.  Items parked here rest for a default period of time which can be adjusted, and then pop back the the TO DO column. \n",
+      "timestamp": "2026-03-12T04:10:57.984Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-12T04:32:44.608Z",
+  "justFinishedAt": "2026-03-12T04:32:44.591Z",
+  "summary": "## Summary: Snooze Column for Kanban Board\n\n### Changes Implemented\n- **Database schema**: Added `snoozed_until` (timestamp) and `snooze_return_column_id` (uuid) fields to the `cards` table for tracking snooze state\n- **Snooze column detection**: Columns titled \"Snooze\" or \"Snoozed\" (case-insensitive) are treated as snooze columns with special amber accent color and clock icon\n- **Snooze duration picker**: When a card is dropped into a snooze column (via drag-and-drop or Move button), a modal appears letting the user choose a snooze duration (1h, 4h, 1d, 3d, 1w, 2w)\n- **Snooze countdown badge**: Snoozed cards display a countdown timer showing remaining snooze time (e.g., \"2d 5h left\")\n- **Snooze button on cards**: Each card has a \"Snooze\" button in its action row that opens a duration picker dropdown (hidden when already in snooze column)\n- **Card detail drawer snooze section**: Shows current snooze status with \"Wake up now\" button, or quick-snooze buttons when not snoozed\n- **Wake-up API endpoint**: `POST /api/v1/boards/[boardId]/snooze-wake` finds all snoozed cards past their wake time and moves them back to their original column (or fallback \"To Do\" column)\n- **Automatic wake-up polling**: Board page polls the wake-up endpoint every 30 seconds when snoozed cards exist, automatically moving cards back when their snooze expires\n- **Snooze clearing**: Snooze fields are automatically cleared when a card is dragged or moved out of a snooze column\n\n### Files Modified\n- `lib/db/schema.ts` — Added `snoozedUntil` and `snoozeReturnColumnId` fields to cards table\n- `types/index.ts` — Added snooze fields to Card interface\n- `lib/validators/schemas.ts` — Added snooze fields to updateCardSchema\n- `lib/hooks/useCards.ts` — Added snooze fields to useUpdateCard, added useSnoozeWakeUp polling hook\n- `app/api/v1/cards/[id]/route.ts` — Handle snoozedUntil string-to-Date conversion in PATCH\n- `app/api/v1/boards/[boardId]/snooze-wake/route.ts` — **New file**: snooze wake-up endpoint\n- `components/board/Column.tsx` — Added isSnoozeColumn() helper, amber accent color, clock icon, onSnoozeCard prop\n- `components/board/Card.tsx` — Added snooze countdown badge, snooze duration picker dropdown, snooze button\n- `components/board/KanbanBoard.tsx` — Added handleSnoozeCard, pendingSnooze modal, snooze detection on drag/move, snooze clearing\n- `components/board/CardDetailDrawer.tsx` — Added snooze section with status display and quick-snooze buttons\n- `app/(app)/boards/[boardId]/page.tsx` — Integrated useSnoozeWakeUp polling hook\n- `drizzle/migrations/0048_add-card-snooze.sql` — **New file**: migration to add snooze columns\n\n### Notes for Developer\n- **To use**: Create a column titled \"Snooze\" on any board. Drag cards there or use the Snooze button on cards.\n- **Migration**: Run the migration `0048_add-card-snooze.sql` to add the new columns to the database\n- **Default snooze durations**: 1 hour, 4 hours, 1 day, 3 days, 1 week, 2 weeks\n- **Wake-up polling**: Polls every 30 seconds when snoozed cards exist; the board will auto-refresh when cards wake up\n- **Fallback**: If the original column is deleted while a card is snoozed, it returns to the first \"To Do\"/\"Todo\" column, or the first column on the board"
+}

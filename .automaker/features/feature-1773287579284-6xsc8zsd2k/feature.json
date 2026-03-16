@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "Show more of the task details on the kanban page. ",
+  "title": "Display expanded task details on kanban board",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "skip",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-12T03:52:59.283Z",
+  "id": "feature-1773287579284-6xsc8zsd2k",
+  "descriptionHistory": [
+    {
+      "description": "Show more of the task details on the kanban page. ",
+      "timestamp": "2026-03-12T03:53:00.568Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-12T03:57:28.820Z",
+  "justFinishedAt": "2026-03-12T03:57:28.770Z",
+  "summary": "## Summary: Show more task details on kanban cards\n\n### Changes Implemented\n- Added description preview below card title (2-line clamp, only shown when description exists)\n- Added checklist items preview showing up to 3 individual items with mini checkboxes (green filled checkmark for done items, empty box for pending items, strikethrough text for completed items)\n- Added \"+N more\" indicator when checklist has more than 3 items\n- Removed misleading hardcoded comment count icon (showed \"0\" with no comment system backing it)\n- Kept existing checklist completion badge (e.g. \"3/5\") in the meta row for quick progress overview\n\n### Files Modified\n- `components/board/Card.tsx` — Enhanced card rendering with description preview and checklist items preview\n\n### Notes for Developer\n- Description uses `line-clamp-2` to prevent cards from becoming too tall with long descriptions\n- Checklist preview shows at most 3 items to keep card size reasonable; the full checklist is still accessible in the CardDetailDrawer\n- All changes use existing CSS variables (`--card-foreground`, `--muted-foreground`) and Tailwind classes consistent with the rest of the card component\n- No API or data changes needed — description and checklist data were already being fetched and available on the card object"
+}

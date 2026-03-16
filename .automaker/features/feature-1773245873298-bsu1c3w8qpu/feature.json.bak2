@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "http://localhost:3000/workspace/f3426eb9-7e45-4109-8d64-fcbada5245b3/2a04aef1-eb6e-4a61-a82f-aac96099c22a \n\nOn the Workspace Details page for each page, we want to add a new tab called KANBAN. This would show the same KANBAN board as the main app KANBAN, but would be scoped just to tasks that are associated with that smart role. This would make it easier for people to be able to scan through all of their pages and then be able to see tasks that were assigned to them by viewing the Kanban board, without having to jump to the Kanban board.\n\nI think on the Kanban board we could also add some filtering so that we could filter by the smart role as well. Can you think deeply about this? Our goal is to make it easier for users to discover content and reduce the amount of head space needed to keep track of which pages have which information on them. ",
+  "title": "Add scoped Kanban tab to Workspace Details page",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-11T16:17:53.298Z",
+  "id": "feature-1773245873298-bsu1c3w8qpu",
+  "descriptionHistory": [
+    {
+      "description": "http://localhost:3000/workspace/f3426eb9-7e45-4109-8d64-fcbada5245b3/2a04aef1-eb6e-4a61-a82f-aac96099c22a \n\nOn the Workspace Details page for each page, we want to add a new tab called KANBAN. This would show the same KANBAN board as the main app KANBAN, but would be scoped just to tasks that are associated with that smart role. This would make it easier for people to be able to scan through all of their pages and then be able to see tasks that were assigned to them by viewing the Kanban board, without having to jump to the Kanban board.\n\nI think on the Kanban board we could also add some filtering so that we could filter by the smart role as well. Can you think deeply about this? Our goal is to make it easier for users to discover content and reduce the amount of head space needed to keep track of which pages have which information on them. ",
+      "timestamp": "2026-03-11T16:17:53.709Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-11T16:29:16.093Z",
+  "justFinishedAt": "2026-03-11T16:29:16.061Z",
+  "summary": "## Summary: Add Kanban Tab to Workspace Pages + Tag-Based Board Filtering\n\n### Changes Implemented\n\n1. **New \"Kanban\" tab on workspace page detail views** — Users can now click the \"Kanban\" tab on any page to see a scoped Kanban board showing only cards that are tagged with that page's title. This makes it easy to scan through pages and see associated tasks without leaving the workspace.\n\n2. **PageKanbanTab component** — A new component that:\n   - Fetches the user's first/default Kanban board\n   - Filters cards client-side to only show those with a tag matching the page's title (case-insensitive)\n   - Shows a card count badge and inline priority/due date filters\n   - Displays an empty state with instructions on how to associate cards (by adding a matching tag)\n   - Embeds the full KanbanBoard component with drag-and-drop support\n   - Shows loading skeletons and handles edge cases (no board, no matching cards)\n\n3. **Tag filter on the main Kanban board** — Added a new \"All Tags\" dropdown filter to the BoardHeader. When cards have tags, users can filter the entire board to show only cards with a specific tag. This allows filtering by page/smart role from the main board view.\n\n4. **Updated filter logic** — The `applyFilters` function in KanbanBoard now supports tag-based filtering via the new `tag` field in `BoardFilters`.\n\n### Design Decisions\n- **Tag-based association** (not a DB schema change): Cards are associated with pages through their existing tag system. A card tagged \"Architecture\" will appear on the \"Architecture\" page's Kanban tab. This avoids DB migrations, works with existing infrastructure, and is flexible.\n- No database schema changes or migrations needed.\n- TypeScript compiles cleanly with no errors.\n\n### Files Modified\n- `components/pages/PageTabs.tsx` — Added \"kanban\" to `PageTab` type union and tab config\n- `components/pages/tabs/PageKanbanTab.tsx` — **New file** — Scoped Kanban board component for pages\n- `app/(app)/workspace/[workspaceId]/[pageId]/page.tsx` — Import and render PageKanbanTab for the \"kanban\" tab\n- `components/board/BoardHeader.tsx` — Added `tag` field to `BoardFilters`, `availableTags` prop, and tag filter dropdown UI\n- `components/board/KanbanBoard.tsx` — Added tag filtering logic in `applyFilters`\n- `app/(app)/boards/[boardId]/page.tsx` — Added `tag: \"all\"` to default filters, compute `availableTags` from board data, pass to BoardHeader\n\n### Notes for Developer\n- To associate a card with a page, add a tag to the card whose label matches the page's title (case-insensitive matching)\n- The tag filter dropdown on the main board only appears when cards have tags\n- The page Kanban tab uses the user's first board (sorted by most recently updated) — if the user has multiple boards, only the first is shown on the page tab\n- All drag-and-drop, card detail drawer, multi-select, and keyboard shortcuts work within the page Kanban tab since it reuses the full KanbanBoard component"
+}

@@ -8,20 +8,7 @@ interface EmailAccount {
   provider: "outlook" | "gmail" | "zoom";
 }
 
-interface LabelDef {
-  id: string;
-  name: string;
-  color: string;
-  is_system: boolean;
-}
-
 interface SmartLabelDef {
-  id: string;
-  name: string;
-  color: string;
-}
-
-interface SmartRulePageDef {
   id: string;
   name: string;
   color: string;
@@ -59,15 +46,9 @@ interface InboxFilterDrawerProps {
   filterAccount: string | null;
   setFilterAccount: (v: string | null) => void;
   setFilterProvider: (v: "outlook" | "gmail" | "zoom" | null) => void;
-  allLabels: LabelDef[];
-  filterLabel: string | null;
-  setFilterLabel: (v: string | null) => void;
   allSmartLabels: SmartLabelDef[];
   filterSmartLabel: string | null;
   setFilterSmartLabel: (v: string | null) => void;
-  allSmartRulePages: SmartRulePageDef[];
-  filterSmartRulePage: string | null;
-  setFilterSmartRulePage: (v: string | null) => void;
   afterDate: string;
   setAfterDate: (v: string) => void;
   beforeDate: string;
@@ -85,15 +66,9 @@ export function InboxFilterDrawer({
   filterAccount,
   setFilterAccount,
   setFilterProvider,
-  allLabels,
-  filterLabel,
-  setFilterLabel,
   allSmartLabels,
   filterSmartLabel,
   setFilterSmartLabel,
-  allSmartRulePages,
-  filterSmartRulePage,
-  setFilterSmartRulePage,
   afterDate,
   setAfterDate,
   beforeDate,
@@ -105,9 +80,7 @@ export function InboxFilterDrawer({
 }: InboxFilterDrawerProps) {
   const activeFilterCount = [
     filterAccount,
-    filterLabel,
     filterSmartLabel,
-    filterSmartRulePage,
     afterDate,
     beforeDate,
   ].filter(Boolean).length;
@@ -175,51 +148,23 @@ export function InboxFilterDrawer({
           </section>
         )}
 
-        {/* Labels section */}
-        {allLabels.length > 0 && (
+        {/* Smart Labels section */}
+        {allSmartLabels.length > 0 && (
           <section>
             <h3 className="text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wider mb-3">
-              Labels
+              Smart Labels
             </h3>
             <div className="flex flex-wrap gap-2">
               <button
-                onClick={() => setFilterLabel(null)}
+                onClick={() => setFilterSmartLabel(null)}
                 className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
-                  !filterLabel
+                  !filterSmartLabel
                     ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)] font-medium"
                     : "border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
                 }`}
               >
                 All
               </button>
-              {allLabels.map((label) => (
-                <button
-                  key={label.id}
-                  onClick={() => setFilterLabel(filterLabel === label.id ? null : label.id)}
-                  className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
-                    filterLabel === label.id
-                      ? "border-current font-medium"
-                      : "border-transparent hover:border-current"
-                  }`}
-                  style={{
-                    backgroundColor: filterLabel === label.id ? label.color + "22" : label.color + "11",
-                    color: label.color,
-                  }}
-                >
-                  {label.name}
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Smart Labels section (includes both smart labels and smart rules) */}
-        {(allSmartLabels.length > 0 || allSmartRulePages.length > 0) && (
-          <section>
-            <h3 className="text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wider mb-3">
-              Smart Labels
-            </h3>
-            <div className="flex flex-wrap gap-2">
               {allSmartLabels.map((sl) => (
                 <button
                   key={sl.id}
@@ -235,23 +180,6 @@ export function InboxFilterDrawer({
                   }}
                 >
                   {sl.name}
-                </button>
-              ))}
-              {allSmartRulePages.map((srp) => (
-                <button
-                  key={srp.id}
-                  onClick={() => setFilterSmartRulePage(filterSmartRulePage === srp.id ? null : srp.id)}
-                  className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
-                    filterSmartRulePage === srp.id
-                      ? "border-current font-medium"
-                      : "border-transparent hover:border-current"
-                  }`}
-                  style={{
-                    backgroundColor: filterSmartRulePage === srp.id ? srp.color + "22" : srp.color + "11",
-                    color: srp.color,
-                  }}
-                >
-                  {srp.name}
                 </button>
               ))}
             </div>

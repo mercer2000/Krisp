@@ -1,0 +1,10 @@
+{
+  "id": "evt-1773328185456-ecb87257",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-12T15:09:45.456Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1773323226019-epnjtypxsx",
+  "featureName": "Add keyboard-driven command palette with SuperHuman shortcuts",
+  "passes": true
+}

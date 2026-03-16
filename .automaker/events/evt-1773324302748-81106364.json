@@ -1,0 +1,10 @@
+{
+  "id": "evt-1773324302748-81106364",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-12T14:05:02.748Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1773322653396-zugrimluew",
+  "featureName": "Add split inbox view with independent filtered panes",
+  "passes": true
+}

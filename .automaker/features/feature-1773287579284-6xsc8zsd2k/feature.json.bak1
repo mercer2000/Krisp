@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "Show more of the task details on the kanban page. ",
+  "title": "Display expanded task details on kanban board",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "skip",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-12T03:52:59.283Z",
+  "id": "feature-1773287579284-6xsc8zsd2k",
+  "descriptionHistory": [
+    {
+      "description": "Show more of the task details on the kanban page. ",
+      "timestamp": "2026-03-12T03:53:00.568Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-12T03:57:28.770Z",
+  "justFinishedAt": "2026-03-12T03:57:28.770Z"
+}

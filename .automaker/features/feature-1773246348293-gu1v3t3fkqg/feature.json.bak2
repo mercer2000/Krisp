@@ -1,0 +1,30 @@
+{
+  "category": "Uncategorized",
+  "description": "We want to create a new newsletter view that uses a card layout, so three cards across. We would take the email newsletters that come in and we would show them as a card. The card would contain, ideally, a hero image and some quick links. We want to make this more like a news page and make it easy for folks to view their newsletter content in a more delightful way. Can you think about how you would create a new view on the inbox page that would be more delightful, more like a Pinterest style? ",
+  "title": "Create newsletter card grid view",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-12T01:49:05.258Z",
+  "id": "feature-1773246348293-gu1v3t3fkqg",
+  "descriptionHistory": [
+    {
+      "description": "We want to create a new newsletter view that uses a card layout, so three cards across. We would take the email newsletters that come in and we would show them as a card. The card would contain, ideally, a hero image and some quick links. We want to make this more like a news page and make it easy for folks to view their newsletter content in a more delightful way. Can you think about how you would create a new view on the inbox page that would be more delightful, more like a Pinterest style? ",
+      "timestamp": "2026-03-11T16:25:48.802Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-12T01:50:04.261Z",
+  "justFinishedAt": "2026-03-12T01:50:04.261Z",
+  "summary": "## Summary: Pinterest-style Newsletter Card View\n\n### Changes Implemented\n- **New API endpoint** (`POST /api/emails/newsletter-cards`) that takes email IDs and extracts hero images and quick links from newsletter HTML using regex-based parsing. Includes intelligent filtering to skip tracking pixels, tiny icons, and irrelevant links (unsubscribe, privacy policy, etc.)\n- **New `NewsletterCardView` component** with a Pinterest-style masonry layout using CSS columns (1 column mobile, 2 tablet, 3 desktop). Each card shows:\n  - Hero image extracted from the newsletter (with pastel initial fallback when no image found)\n  - Sender avatar with color-coded initial\n  - Email subject and preview text (with line clamping)\n  - Up to 3 quick links extracted from the newsletter content\n  - Unread indicator, unsubscribe link, mark-done action, and open-full link\n  - Hover effects with shadow and border highlighting\n- **View mode toggle** in the inbox toolbar (both desktop and mobile):\n  - Desktop: Segmented button group (list icon / cards icon) next to the Labels button\n  - Mobile: Single toggle button in the mobile toolbar\n- **Smart layout behavior**: When in card view mode, the preview pane and resize handle are hidden, giving the card grid full width\n- Card view works with all existing filters (folder, account, label, smart label, search)\n\n### Files Modified\n- `app/(app)/inbox/page.tsx` — Added import, viewMode state, toggle buttons (desktop + mobile), conditional rendering for card vs list view, hide preview pane in card mode\n\n### Files Created\n- `app/api/emails/newsletter-cards/route.ts` — API endpoint to extract hero images and links from email HTML\n- `components/email/NewsletterCardView.tsx` — Pinterest-style masonry card layout component\n\n### Notes for Developer\n- The card view works with all emails, not just those flagged `is_newsletter`. You can combine it with the existing \"Newsletter\" label filter to show only newsletters in card form\n- Hero image extraction uses regex (no DOM parser dependency) to keep the server-side lightweight. It filters out tracking pixels, spacer GIFs, favicons, and sub-200px images\n- Quick links are capped at 5 per card (3 shown), with deduplication and filtering of non-content links\n- Card data is fetched lazily — only when emails appear that haven't been parsed yet\n- The `line-clamp-2` utility requires Tailwind's line-clamp plugin (already included in modern Tailwind)\n- Failed hero images gracefully fall back to the sender initial display"
+}

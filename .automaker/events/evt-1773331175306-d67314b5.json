@@ -1,0 +1,10 @@
+{
+  "id": "evt-1773331175306-d67314b5",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-12T15:59:35.306Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1773329465463-98nr9vpmqw",
+  "featureName": "Consolidate analytics into meetings with tabbed navigation",
+  "passes": true
+}

@@ -1,0 +1,29 @@
+{
+  "category": "Uncategorized",
+  "description": "On the kanban board, add the notion of a snooze column.  Items parked here rest for a default period of time which can be adjusted, and then pop back the the TO DO column. \n",
+  "title": "Add snooze column to kanban board",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "waiting_approval",
+  "startedAt": "2026-03-12T04:10:57.526Z",
+  "id": "feature-1773288657526-ew2wdtj824",
+  "descriptionHistory": [
+    {
+      "description": "On the kanban board, add the notion of a snooze column.  Items parked here rest for a default period of time which can be adjusted, and then pop back the the TO DO column. \n",
+      "timestamp": "2026-03-12T04:10:57.984Z",
+      "source": "initial"
+    }
+  ],
+  "updatedAt": "2026-03-12T04:32:44.591Z",
+  "justFinishedAt": "2026-03-12T04:32:44.591Z"
+}

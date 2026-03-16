@@ -2,6 +2,181 @@
   "version": 1,
   "events": [
     {
+      "id": "evt-1773513816005-c847ae52",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-14T18:43:36.005Z",
+      "featureName": "Implement AI Support Chat Widget MVP",
+      "featureId": "feature-1773503171794-d7flq2v9u8v"
+    },
+    {
+      "id": "evt-1773513231077-5cfd9fcf",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-14T18:33:51.077Z",
+      "featureName": "Implement AI Support Chat Widget MVP",
+      "featureId": "feature-1773503171794-d7flq2v9u8v"
+    },
+    {
+      "id": "evt-1773506015946-491cf781",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-14T16:33:35.946Z",
+      "featureName": "Implement AI Support Chat Widget MVP",
+      "featureId": "feature-1773503171794-d7flq2v9u8v"
+    },
+    {
+      "id": "evt-1773504695335-2278da39",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-14T16:11:35.335Z",
+      "featureName": "Implement AI Support Chat Widget MVP",
+      "featureId": "feature-1773503171794-d7flq2v9u8v"
+    },
+    {
+      "id": "evt-1773503172339-80798b4b",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-14T15:46:12.340Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1773503171794-d7flq2v9u8v"
+    },
+    {
+      "id": "evt-1773331175306-d67314b5",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-12T15:59:35.306Z",
+      "featureName": "Consolidate analytics into meetings with tabbed navigation",
+      "featureId": "feature-1773329465463-98nr9vpmqw"
+    },
+    {
+      "id": "evt-1773329465968-9a083482",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-12T15:31:05.968Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1773329465463-98nr9vpmqw"
+    },
+    {
+      "id": "evt-1773328514752-0f945be5",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-12T15:15:14.752Z",
+      "featureName": "Add snooze column to kanban board",
+      "featureId": "feature-1773288657526-ew2wdtj824"
+    },
+    {
+      "id": "evt-1773328185456-ecb87257",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-12T15:09:45.456Z",
+      "featureName": "Add keyboard-driven command palette with SuperHuman shortcuts",
+      "featureId": "feature-1773323226019-epnjtypxsx"
+    },
+    {
+      "id": "evt-1773326224805-42ca02fc",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-12T14:37:04.805Z",
+      "featureName": "Create newsletter card grid view",
+      "featureId": "feature-1773246348293-gu1v3t3fkqg"
+    },
+    {
+      "id": "evt-1773324302748-81106364",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-12T14:05:02.748Z",
+      "featureName": "Add split inbox view with independent filtered panes",
+      "featureId": "feature-1773322653396-zugrimluew"
+    },
+    {
+      "id": "evt-1773324231973-f24bfc4c",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-12T14:03:51.973Z",
+      "featureName": "Add keyboard-driven command palette with SuperHuman shortcuts",
+      "featureId": "feature-1773323226019-epnjtypxsx"
+    },
+    {
+      "id": "evt-1773323226649-e7edf9ac",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-12T13:47:06.649Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1773323226019-epnjtypxsx"
+    },
+    {
+      "id": "evt-1773322887579-64e69e90",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-12T13:41:27.579Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1773322887070-2zikdepxy6o"
+    },
+    {
+      "id": "evt-1773322653911-7bf614b2",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-12T13:37:33.911Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1773322653396-zugrimluew"
+    },
+    {
+      "id": "evt-1773289964607-aeea07cb",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-12T04:32:44.607Z",
+      "featureName": "Add snooze column to kanban board",
+      "featureId": "feature-1773288657526-ew2wdtj824"
+    },
+    {
+      "id": "evt-1773288657988-bc775094",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-12T04:10:57.988Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1773288657526-ew2wdtj824"
+    },
+    {
+      "id": "evt-1773287848799-b77e340c",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-12T03:57:28.799Z",
+      "featureName": "Display expanded task details on kanban board",
+      "featureId": "feature-1773287579284-6xsc8zsd2k"
+    },
+    {
+      "id": "evt-1773287580588-efa910c3",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-12T03:53:00.588Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1773287579284-6xsc8zsd2k"
+    },
+    {
+      "id": "evt-1773280204286-5a3b3494",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-12T01:50:04.286Z",
+      "featureName": "Create newsletter card grid view",
+      "featureId": "feature-1773246348293-gu1v3t3fkqg"
+    },
+    {
+      "id": "evt-1773254917033-9ec84aa4",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-11T18:48:37.033Z",
+      "featureName": "Add scoped Kanban tab to Workspace Details page",
+      "featureId": "feature-1773245873298-bsu1c3w8qpu"
+    },
+    {
+      "id": "evt-1773246993185-c1466bec",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-11T16:36:33.185Z",
+      "featureName": "Create newsletter card grid view",
+      "featureId": "feature-1773246348293-gu1v3t3fkqg"
+    },
+    {
+      "id": "evt-1773246556080-320fd980",
+      "trigger": "feature_success",
+      "timestamp": "2026-03-11T16:29:16.080Z",
+      "featureName": "Add scoped Kanban tab to Workspace Details page",
+      "featureId": "feature-1773245873298-bsu1c3w8qpu"
+    },
+    {
+      "id": "evt-1773246348807-6f397532",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-11T16:25:48.807Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1773246348293-gu1v3t3fkqg"
+    },
+    {
+      "id": "evt-1773245873717-3321eb87",
+      "trigger": "feature_created",
+      "timestamp": "2026-03-11T16:17:53.717Z",
+      "featureName": "Untitled Feature",
+      "featureId": "feature-1773245873298-bsu1c3w8qpu"
+    },
+    {
       "id": "evt-1773113432859-7fba94fa",
       "trigger": "feature_success",
       "timestamp": "2026-03-10T03:30:32.859Z",

@@ -1,0 +1,27 @@
+{
+  "category": "Uncategorized",
+  "description": "Consolidate Analytics Into Meetings Section via Tabbed Layout\n\nRestructure the navigation and UI to eliminate the standalone Analytics menu item by merging all analytics functionality directly into the Meetings section, creating a cohesive meeting intelligence hub.\n\nRequirements:\n\nNavigation Changes:\n- Remove the Analytics item from the main sidebar/navigation menu\n- Ensure no broken links or dead routes remain after removal\n- Update any breadcrumbs, page titles, or internal links that reference the old Analytics route\n\nMeetings Page — Tabbed Layout:\n- Add a tab bar to the top of the Meetings page with two tabs: \"Meetings\" (default/active) and \"Analytics\"\n- The \"Meetings\" tab renders the existing meetings list view without changes to its current functionality\n- The \"Analytics\" tab renders the existing analytics dashboard content, preserving all current charts, metrics, and filters\n- Tab selection should be reflected in the URL (e.g., ?tab=meetings and ?tab=analytics) so deep-linking and browser back/forward navigation work correctly\n- Default to the \"Meetings\" tab when navigating to /meetings with no tab parameter\n\nMeeting Breakdown — Merge Into Meeting Detail Page:\n- Remove the meeting breakdown as a standalone view or modal\n- Integrate the full meeting breakdown content (transcript, key points, action items, speakers, participants, etc.) directly into the individual Meeting Detail page, placed logically below or alongside existing detail content\n- Ensure no data or UI elements from the breakdown are lost in the migration — do a full content audit before removing the old component\n- Preserve all existing interactions within the breakdown (expand/collapse sections, action item status changes, speaker filtering, etc.)\n\nEdge Cases & Quality Checks:\n- Redirect any existing direct URLs to the old Analytics route to the Meetings page with ?tab=analytics to avoid 404s\n- Verify mobile/responsive layout handles the tab bar gracefully without overflow or clipping\n- Confirm that the active tab state is visually distinct and meets accessibility requirements (ARIA roles, keyboard navigation between tabs)\n- Run a dead-code check after the migration to remove any now-orphaned Analytics page components, hooks, or data-fetching logic",
+  "title": "Consolidate analytics into meetings with tabbed navigation",
+  "images": [],
+  "imagePaths": [],
+  "textFilePaths": [],
+  "skipTests": true,
+  "model": "claude-opus",
+  "thinkingLevel": "adaptive",
+  "reasoningEffort": "none",
+  "branchName": "master",
+  "priority": 2,
+  "planningMode": "spec",
+  "requirePlanApproval": false,
+  "dependencies": [],
+  "status": "in_progress",
+  "startedAt": "2026-03-12T15:31:05.463Z",
+  "id": "feature-1773329465463-98nr9vpmqw",
+  "descriptionHistory": [
+    {
+      "description": "Consolidate Analytics Into Meetings Section via Tabbed Layout\n\nRestructure the navigation and UI to eliminate the standalone Analytics menu item by merging all analytics functionality directly into the Meetings section, creating a cohesive meeting intelligence hub.\n\nRequirements:\n\nNavigation Changes:\n- Remove the Analytics item from the main sidebar/navigation menu\n- Ensure no broken links or dead routes remain after removal\n- Update any breadcrumbs, page titles, or internal links that reference the old Analytics route\n\nMeetings Page — Tabbed Layout:\n- Add a tab bar to the top of the Meetings page with two tabs: \"Meetings\" (default/active) and \"Analytics\"\n- The \"Meetings\" tab renders the existing meetings list view without changes to its current functionality\n- The \"Analytics\" tab renders the existing analytics dashboard content, preserving all current charts, metrics, and filters\n- Tab selection should be reflected in the URL (e.g., ?tab=meetings and ?tab=analytics) so deep-linking and browser back/forward navigation work correctly\n- Default to the \"Meetings\" tab when navigating to /meetings with no tab parameter\n\nMeeting Breakdown — Merge Into Meeting Detail Page:\n- Remove the meeting breakdown as a standalone view or modal\n- Integrate the full meeting breakdown content (transcript, key points, action items, speakers, participants, etc.) directly into the individual Meeting Detail page, placed logically below or alongside existing detail content\n- Ensure no data or UI elements from the breakdown are lost in the migration — do a full content audit before removing the old component\n- Preserve all existing interactions within the breakdown (expand/collapse sections, action item status changes, speaker filtering, etc.)\n\nEdge Cases & Quality Checks:\n- Redirect any existing direct URLs to the old Analytics route to the Meetings page with ?tab=analytics to avoid 404s\n- Verify mobile/responsive layout handles the tab bar gracefully without overflow or clipping\n- Confirm that the active tab state is visually distinct and meets accessibility requirements (ARIA roles, keyboard navigation between tabs)\n- Run a dead-code check after the migration to remove any now-orphaned Analytics page components, hooks, or data-fetching logic",
+      "timestamp": "2026-03-12T15:31:05.963Z",
+      "source": "initial"
+    }
+  ]
+}

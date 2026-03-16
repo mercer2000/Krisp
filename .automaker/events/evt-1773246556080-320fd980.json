@@ -1,0 +1,10 @@
+{
+  "id": "evt-1773246556080-320fd980",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-11T16:29:16.080Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1773245873298-bsu1c3w8qpu",
+  "featureName": "Add scoped Kanban tab to Workspace Details page",
+  "passes": true
+}

@@ -144,9 +144,54 @@ export function KanbanBoard({ board, filters }: KanbanBoardProps) {
   const [pendingSnooze, setPendingSnooze] = useState<{ cardId: string; returnColumnId: string } | null>(null);
 
   // Local columns state for real-time cross-column drag feedback.
-  const [localColumns, setLocalColumns] = useState<ColumnWithCards[]>(() =>
-    [...board.columns].sort((a, b) => a.position - b.position)
-  );
+  const [localColumns, setLocalColumns] = useState<ColumnWithCards[]>(() => {
+    // === MOCK MODE INTERCEPT ===
+    if (typeof window !== "undefined" && window.location.search.includes("mock=true")) {
+      return [
+        {
+          id: "mock-col-1",
+          boardId: board.id,
+          title: "To Do",
+          position: 0,
+          isFocusColumn: false,
+          color: "var(--foreground)",
+          createdAt: new Date(),
+          cards: [
+            { id: "mock-card-1", columnId: "mock-col-1", title: "Finalize Launch Copy", description: "Review and approve the final website copy for next week's launch.", position: 0, priority: "high", tags: [{ id: "t1", label: "Marketing", color: "#8b5cf6" }], archived: false, snoozedUntil: null, snoozeReturnColumnId: null, dueDate: null, colorLabel: null, checklist: [], isBigThree: false, bigThreeWeekStart: null } as any,
+            { id: "mock-card-2", columnId: "mock-col-1", title: "Update Terms of Service", description: "Legal team requested updates regarding the new AI features.", position: 1024, priority: "medium", tags: [{ id: "t2", label: "Legal", color: "#ef4444" }], archived: false, snoozedUntil: null, snoozeReturnColumnId: null, dueDate: null, colorLabel: null, checklist: [], isBigThree: false, bigThreeWeekStart: null } as any
+          ]
+        },
+        {
+          id: "mock-col-2",
+          boardId: board.id,
+          title: "In Progress",
+          position: 1,
+          isFocusColumn: true,
+          color: "var(--foreground)",
+          createdAt: new Date(),
+          cards: [
+            { id: "mock-card-3", columnId: "mock-col-2", title: "Implement Stripe Integration", description: "Wire up the new checkout flow for the Pro tier.", position: 0, priority: "urgent", tags: [{ id: "t3", label: "Engineering", color: "#3b82f6" }], archived: false, snoozedUntil: null, snoozeReturnColumnId: null, dueDate: null, colorLabel: null, checklist: [], isBigThree: false, bigThreeWeekStart: null } as any,
+            { id: "mock-card-4", columnId: "mock-col-2", title: "Record Product Demo", description: "Create the 2-minute walkthrough video for the hero section.", position: 1024, priority: "high", tags: [{ id: "t1", label: "Marketing", color: "#8b5cf6" }], archived: false, snoozedUntil: null, snoozeReturnColumnId: null, dueDate: null, colorLabel: null, checklist: [], isBigThree: false, bigThreeWeekStart: null } as any
+          ]
+        },
+        {
+          id: "mock-col-3",
+          boardId: board.id,
+          title: "Done",
+          position: 2,
+          isFocusColumn: false,
+          color: "var(--foreground)",
+          createdAt: new Date(),
+          cards: [
+            { id: "mock-card-5", columnId: "mock-col-3", title: "Database Migration", description: "Successfully migrated to Neon Postgres.", position: 0, priority: "medium", tags: [{ id: "t3", label: "Engineering", color: "#3b82f6" }], archived: false, snoozedUntil: null, snoozeReturnColumnId: null, dueDate: null, colorLabel: null, checklist: [], isBigThree: false, bigThreeWeekStart: null } as any
+          ]
+        }
+      ];
+    }
+    // ===========================
+
+    return [...board.columns].sort((a, b) => a.position - b.position);
+  });
 
   // Sync from server data when not actively dragging
   useEffect(() => {

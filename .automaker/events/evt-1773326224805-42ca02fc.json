@@ -1,0 +1,10 @@
+{
+  "id": "evt-1773326224805-42ca02fc",
+  "trigger": "feature_success",
+  "timestamp": "2026-03-12T14:37:04.805Z",
+  "projectPath": "C:\\Code\\Krisp",
+  "projectName": "Krisp",
+  "featureId": "feature-1773246348293-gu1v3t3fkqg",
+  "featureName": "Create newsletter card grid view",
+  "passes": true
+}

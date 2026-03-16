@@ -190,6 +190,21 @@ export default function BrainChatPage() {
   }, []);
 
   const fetchSessions = async () => {
+    // === MOCK MODE INTERCEPT ===
+    if (typeof window !== "undefined" && window.location.search.includes("mock=true")) {
+      setSessions([
+        { id: "mock-1", title: "Product Roadmap Alignment", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: "mock-2", title: "Customer Feedback Analysis", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: "mock-3", title: "Budget Review 2026", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: "mock-4", title: "Engineering Sync Notes", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      ]);
+      setLoadingSessions(false);
+      // Auto-load the first mock session for the screenshot
+      if (!activeSessionId) loadSession("mock-1");
+      return;
+    }
+    // ===========================
+
     try {
       const res = await fetch("/api/brain/sessions");
       if (!res.ok) throw new Error();
@@ -207,6 +222,31 @@ export default function BrainChatPage() {
     setLoadingMessages(true);
     // Close sidebar on mobile after selecting a session
     if (isMobile) setShowSidebar(false);
+
+    // === MOCK MODE INTERCEPT ===
+    if (sessionId.startsWith("mock-") || (typeof window !== "undefined" && window.location.search.includes("mock=true"))) {
+      setTimeout(() => {
+        setMessages([
+          {
+            id: "msg-1",
+            role: "user",
+            content: "What were the key decisions from the product roadmap sync yesterday?",
+            createdAt: new Date(Date.now() - 60000).toISOString(),
+          },
+          {
+            id: "msg-2",
+            role: "assistant",
+            content: "Based on the **Product Roadmap Sync** on Tuesday, the team made three key decisions:\n\n1. **Mobile App MVP:** We will prioritize the iOS mobile release over Android for Q3.\n2. **Authentication:** The migration to the new NextAuth provider is delayed to the next sprint.\n3. **Pricing Tiers:** We agreed on the **$19/mo** and **$39/mo** plans, maintaining the existing referral discount.\n\nI have also added a follow-up action item to the **Kanban board** for the design team to finalize the updated pricing page mocks.",
+            sourcesUsed: ["meetings", "decisions", "kanban"],
+            createdAt: new Date().toISOString(),
+          }
+        ]);
+        setLoadingMessages(false);
+      }, 300);
+      return;
+    }
+    // ===========================
+
     try {
       const res = await fetch(`/api/brain/sessions/${sessionId}`);
       if (!res.ok) throw new Error();
